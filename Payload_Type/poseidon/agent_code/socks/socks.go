@@ -301,7 +301,7 @@ func writeToProxy(conn net.Conn, channelId int32, channelMap *mutexMap, toMythic
             go removeMutexMap(channelMap, channelId, conn)
             return
         }
-	    totalWritten, err := w.Write(data)
+	    _, err = w.Write(data)
 	    if err != nil {
             //fmt.Println("Error writting to proxy: ", err.Error())
             msg := structs.SocksMsg{}
