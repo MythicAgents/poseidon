@@ -80,7 +80,7 @@ class Poseidon(PayloadType):
                 if isinstance(val, dict):
                     file1 = file1.replace(key, val["enc_key"] if val["enc_key"] is not None else "")
                 elif key == "headers":
-                    file1 = file1.replace(key, json.dumps(val))
+                    file1 = file1.replace(key, json.dumps(json.dumps(val)))
                 else:
                     file1 = file1.replace(key, val)
             with open(
