@@ -35,7 +35,6 @@ function(task, response){
 			"permissions":"max-width:0;"};
 		if (files.length < FILE_THRESHOLD)
 		{
-			console.log(files[0]);
 			for (var j = 0; j < files.length; j++)
 			{
 				var perms = JSON.parse(files[j]['permissions']['permissions']);
@@ -66,25 +65,25 @@ function(task, response){
 						icon = '<i class="fas fa-file-code" style="color:rgb(25,142,117);" data-toggle="tooltip" title="Code File"></i>';
 					}
 					rows.push({ "": copyicon,
-						"name": icon + ' ' + files[j]['name'],
+						"name": icon + ' ' + escapeHTML(files[j]['name']),
 						"size": support_scripts['poseidon_file_size_to_human_readable_string'](files[j]['size']),
-						"last accessed": files[j]["access_time"],
-						"last modified": files[j]["modify_time"],
-						"user": perms['user'],
-						"group": perms['group'],
-						"permissions": perms["permissions"],
+						"last accessed": escapeHTML(files[j]["access_time"]),
+						"last modified": escapeHTML(files[j]["modify_time"]),
+						"user": escapeHTML(perms['user']),
+						"group": escapeHTML(perms['group']),
+						"permissions": escapeHTML(perms["permissions"]),
 						"row-style": row_style,
 						"cell-style": cell_style
 					});
 				} else {
 					rows.push({"": copyicon,
-						"name": '<i class="fas fa-folder-open"></i> ' + files[j]['name'],
+						"name": '<i class="fas fa-folder-open"></i> ' + escapeHTML(files[j]['name']),
 						"size": support_scripts['poseidon_file_size_to_human_readable_string'](0),
-						"last modified": files[j]["modify_time"],
-						"last accessed": files[j]["access_time"],
-						"user": perms['user'],
-						"group": perms['group'],
-						"permissions": perms["permissions"],
+						"last modified": escapeHTML(files[j]["modify_time"]),
+						"last accessed": escapeHTML(files[j]["access_time"]),
+						"user": escapeHTML(perms['user']),
+						"group": escapeHTML(perms['group']),
+						"permissions": escapeHTML(perms["permissions"]),
 						"row-style": row_style,
 						"cell-style": cell_style
 					});
