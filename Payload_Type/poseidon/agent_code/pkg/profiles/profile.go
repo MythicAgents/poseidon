@@ -1,12 +1,15 @@
 package profiles
 
 import (
+	// Standard
 	"encoding/base64"
-	"pkg/utils/crypto"
+	"encoding/json"
 	"math/rand"
 	"time"
-	"pkg/utils/structs"
-	"encoding/json"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/crypto"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var (

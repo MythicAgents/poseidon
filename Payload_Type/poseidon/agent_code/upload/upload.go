@@ -1,12 +1,14 @@
 package upload
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
-	"pkg/profiles"
-	"pkg/utils/structs"
-	"encoding/json"
 	"sync"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var mu sync.Mutex

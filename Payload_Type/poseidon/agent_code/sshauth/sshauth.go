@@ -7,12 +7,18 @@ import (
 	"io/ioutil"
 	"sync"
 	"time"
-	"portscan"
-	"pkg/utils/structs"
+
+	// External
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/sync/semaphore"
+
+	// 3rd Party
 	"github.com/tmc/scp"
-	"pkg/profiles"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/portscan"
 )
 
 var (

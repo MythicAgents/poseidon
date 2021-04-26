@@ -1,11 +1,14 @@
 package cat
  
 import (
-	"os"
-	"pkg/utils/structs"
-	"pkg/profiles"
+	// Standard
 	"encoding/json"
+	"os"
 	"sync"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var mu sync.Mutex

@@ -7,14 +7,16 @@ from distutils.dir_util import copy_tree
 import shutil
 import uuid
 import json
-import sys
+
+# Enable additional message details to the Mythic UI
+debug = False
 
 
 class Poseidon(PayloadType):
 
     name = "poseidon"
     file_extension = "bin"
-    author = "@xorrior, @djhohnstein"
+    author = "@xorrior, @djhohnstein, @Ne0nd0g"
     supported_os = [SupportedOS.Linux, SupportedOS.MacOS]
     wrapper = False
     wrapped_payloads = []
@@ -87,9 +89,7 @@ class Poseidon(PayloadType):
                 "{}/pkg/profiles/{}.go".format(agent_build_path, profile), "w"
             ) as f:
                 f.write(file1)
-            command = "rm -rf /build; rm -rf /deps; rm -rf /go/src/poseidon;"
-            command += "mkdir -p /go/src/poseidon/src; mv * /go/src/poseidon/src; mv /go/src/poseidon/src/poseidon.go /go/src/poseidon/;"
-            command += "cd /go/src/poseidon;"
+            command = "rm -rf /build; rm -rf /deps;"
             command += (
                 "xgo -tags={} --targets={}/{} -buildmode={} -out poseidon .".format(
                     profile,
@@ -109,6 +109,8 @@ class Poseidon(PayloadType):
                 resp.message = f"[stdout]\n{stdout.decode()}"
             if stderr:
                 resp.build_error += f"[stderr]\n{stderr.decode()}"
+                if debug:
+                    resp.build_error += f'\n[BUILD]{command}\n'
             if os.path.exists("/build"):
                 files = os.listdir("/build")
                 if len(files) == 1:
@@ -117,7 +119,7 @@ class Poseidon(PayloadType):
                 else:
                     temp_uuid = str(uuid.uuid4())
                     file1 = open(
-                        "/go/src/poseidon/src/sharedlib-darwin-linux.c", "r"
+                        f"{agent_build_path}/sharedlib/sharedlib-darwin-linux.c", "r"
                     ).read()
                     with open("/build/sharedlib-darwin-linux.c", "w") as f:
                         f.write(file1)
@@ -125,6 +127,8 @@ class Poseidon(PayloadType):
                     resp.payload = open(f"{agent_build_path}/{temp_uuid}" + ".zip", "rb").read()
                     resp.message = "Created a zip archive of files!\n"
                 resp.status = BuildStatus.Success
+            if debug:
+                resp.message += f'\n[BUILD]{command}\n'
             else:
                 # something went wrong, return our errors
                 resp.build_error += "\nNo files created"

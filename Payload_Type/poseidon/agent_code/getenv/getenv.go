@@ -1,12 +1,15 @@
 package getenv
 
 import (
+	// Standard
+	"encoding/json"
 	"os"
 	"strings"
-	"encoding/json"
-	"pkg/utils/structs"
 	"sync"
-	"pkg/profiles"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var mu sync.Mutex

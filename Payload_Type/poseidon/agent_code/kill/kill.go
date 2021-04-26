@@ -1,14 +1,17 @@
 package kill
 
 import (
+	// Standard
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
-	"syscall"
-	"encoding/json"
 	"sync"
-	"pkg/profiles"
-	"pkg/utils/structs"
+	"syscall"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var mu sync.Mutex

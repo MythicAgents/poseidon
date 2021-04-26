@@ -1,16 +1,19 @@
 package socks
 
 import (
-    "fmt"
-    "net"
-    "sync"
-    "encoding/base64"
-    "bytes"
-    "io"
-    "strings"
-    "strconv"
-    "bufio"
-	"pkg/utils/structs"
+	// Standard
+	"bufio"
+	"bytes"
+	"encoding/base64"
+	"fmt"
+	"io"
+	"net"
+	"strconv"
+	"strings"
+	"sync"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 // ****** The following is from https://github.com/armon/go-socks5 *****
 const (

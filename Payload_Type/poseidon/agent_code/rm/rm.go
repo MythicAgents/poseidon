@@ -1,15 +1,18 @@
 package rm
 
 import (
+	// Standard
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
 	"path/filepath"
-	"pkg/utils/structs"
-	"sync"
-	"pkg/profiles"
-	"encoding/json"
 	"strings"
+	"sync"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var mu sync.Mutex

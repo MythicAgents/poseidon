@@ -1,17 +1,17 @@
 package keystate
 
 import (
+	// Standard
 	"encoding/json"
 	"errors"
 	"fmt"
-
-	//"log"
 	"os/user"
 	"sync"
 	"time"
 
-	"pkg/utils/structs"
-	"pkg/profiles"
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var (

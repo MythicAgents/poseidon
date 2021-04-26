@@ -1,19 +1,23 @@
 package ls
 
 import (
+	// Standard
 	"encoding/json"
 	"io/ioutil"
-    "path/filepath"
-	"pkg/utils/structs"
-	"strconv"
-	"sync"
 	"os"
-	"strings"
-	"pkg/profiles"
 	"os/user"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
 	"syscall"
 
+	// 3rd Party
 	"github.com/djherbis/atime"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var mu sync.Mutex

@@ -1,10 +1,13 @@
 package xpc
 
 import (
+	// Standard
 	"encoding/json"
 	"sync"
-	"pkg/profiles"
-	"pkg/utils/structs"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var mu sync.Mutex

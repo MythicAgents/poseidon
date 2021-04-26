@@ -1,17 +1,19 @@
 package curl
 
 import (
-	"encoding/json"
-	"encoding/base64"
-	"sync"
+	// Standard
 	"bytes"
-	"pkg/profiles"
-	"net/http"
+	"encoding/base64"
+	"encoding/json"
 	"io/ioutil"
-	"time"
+	"net/http"
 	"strings"
+	"sync"
+	"time"
 
-	"pkg/utils/structs"
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var mu sync.Mutex

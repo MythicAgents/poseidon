@@ -1,13 +1,15 @@
 package keylog
 
 import (
+	// Standard
 	"encoding/json"
-	"pkg/profiles"
 	"fmt"
-
-	"keylog/keystate"
-	"pkg/utils/structs"
 	"sync"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/keylog/keystate"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var mu sync.Mutex

