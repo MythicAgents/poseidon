@@ -2,8 +2,6 @@ from mythic_payloadtype_container.PayloadBuilder import *
 from mythic_payloadtype_container.MythicCommandBase import *
 import asyncio
 import os
-import tempfile
-from distutils.dir_util import copy_tree
 import shutil
 import uuid
 import json
@@ -13,7 +11,6 @@ debug = False
 
 
 class Poseidon(PayloadType):
-
     name = "poseidon"
     file_extension = "bin"
     author = "@xorrior, @djhohnstein, @Ne0nd0g"
@@ -28,12 +25,14 @@ class Poseidon(PayloadType):
             parameter_type=BuildParameterType.ChooseOne,
             description="Choose the target OS",
             choices=["darwin", "linux"],
+            default_value="linux",
         ),
         "mode": BuildParameter(
             name="mode",
             parameter_type=BuildParameterType.ChooseOne,
             description="Choose the buildmode option. Default for executables, c-archive/archive/c-shared/shared are for libraries",
             choices=["default", "c-archive"],
+            default_value="default",
         ),
     }
     c2_profiles = ["websocket", "http"]
@@ -61,48 +60,41 @@ class Poseidon(PayloadType):
             resp.message = "Poseidon only accepts one c2 profile at a time"
             return resp
         try:
-            agent_build_path = tempfile.TemporaryDirectory(suffix=self.uuid).name
-            # shutil to copy payload files over
-            copy_tree(self.agent_code_path, agent_build_path)
-            file1 = open(
-                "{}/pkg/profiles/profile.go".format(agent_build_path), "r"
-            ).read()
-            file1 = file1.replace("UUID_HERE", self.uuid)
-            with open("{}/pkg/profiles/profile.go".format(agent_build_path), "w") as f:
-                f.write(file1)
             c2 = self.c2info[0]
             profile = c2.get_c2profile()["name"]
             if profile not in self.c2_profiles:
                 resp.message = "Invalid c2 profile name specified"
                 return resp
-            file1 = open(
-                "{}/c2_profiles/{}.go".format(agent_build_path, profile), "r"
-            ).read()
+
+            poseidon_repo_profile = f"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/profiles/{profile}"
+            ldflags = f"-s -w -X 'main.c2Profile={profile}' -X '{poseidon_repo_profile}.UUID={self.uuid}'"
+
             for key, val in c2.get_parameters_dict().items():
                 if isinstance(val, dict):
-                    file1 = file1.replace(key, val["enc_key"] if val["enc_key"] is not None else "")
+                    ldflags += f" -X '{poseidon_repo_profile}.{key}={val['enc_key']}'"
                 elif key == "headers":
-                    file1 = file1.replace(key, json.dumps(json.dumps(val)))
+                    v = json.dumps(val).replace('"', '\\"')
+                    ldflags += f" -X '{poseidon_repo_profile}.{key}={v}'"
                 else:
-                    file1 = file1.replace(key, val)
-            with open(
-                "{}/pkg/profiles/{}.go".format(agent_build_path, profile), "w"
-            ) as f:
-                f.write(file1)
+                    if val:
+                        ldflags += f" -X '{poseidon_repo_profile}.{key}={val}'"
+
+            ldflags += " -buildid="
             command = "rm -rf /build; rm -rf /deps;"
             command += (
-                "xgo -tags={} --targets={}/{} -buildmode={} -out poseidon .".format(
+                "xgo -tags={} --targets={}/{} -buildmode={} -ldflags=\"{}\" -out poseidon .".format(
                     profile,
                     "darwin" if self.get_parameter("os") == "darwin" else "linux",
                     "amd64",
                     "default" if self.get_parameter("mode") == "default" else "c-archive",
+                    ldflags,
                 )
             )
             proc = await asyncio.create_subprocess_shell(
                 command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                cwd=agent_build_path,
+                cwd="/Mythic/agent_code",
             )
             stdout, stderr = await proc.communicate()
             if stdout:
@@ -114,17 +106,20 @@ class Poseidon(PayloadType):
             if os.path.exists("/build"):
                 files = os.listdir("/build")
                 if len(files) == 1:
-                    resp.payload = open("/build/" + files[0], "rb").read()
+                    if self.get_parameter('os') == "darwin":
+                        resp.payload = open(f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64", "rb").read()
+                    else:
+                        resp.payload = open(f"/build/poseidon-{self.get_parameter('os')}-amd64", "rb").read()
                     resp.message += "\nCreated payload!\n"
                 else:
                     temp_uuid = str(uuid.uuid4())
                     file1 = open(
-                        f"{agent_build_path}/sharedlib/sharedlib-darwin-linux.c", "r"
+                        f"/Mythic/agent_code/sharedlib/sharedlib-darwin-linux.c", "r"
                     ).read()
                     with open("/build/sharedlib-darwin-linux.c", "w") as f:
                         f.write(file1)
-                    shutil.make_archive(f"{agent_build_path}/{temp_uuid}", "zip", "/build")
-                    resp.payload = open(f"{agent_build_path}/{temp_uuid}" + ".zip", "rb").read()
+                    shutil.make_archive(f"/Mythic/agent_code/{temp_uuid}", "zip", "/build")
+                    resp.payload = open(f"/Mythic/agent_code/{temp_uuid}" + ".zip", "rb").read()
                     resp.message = "Created a zip archive of files!\n"
                 resp.status = BuildStatus.Success
             if debug:

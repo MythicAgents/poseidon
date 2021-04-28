@@ -7,16 +7,16 @@ import (
 	"sync"
 
 	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/profiles"
 )
 
 var mu sync.Mutex
 
 type uploadArgs struct {
-	FileID string `json:"file_id"`
+	FileID     string `json:"file_id"`
 	RemotePath string `json:"remote_path"`
-	Overwrite bool `json:"overwrite"`
+	Overwrite  bool   `json:"overwrite"`
 }
 
 type getFile func(r structs.FileRequest, ch chan []byte) ([]byte, error)

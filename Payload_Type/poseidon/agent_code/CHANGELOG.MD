@@ -10,9 +10,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - Added support for Go modules with addition of `go.mod` file
 - Added debug message output to `builder.py`
+- Added build flag to omit the DWARF symbol table, `-w` from the agent to reduce file size
+- Added build flag to mit the symbol table and debug information, `-s` from the agent to reduce file size
+- Added empty `buildid` during agent generation
 
 ### Changed
 
 - Updated all Poseidon imports to use full project path
 - Moved `shareedlib-darwin-linux.c` out of the project root into the `sharedlib` directory
-
+- Moved the http and websocket go files into the 
+- Changed `builder.py` to use Go's `-X` ldflags to set C2 profile variables
+- Moved the Mythic UUID out of `profiles.go` and into the C2 Profile (e.g., `http.go`)
+- The Poseidon agent is built out of `/Mythic/agent_code` directly instead of a temp directory

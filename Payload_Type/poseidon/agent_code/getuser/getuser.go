@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/profiles"
 )
 
 var mu sync.Mutex
@@ -89,7 +89,7 @@ func Run(task structs.Task) {
 		mu.Unlock()
 		return
 	}
-    msg.UserOutput = string(res)
+	msg.UserOutput = string(res)
 	msg.Completed = true
 
 	resp, _ := json.Marshal(msg)
