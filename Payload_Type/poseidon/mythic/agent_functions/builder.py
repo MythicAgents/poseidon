@@ -60,15 +60,24 @@ class Poseidon(PayloadType):
             resp.message = "Poseidon only accepts one c2 profile at a time"
             return resp
         try:
+            agent_build_path = "/Mythic/agent_code"
+
+            # Get the selected C2 profile information (e.g., http or websocket)
             c2 = self.c2info[0]
             profile = c2.get_c2profile()["name"]
             if profile not in self.c2_profiles:
                 resp.message = "Invalid c2 profile name specified"
                 return resp
 
-            poseidon_repo_profile = f"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/profiles/{profile}"
-            ldflags = f"-s -w -X 'main.c2Profile={profile}' -X '{poseidon_repo_profile}.UUID={self.uuid}'"
+            # This package path is used with Go's "-X" link flag to set the value string variables in code at compile
+            # time. This is how each profile's configurable options are passed in.
+            poseidon_repo_profile = f"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
 
+            # Build Go link flags that are passed in at compile time through the "-ldflags=" argument
+            # https://golang.org/cmd/link/
+            ldflags = f"-s -w -X '{poseidon_repo_profile}.UUID={self.uuid}'"
+
+            # Iterate over the C2 profile parameters and associated variable through Go's "-X" link flag
             for key, val in c2.get_parameters_dict().items():
                 if isinstance(val, dict):
                     ldflags += f" -X '{poseidon_repo_profile}.{key}={val['enc_key']}'"
@@ -79,6 +88,7 @@ class Poseidon(PayloadType):
                     if val:
                         ldflags += f" -X '{poseidon_repo_profile}.{key}={val}'"
 
+            # Set the Go -buildid argument to an empty string to remove the indicator
             ldflags += " -buildid="
             command = "rm -rf /build; rm -rf /deps;"
             command += (
@@ -90,27 +100,37 @@ class Poseidon(PayloadType):
                     ldflags,
                 )
             )
+
+            # Execute the constructed xgo command to build Poseidon
             proc = await asyncio.create_subprocess_shell(
                 command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                cwd="/Mythic/agent_code",
+                cwd=agent_build_path,
             )
+
+            # Collect and data written Standard Output and Standard Error
             stdout, stderr = await proc.communicate()
             if stdout:
-                resp.message = f"[stdout]\n{stdout.decode()}"
+                resp.message += f"\n[STDOUT]\n{stdout.decode()}"
+                if debug:
+                    resp.message += f'\n[BUILD]{command}\n'
             if stderr:
-                resp.build_error += f"[stderr]\n{stderr.decode()}"
+                resp.build_error += f"\n[STDERR]\n{stderr.decode()}"
                 if debug:
                     resp.build_error += f'\n[BUILD]{command}\n'
+
+            # Collect the built Poseidon agent binary file and return it
             if os.path.exists("/build"):
                 files = os.listdir("/build")
                 if len(files) == 1:
+                    # Get the darwin (macOS) executable file
                     if self.get_parameter('os') == "darwin":
                         resp.payload = open(f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64", "rb").read()
                     else:
                         resp.payload = open(f"/build/poseidon-{self.get_parameter('os')}-amd64", "rb").read()
                     resp.message += "\nCreated payload!\n"
+                # If there are no files or more than one file in the build directory
                 else:
                     temp_uuid = str(uuid.uuid4())
                     file1 = open(
@@ -118,12 +138,10 @@ class Poseidon(PayloadType):
                     ).read()
                     with open("/build/sharedlib-darwin-linux.c", "w") as f:
                         f.write(file1)
-                    shutil.make_archive(f"/Mythic/agent_code/{temp_uuid}", "zip", "/build")
-                    resp.payload = open(f"/Mythic/agent_code/{temp_uuid}" + ".zip", "rb").read()
-                    resp.message = "Created a zip archive of files!\n"
+                    shutil.make_archive(f"{agent_build_path}/{temp_uuid}", "zip", "/build")
+                    resp.payload = open(f"{agent_build_path}/{temp_uuid}" + ".zip", "rb").read()
+                    resp.message += "Created a zip archive of files!\n"
                 resp.status = BuildStatus.Success
-            if debug:
-                resp.message += f'\n[BUILD]{command}\n'
             else:
                 # something went wrong, return our errors
                 resp.build_error += "\nNo files created"

@@ -16,9 +16,9 @@ import (
 	"github.com/tmc/scp"
 
 	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/portscan"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/profiles"
 )
 
 var (

