@@ -3,7 +3,6 @@ from mythic_payloadtype_container.MythicCommandBase import *
 import asyncio
 import os
 import shutil
-import uuid
 import json
 
 # Enable additional message details to the Mythic UI
@@ -30,8 +29,10 @@ class Poseidon(PayloadType):
         "mode": BuildParameter(
             name="mode",
             parameter_type=BuildParameterType.ChooseOne,
-            description="Choose the buildmode option. Default for executables, c-archive/archive/c-shared/shared are for libraries",
-            choices=["default", "c-archive"],
+            description="Choose the build mode option. Select default for executables, "
+                        "c-shared for a .dylib or .so file, "
+                        "or c-archive for a .Zip containing C source code with an archive and header file",
+            choices=["default", "c-archive", "c-shared"],
             default_value="default",
         ),
     }
@@ -96,7 +97,7 @@ class Poseidon(PayloadType):
                     profile,
                     "darwin" if self.get_parameter("os") == "darwin" else "linux",
                     "amd64",
-                    "default" if self.get_parameter("mode") == "default" else "c-archive",
+                    self.get_parameter("mode"),
                     ldflags,
                 )
             )
@@ -120,31 +121,94 @@ class Poseidon(PayloadType):
                 if debug:
                     resp.build_error += f'\n[BUILD]{command}\n'
 
-            # Collect the built Poseidon agent binary file and return it
-            if os.path.exists("/build"):
-                files = os.listdir("/build")
-                if len(files) == 1:
-                    # Get the darwin (macOS) executable file
-                    if self.get_parameter('os') == "darwin":
+            # default build mode
+            if self.get_parameter("mode") == "default":
+                # Linux
+                if self.get_parameter("os") == "linux":
+                    if os.path.exists(f"/build/poseidon-{self.get_parameter('os')}-amd64"):
+                        resp.payload = open(f"/build/poseidon-{self.get_parameter('os')}-amd64", "rb").read()
+                    else:
+                        resp.build_error += f"/build/poseidon-{self.get_parameter('os')}-amd64 does not exist"
+                        resp.status = BuildStatus.Error
+                        return resp
+                # Darwin (macOS)
+                elif self.get_parameter("os") == "darwin":
+                    if os.path.exists(f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64"):
                         resp.payload = open(f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64", "rb").read()
                     else:
-                        resp.payload = open(f"/build/poseidon-{self.get_parameter('os')}-amd64", "rb").read()
-                    resp.message += "\nCreated payload!\n"
-                # If there are no files or more than one file in the build directory
+                        resp.build_error += f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64 does not exist"
+                        resp.status = BuildStatus.Error
+                        return resp
                 else:
-                    temp_uuid = str(uuid.uuid4())
-                    file1 = open(
-                        f"/Mythic/agent_code/sharedlib/sharedlib-darwin-linux.c", "r"
-                    ).read()
-                    with open("/build/sharedlib-darwin-linux.c", "w") as f:
-                        f.write(file1)
-                    shutil.make_archive(f"{agent_build_path}/{temp_uuid}", "zip", "/build")
-                    resp.payload = open(f"{agent_build_path}/{temp_uuid}" + ".zip", "rb").read()
-                    resp.message += "Created a zip archive of files!\n"
-                resp.status = BuildStatus.Success
+                    resp.build_error += f"Unhandled operating system: {self.get_parameter('os')} for {self.get_parameter('mode')} build mode"
+                    resp.status = BuildStatus.Error
+                    return resp
+            # C-shared (e.g., Dylib or SO)
+            elif self.get_parameter("mode") == "c-shared":
+                # Linux
+                if self.get_parameter("os") == "linux":
+                    if os.path.exists(f"/build/poseidon-{self.get_parameter('os')}-amd64.so"):
+                        resp.payload = open(f"/build/poseidon-{self.get_parameter('os')}-amd64.so", "rb").read()
+                    else:
+                        resp.build_error += f"/build/poseidon-{self.get_parameter('os')}-amd64.so does not exist"
+                        resp.status = BuildStatus.Error
+                        return resp
+                # Darwin (macOS)
+                elif self.get_parameter("os") == "darwin":
+                    if os.path.exists(f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64.dylib"):
+                        resp.payload = open(f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64.dylib", "rb").read()
+                    else:
+                        resp.build_error += f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64.dylib does not exist"
+                        resp.status = BuildStatus.Error
+                        return resp
+                else:
+                    resp.build_error += f"Unhandled operating system: {self.get_parameter('os')} for {self.get_parameter('mode')} build mode"
+                    resp.status = BuildStatus.Error
+                    return resp
+            # C-shared (e.g., Dylib or SO)
+            elif self.get_parameter("mode") == "c-archive":
+                # Copy the C file into the build directory
+                file1 = open(
+                    f"/Mythic/agent_code/sharedlib/sharedlib-darwin-linux.c", "r"
+                ).read()
+                with open("/build/sharedlib-darwin-linux.c", "w") as f:
+                    f.write(file1)
+                # Linux
+                if self.get_parameter("os") == "linux":
+                    if os.path.exists(f"/build/poseidon-{self.get_parameter('os')}-amd64.a"):
+                        shutil.make_archive(f"{agent_build_path}/poseidon", "zip", "/build")
+                        resp.payload = open(f"{agent_build_path}/poseidon" + ".zip", "rb").read()
+                    else:
+                        resp.build_error += f"/build/poseidon-{self.get_parameter('os')}-amd64.a does not exist"
+                        resp.status = BuildStatus.Error
+                        return resp
+                # Darwin (macOS)
+                elif self.get_parameter("os") == "darwin":
+                    if os.path.exists(f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64.a"):
+                        shutil.make_archive(f"{agent_build_path}/poseidon", "zip", "/build")
+                        resp.payload = open(f"{agent_build_path}/poseidon" + ".zip", "rb").read()
+                    else:
+                        resp.build_error += f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64.a does not exist"
+                        resp.status = BuildStatus.Error
+                        return resp
+                else:
+                    resp.build_error += f"Unhandled operating system: {self.get_parameter('os')} for " \
+                                        f"{self.get_parameter('mode')} build mode"
+                    resp.status = BuildStatus.Error
+                    return resp
+            # Unhandled
             else:
-                # something went wrong, return our errors
-                resp.build_error += "\nNo files created"
+                resp.build_error += f"Unhandled build mode {self.get_parameter('mode')}"
+                resp.status = BuildStatus.Error
+                return resp
+
+            # Successfully created the payload without error
+            resp.message += f'Created Poseidon payload!\n' \
+                            f'OS: {self.get_parameter("os")}, ' \
+                            f'Build Mode: {self.get_parameter("mode")}, ' \
+                            f'C2 Profile: {profile}\n'
+            resp.status = BuildStatus.Success
+            return resp
         except Exception as e:
             resp.build_error += "\n" + str(e)
         return resp

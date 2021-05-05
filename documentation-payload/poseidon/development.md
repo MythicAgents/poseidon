@@ -26,20 +26,16 @@ import (
 
 ## Adding C2 Profiles
 
-- Where code for editing/adding c2 profiles is located
-- Add C2 profile code to the `Payload_Types/poseidon/c2_profiles/` folder.
-- Your C2 profile should conform to the Profile interface defined in `Payload_Types/poseidon/agent_code/pkg/profiles/profile.go`
-- Create a struct to hold C2 configuration in `Payload_Types/poseidon/agent_code/pkg/utils/structs/definitions.go`
-Example config
-```
-type Defaultconfig struct {
-    KEYX       string   `json:"keyx"`
-    Key     string   `json:"key"`
-    BaseURL    string   `json:"baseurl"`
-    UserAgent  string   `json:"useragent"`
-    Sleep      int   `json:"sleep"`
-    HostHeader string   `json:"hostheader"`
-    Jitter     int      `json:"jitter"`
-}
-```
+- Add C2 profile code to the `Payload_Types/poseidon/pkg/profiles/` folder in file name that matches the profile 
+  (e.g., `http.go` or `websocket.go`)
+- Create a structure that will hold the configuration for your profile. Your C2 structure/profile should conform to 
+  the Profile interface defined in `Payload_Types/poseidon/agent_code/pkg/profiles/profile.go`
+- C2 profile parameters are passed in at build time using Go's `-X` ldflags options which only sets string variables
+  - Create package-level _string_ variables for each C2 profile configurable option (e.g., `var USER_AGENT string`)
+  - Create a `New()` function that converts the string variables to the desired format, build the profile structure, 
+    and return a `Profile` object. The returned object should be your profile specific structure that fulfills the 
+    `Profile` interface
+- The C2 profile must be specified as a build condition at the top of the go file (e.g., `// +build http`). 
+  This ensures only the selected C2 profile is compiled into the agent
+
 

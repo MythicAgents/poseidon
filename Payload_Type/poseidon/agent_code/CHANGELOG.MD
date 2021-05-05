@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added build flag to omit the DWARF symbol table, `-w` from the agent to reduce file size
 - Added build flag to mit the symbol table and debug information, `-s` from the agent to reduce file size
 - Added empty `buildid` during agent generation
+- Added `c-shared` build mode
 
 ### Changed
 
