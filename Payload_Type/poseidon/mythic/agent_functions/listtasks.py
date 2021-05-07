@@ -19,6 +19,10 @@ class ListtasksCommand(CommandBase):
     version = 1
     author = "@xorrior"
     argument_class = ListtasksArguments
+    attributes = CommandAttributes(
+        # uncomment when poseidon can dynamically compile commands
+        supported_os=[SupportedOS.MacOS]
+    )
     attackmapping = ["T1057"]
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:

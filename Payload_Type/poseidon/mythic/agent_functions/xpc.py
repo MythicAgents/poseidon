@@ -73,6 +73,10 @@ class XpcCommand(CommandBase):
     version = 1
     author = "@xorrior"
     argument_class = XpcArguments
+    attributes = CommandAttributes(
+        # uncomment when poseidon can dynamically compile commands
+        supported_os=[SupportedOS.MacOS]
+    )
     attackmapping = []
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:

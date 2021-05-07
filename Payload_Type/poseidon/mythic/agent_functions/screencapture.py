@@ -24,7 +24,7 @@ class ScreencaptureCommand(CommandBase):
     attackmapping = ["T1113"]
     attributes = CommandAttributes(
         # uncomment this when poseidon supports dynamic compilation
-        # supported_os=[SupportedOS.MacOS]
+        supported_os=[SupportedOS.MacOS]
     )
     browser_script = BrowserScript(script_name="screencapture", author="@djhohnstein")
 

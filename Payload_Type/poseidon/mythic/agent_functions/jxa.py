@@ -37,7 +37,7 @@ class JxaCommand(CommandBase):
     attackmapping = []
     attributes = CommandAttributes(
         # eventually uncomment this once poseidon supports dynamic compilation of commands
-        # supported_os=[SupportedOS.MacOS]
+        supported_os=[SupportedOS.MacOS]
     )
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:

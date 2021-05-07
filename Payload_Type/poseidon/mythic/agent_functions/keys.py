@@ -47,8 +47,7 @@ class KeysCommand(CommandBase):
     argument_class = KeysArguments
     attackmapping = []
     attributes = CommandAttributes(
-        # uncomment this once poseidon supports dynamic compilation of commands
-        # supported_os=[SupportedOS.Linux]
+        supported_os=[SupportedOS.Linux]
     )
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:

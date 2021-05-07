@@ -35,7 +35,7 @@ class LibinjectCommand(CommandBase):
     attackmapping = ["T1055"]
     attributes = CommandAttributes(
         # uncomment when posiedon can dynamically compile commands
-        # supported_os=[SupportedOS.MacOS]
+        supported_os=[SupportedOS.MacOS]
     )
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:

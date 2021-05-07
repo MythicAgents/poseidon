@@ -29,7 +29,7 @@ class ListEntitlementCommand(CommandBase):
     browser_script = BrowserScript(script_name="list_entitlements", author="@its_a_feature_")
     attributes = CommandAttributes(
         # uncomment when poseidon can dynamically compile commands
-        # supported_os=[SupportedOS.MacOS]
+        supported_os=[SupportedOS.MacOS]
     )
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
