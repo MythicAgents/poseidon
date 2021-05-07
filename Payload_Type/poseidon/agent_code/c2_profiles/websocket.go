@@ -17,7 +17,7 @@ import (
 	"sync"
 	"crypto/tls"
 	//"log"
-
+    "math/rand"
 	"github.com/gorilla/websocket"
 	"pkg/utils/crypto"
 	"pkg/utils/functions"
@@ -56,8 +56,18 @@ func newProfile() Profile {
 	return &C2Websockets{}
 }
 
-func (c C2Websockets) getSleepTime() int{
-    return c.Interval + int(math.Round((float64(c.Interval) * (seededRand.Float64() * float64(c.Jitter))/float64(100.0))));
+func (c C2Default) getSleepTime() int {
+    if c.Jitter > 0 {
+		jit := float64(rand.Int() % c.Jitter) / float64(100)
+		jitDiff := float64(c.Interval) * jit
+		if int(jit*100) % 2 == 0 {
+			return c.Interval + int(jitDiff)
+		} else {
+			return c.Interval - int(jitDiff)
+		}
+	} else {
+		return c.Interval
+	}
 }
 
 func (c C2Websockets) SleepInterval() int {

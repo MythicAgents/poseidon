@@ -20,13 +20,8 @@ class Poseidon(PayloadType):
     wrapped_payloads = []
     note = "A fully featured macOS and Linux Golang agent"
     supports_dynamic_loading = False
+    mythic_encrypts = True
     build_parameters = {
-        "os": BuildParameter(
-            name="os",
-            parameter_type=BuildParameterType.ChooseOne,
-            description="Choose the target OS",
-            choices=["darwin", "linux"],
-        ),
         "mode": BuildParameter(
             name="mode",
             parameter_type=BuildParameterType.ChooseOne,
@@ -56,7 +51,7 @@ class Poseidon(PayloadType):
         # this function gets called to create an instance of your payload
         resp = BuildResponse(status=BuildStatus.Error)
         if len(self.c2info) != 1:
-            resp.message = "Poseidon only accepts one c2 profile at a time"
+            resp.build_stderr = "Poseidon only accepts one c2 profile at a time"
             return resp
         try:
             agent_build_path = tempfile.TemporaryDirectory(suffix=self.uuid).name
@@ -71,14 +66,16 @@ class Poseidon(PayloadType):
             c2 = self.c2info[0]
             profile = c2.get_c2profile()["name"]
             if profile not in self.c2_profiles:
-                resp.message = "Invalid c2 profile name specified"
+                resp.build_message = "Invalid c2 profile name specified"
                 return resp
             file1 = open(
                 "{}/c2_profiles/{}.go".format(agent_build_path, profile), "r"
             ).read()
             for key, val in c2.get_parameters_dict().items():
+                # dictionary instances will be crypto components
                 if isinstance(val, dict):
                     file1 = file1.replace(key, val["enc_key"] if val["enc_key"] is not None else "")
+                # headers is the name of the c2 profile parameter with an array of header values to set
                 elif key == "headers":
                     file1 = file1.replace(key, json.dumps(json.dumps(val)))
                 else:
@@ -93,7 +90,7 @@ class Poseidon(PayloadType):
             command += (
                 "xgo -tags={} --targets={}/{} -buildmode={} -out poseidon .".format(
                     profile,
-                    "darwin" if self.get_parameter("os") == "darwin" else "linux",
+                    "darwin" if self.selected_os == "macOS" else "linux",
                     "amd64",
                     "default" if self.get_parameter("mode") == "default" else "c-archive",
                 )
@@ -106,14 +103,14 @@ class Poseidon(PayloadType):
             )
             stdout, stderr = await proc.communicate()
             if stdout:
-                resp.message = f"[stdout]\n{stdout.decode()}"
+                resp.build_message = f"[stdout]\n{stdout.decode()}"
             if stderr:
-                resp.build_error += f"[stderr]\n{stderr.decode()}"
+                resp.build_stderr += f"[stderr]\n{stderr.decode()}"
             if os.path.exists("/build"):
                 files = os.listdir("/build")
                 if len(files) == 1:
                     resp.payload = open("/build/" + files[0], "rb").read()
-                    resp.message += "\nCreated payload!\n"
+                    resp.build_message = "\nCreated payload!\n" + resp.build_message
                 else:
                     temp_uuid = str(uuid.uuid4())
                     file1 = open(
@@ -123,11 +120,11 @@ class Poseidon(PayloadType):
                         f.write(file1)
                     shutil.make_archive(f"{agent_build_path}/{temp_uuid}", "zip", "/build")
                     resp.payload = open(f"{agent_build_path}/{temp_uuid}" + ".zip", "rb").read()
-                    resp.message = "Created a zip archive of files!\n"
+                    resp.build_message = "Created a zip archive of files!\n" + resp.build_message
                 resp.status = BuildStatus.Success
             else:
                 # something went wrong, return our errors
-                resp.build_error += "\nNo files created"
+                resp.build_stderr += "\nNo files created"
         except Exception as e:
-            resp.build_error += "\n" + str(e)
+            resp.build_stderr += "\n" + str(e)
         return resp

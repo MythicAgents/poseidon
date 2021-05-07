@@ -19,23 +19,27 @@ class RmArguments(TaskArguments):
         else:
             raise Exception("No command line arguments")
 
+
 class RmCommand(CommandBase):
     cmd = "rm"
     needs_admin = False
     help_cmd = "rm [path]"
     description = "Delete a file."
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = True
-    is_upload_file = False
+    supported_ui_features = ["file_browser:remove"]
     author = "@xorrior"
     argument_class = RmArguments
     attackmapping = []
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
+        try:
+            tmp = json.loads(task.args.command_line)
+            if tmp["path"] != "":
+                task.display_params = tmp["path"] + "/" + tmp["file"]
+            else:
+                task.display_params = tmp["file"]
+        except:
+            pass
         return task
 
     async def process_response(self, response: AgentResponse):

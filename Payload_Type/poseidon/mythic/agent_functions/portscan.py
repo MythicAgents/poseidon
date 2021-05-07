@@ -10,16 +10,24 @@ class PortScanArguments(TaskArguments):
                 name="ports",
                 type=ParameterType.String,
                 description="List of ports to scan. Can use the dash separator to specify a range.",
+                ui_position=2
             ),
             "hosts": CommandParameter(
                 name="hosts",
                 type=ParameterType.Array,
                 description="List of hosts to scan",
+                ui_position=1
             ),
         }
 
     async def parse_arguments(self):
-        self.load_args_from_json_string(self.command_line)
+        if len(self.command_line) == 0:
+            raise Exception("Must supply arguments")
+        else:
+            try:
+                self.load_args_from_json_string(self.command_line)
+            except:
+                raise Exception("JSON not supplied, did you use the popup?")
 
 
 class PortScanCommand(CommandBase):
@@ -28,12 +36,6 @@ class PortScanCommand(CommandBase):
     help_cmd = "portscan"
     description = "Scan host(s) for open ports."
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
     author = "@djhohnstein"
     argument_class = PortScanArguments
     attackmapping = ["T1046"]

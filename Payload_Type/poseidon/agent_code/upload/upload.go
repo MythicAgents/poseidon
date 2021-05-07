@@ -7,6 +7,7 @@ import (
 	"pkg/utils/structs"
 	"encoding/json"
 	"sync"
+	"path/filepath"
 )
 
 var mu sync.Mutex
@@ -40,7 +41,7 @@ func Run(task structs.Task, ch chan []byte, f getFile) {
 	r := structs.FileRequest{}
 	r.TaskID = task.TaskID
 	r.FileID = args.FileID
-	r.FullPath = args.RemotePath
+	r.FullPath, _ = filepath.Abs(args.RemotePath)
 	r.ChunkNumber = 0
 	r.TotalChunks = 0
 

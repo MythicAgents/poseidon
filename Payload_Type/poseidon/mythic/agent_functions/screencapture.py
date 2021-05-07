@@ -19,15 +19,13 @@ class ScreencaptureCommand(CommandBase):
         "Capture a screenshot of the targets desktop (not implemented on Linux)."
     )
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
     author = "@xorrior"
     argument_class = ScreencaptureArguments
     attackmapping = ["T1113"]
+    attributes = CommandAttributes(
+        # uncomment this when poseidon supports dynamic compilation
+        # supported_os=[SupportedOS.MacOS]
+    )
     browser_script = BrowserScript(script_name="screencapture", author="@djhohnstein")
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:

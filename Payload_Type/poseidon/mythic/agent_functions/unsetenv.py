@@ -8,7 +8,8 @@ class UnsetEnvArguments(TaskArguments):
         self.args = {}
 
     async def parse_arguments(self):
-        pass
+        if len(self.command_line) == 0:
+            raise Exception("Must specify the environment variable to unset")
 
 
 class UnsetEnvCommand(CommandBase):
@@ -17,12 +18,6 @@ class UnsetEnvCommand(CommandBase):
     help_cmd = "unsetenv [param]"
     description = "Unset an environment variable"
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
     author = "@xorrior"
     argument_class = UnsetEnvArguments
     attackmapping = []

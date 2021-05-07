@@ -10,10 +10,13 @@ class LsArguments(TaskArguments):
     async def parse_arguments(self):
         self.add_arg("file_browser", False, type=ParameterType.Boolean)
         if len(self.command_line) > 0:
-            if self.command_line[0] == "{":
+            try:
+                # will get a JSON input if the tasking comes from the file browser
                 tmp_json = json.loads(self.command_line)
                 self.command_line = tmp_json["path"] + "/" + tmp_json["file"]
                 self.add_arg("file_browser", True, type=ParameterType.Boolean)
+            except:
+                pass
             self.add_arg("path", self.command_line)
         else:
             self.add_arg("path", ".")
@@ -25,18 +28,18 @@ class LsCommand(CommandBase):
     help_cmd = "ls [directory]"
     description = "List directory."
     version = 1
-    is_exit = False
-    is_file_browse = True
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
+    supported_ui_features = ["file_browser:list"]
     author = "@xorrior"
     argument_class = LsArguments
     attackmapping = ["T1083"]
     browser_script = BrowserScript(script_name="ls", author="@its_a_feature_")
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
+        if task.args.has_arg("file_browser") and task.args.get_arg("file_browser"):
+            host = task.callback.host
+            task.display_params = host + ":" + task.args.get_arg("path")
+        else:
+            task.display_params = task.args.get_arg("path")
         return task
 
     async def process_response(self, response: AgentResponse):

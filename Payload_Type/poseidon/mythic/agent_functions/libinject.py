@@ -7,14 +7,16 @@ class LibinjectArguments(TaskArguments):
         super().__init__(command_line)
         self.args = {
             "pid": CommandParameter(
-                name="pid",
+                name="Pid to inject into",
                 type=ParameterType.Number,
                 description="PID of process to inject into.",
+                ui_position=1
             ),
             "library": CommandParameter(
-                name="library",
+                name="Absolute path to dylib on target to load",
                 type=ParameterType.String,
                 description="Path to the dylib to inject",
+                ui_position=2
             ),
         }
 
@@ -28,15 +30,13 @@ class LibinjectCommand(CommandBase):
     help_cmd = "libinject"
     description = "Inject a library from on-host into a process."
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
     author = "@xorrior"
     argument_class = LibinjectArguments
     attackmapping = ["T1055"]
+    attributes = CommandAttributes(
+        # uncomment when posiedon can dynamically compile commands
+        # supported_os=[SupportedOS.MacOS]
+    )
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         if task.callback.integrity_level <= 2:

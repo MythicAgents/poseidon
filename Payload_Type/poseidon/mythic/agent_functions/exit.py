@@ -17,12 +17,7 @@ class ExitCommand(CommandBase):
     help_cmd = "exit"
     description = "Exit the current session and kill the agent."
     version = 1
-    is_exit = True
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
+    supported_ui_features = ["callback_table:exit"]
     author = "@xorrior"
     argument_class = ExitArguments
     attackmapping = []

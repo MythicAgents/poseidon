@@ -21,6 +21,7 @@ class XpcArguments(TaskArguments):
                     "submit",
                     "send",
                 ],
+                ui_position=1
             ),
             "program": CommandParameter(
                 name="program",
@@ -29,7 +30,7 @@ class XpcArguments(TaskArguments):
                 required=False,
             ),
             "file": CommandParameter(
-                name="file",
+                name="Path to file to load on target",
                 type=ParameterType.String,
                 description="Path to the plist file if using load/unload commands",
                 required=False,
@@ -70,12 +71,6 @@ class XpcCommand(CommandBase):
     help_cmd = "xpc"
     description = "Use xpc to execute routines with launchd or communicate with another service/process."
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
     author = "@xorrior"
     argument_class = XpcArguments
     attackmapping = []

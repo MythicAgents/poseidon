@@ -10,16 +10,24 @@ class CpArguments(TaskArguments):
                 name="source",
                 type=ParameterType.String,
                 description="Source file to copy.",
+                ui_position=1
             ),
             "destination": CommandParameter(
                 name="destination",
                 type=ParameterType.String,
                 description="Source will copy to this location",
+                ui_position=2
             ),
         }
 
     async def parse_arguments(self):
-        self.load_args_from_json_string(self.command_line)
+        if len(self.command_line) == 0:
+            raise Exception("Must provide arguments")
+        else:
+            try:
+                self.load_args_from_json_string(self.command_line)
+            except:
+                raise Exception("Failed to load arguments as JSON. Did you use the popup?")
 
 
 class CpCommand(CommandBase):
@@ -28,12 +36,6 @@ class CpCommand(CommandBase):
     help_cmd = "cp"
     description = "Copy a file from one location to another."
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
     author = "@xorrior"
     argument_class = CpArguments
     attackmapping = []

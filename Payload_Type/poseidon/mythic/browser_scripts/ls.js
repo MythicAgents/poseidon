@@ -1,7 +1,7 @@
 function(task, response){
 	var rows = [];
 	var curdir = task.original_params;
-	if (curdir == "") {
+	if (curdir === "") {
 		curdir = "current directory";
 	}
 	var FILE_THRESHOLD = 500;
@@ -16,13 +16,8 @@ function(task, response){
 	var scriptFiles = [".config", ".ps1", ".psm1", ".psd1", ".vbs", ".js", ".py", ".pl", ".rb", ".go", ".xml", ".html", ".css", ".sh", ".bash", ".yaml", ".yml"];
 	var uniqueName = task.id + "_additional_permission_info_modal";
 	for(var i = 0; i < response.length; i++){
-		try{
-			var data = JSON.parse(response[i]['response'].replace("'", '"'));
-		}catch(error){
-			var msg = "Unhandled exception in ls.js for " + task.command + " (ID: " + task.id + "): " + error;
-			console.error(msg);
-			return response[i]['response'];
-		}
+		//var data = JSON.parse(response[i]['response'].replace("'", '"'));
+		var data = JSON.parse(response[i]['response']);
 		var files = data['files'];
 		var row_style = "";
 		var cell_style = {"name":"max-width:0;",
@@ -38,10 +33,7 @@ function(task, response){
 			for (var j = 0; j < files.length; j++)
 			{
 				var perms = JSON.parse(files[j]['permissions']['permissions']);
-
-				var additionalInfo = btoa(files[j]['name']) + "|" + btoa(files[j]['full_name']) + "|" + btoa(data['host']);
-				copyicon = '<i class="fas fa fa-clipboard" data-toggle="tooltip" title="Copy filename to clipboard" additional-info=' + btoa(files[j]['full_name']) + ' style="cursor: pointer;" onclick=support_scripts[\"poseidon_copy_additional_info_to_clipboard\"](this)></i>';
-				if (files[j]["is_file"]){
+					if (files[j]["is_file"]){
 					var fileExt = "." + files[j]['name'].split(".").slice(-1)[0].toLowerCase();
 					// do big conditional for fancy icons <@:^)
 					var icon = '<i class="fas fa-file"></i>';
@@ -64,7 +56,7 @@ function(task, response){
 					} else if (scriptFiles.includes(fileExt)) {
 						icon = '<i class="fas fa-file-code" style="color:rgb(25,142,117);" data-toggle="tooltip" title="Code File"></i>';
 					}
-					rows.push({ "": copyicon,
+					rows.push({
 						"name": icon + ' ' + escapeHTML(files[j]['name']),
 						"size": support_scripts['poseidon_file_size_to_human_readable_string'](files[j]['size']),
 						"last accessed": escapeHTML(files[j]["access_time"]),
@@ -76,7 +68,7 @@ function(task, response){
 						"cell-style": cell_style
 					});
 				} else {
-					rows.push({"": copyicon,
+					rows.push({
 						"name": '<i class="fas fa-folder-open"></i> ' + escapeHTML(files[j]['name']),
 						"size": support_scripts['poseidon_file_size_to_human_readable_string'](0),
 						"last modified": escapeHTML(files[j]["modify_time"]),
@@ -89,14 +81,14 @@ function(task, response){
 					});
 				}
 			}
-			var output = support_scripts['poseidon_create_table']([{"name":"", "size":"1em"}, {"name":"name", "size":"30em"},{"name":"size", "size":"6em"},{"name":"last accessed", "size":"8em"},{"name":"last modified", "size":"8em"},{"name":"user", "size":"15em"},{"name":"group", "size":"15em"},{"name":"permissions", "size":"15em"}], rows);
+			var output = support_scripts['poseidon_create_table']([{"name":"name", "size":"30em"},{"name":"size", "size":"6em"},{"name":"last accessed", "size":"8em"},{"name":"last modified", "size":"8em"},{"name":"user", "size":"15em"},{"name":"group", "size":"15em"},{"name":"permissions", "size":"15em"}], rows);
 			return output;
 		} else {
 			var output = "<pre>Files in " + curdir + "\n\n";
 			output += "creation_date,last_modified,last_accessed,user,group,size,name\n";
 			for (var j = 0; j < files.length; j++)
 			{
-				output += files[j]['creation_date'] + "," + files[j]['modify_time'] + "," + files[j]['access_time'] + "," + files[j]['permissions']['user'] + "," + files[j]['permissions']['group'] + "," + support_scripts['poseidon_file_size_to_human_readable_string'](files[j]['size']) + "," + files[j]['name'] + "\n";
+				output += files[j]['creation_date'] + "," + files[j]['modify_time'] + "," + files[j]['access_time'] + "," + files[j]['permissions']['user'] + "," + files[j]['permissions']['group'] + "," + support_scripts['poseidon_file_size_to_human_readable_string'](files[j]['size']) + "," + escapeHTML(files[j]['name']) + "\n";
 			}
 			output += "</pre>"
 			return output;

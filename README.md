@@ -2,6 +2,8 @@
 
 Poseidon is a Golang agent that compiles into Linux and macOS x64 executables. It leverages the karalabe/xgo project to cross compile with CGO for both of these operating systems. This Poseidon instance supports Mythic 2.2 and will updated as necessary. It does not support Mythic 2.1 and lower.
 
+The agent has `mythic_payloadtype_container==0.0.42` PyPi package installed and reports to Mythic as version "6".
+
 ## How to install an agent in this format within Mythic
 
 When it's time for you to test out your install or for another user to install your agent, it's pretty simple. Within Mythic is a `install_agent_from_github.sh` script (https://github.com/its-a-feature/Mythic/blob/master/install_agent_from_github.sh). You can run this in one of two ways:

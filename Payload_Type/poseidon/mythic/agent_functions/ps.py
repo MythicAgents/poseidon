@@ -8,33 +8,23 @@ class PsArguments(TaskArguments):
         self.args = {}
 
     async def parse_arguments(self):
-        if len(self.command_line) > 0:
-            if self.command_line[0] == "{":
-                tmp_json = json.loads(self.command_line)
-                self.command_line = tmp_json["regex_filter"]
-            self.add_arg("regex_filter", self.command_line)
-        else:
-            self.add_arg("regex_filter", "")
+        self.add_arg("regex_filter", self.command_line)
 
 
 class PsCommand(CommandBase):
     cmd = "ps"
     needs_admin = False
-    help_cmd = "ps"
+    help_cmd = "ps [regex name matching]"
     description = "Get a process listing"
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = True
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
+    supported_ui_features = ["process_browser:list"]
     author = "@xorrior, @djhohnstein, @its_a_feature"
     argument_class = PsArguments
     attackmapping = ["T1057"]
     browser_script = BrowserScript(script_name="ps", author="@djhohnstein")
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
+        task.display_params = task.args.command_line
         return task
 
     async def process_response(self, response: AgentResponse):
