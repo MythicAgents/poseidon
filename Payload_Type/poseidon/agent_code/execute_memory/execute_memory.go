@@ -9,6 +9,8 @@ import (
 	//"strings"
 )
 
+// initial .m code pulled from https://github.com/its-a-feature/macos_execute_from_memory
+// and https://github.com/opensource-apple/dyld/tree/master/unit-tests/test-cases/bundle-memory-load
 var mu sync.Mutex
 
 type executeMemoryArgs struct {
