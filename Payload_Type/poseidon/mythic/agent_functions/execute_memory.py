@@ -50,6 +50,7 @@ class ExecuteMemoryCommand(CommandBase):
         )
         if response.status == MythicStatus.Success:
             task.args.add_arg("file_id", response.response["agent_file_id"])
+            task.display_params = "function " + task.args.get_arg("function_name") + " of " + original_file_name
         else:
             raise Exception("Error from Mythic: " + response.error)
         return task
