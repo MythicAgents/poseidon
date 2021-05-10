@@ -1,12 +1,14 @@
 package execute_memory
 
 import (
+	// Standard
 	"encoding/json"
 	"fmt"
-	"pkg/profiles"
-	"pkg/utils/structs"
 	"sync"
-	//"strings"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 // initial .m code pulled from https://github.com/its-a-feature/macos_execute_from_memory
