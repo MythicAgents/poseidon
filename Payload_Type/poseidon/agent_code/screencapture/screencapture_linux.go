@@ -3,11 +3,12 @@
 package screencapture
 
 import (
+	// Standard
 	"bytes"
 	"errors"
-	//"image"
 	"image/png"
 
+	// 3rd Party
 	s "github.com/kbinani/screenshot"
 )
 

@@ -8,7 +8,6 @@ type LinuxExecuteMemory struct {
 
 func executeMemory(memory []byte, functionName string) (LinuxExecuteMemory, error) {
 	res := LinuxExecuteMemory{}
-        res.Message = "Not Supported"
+	res.Message = "Not Supported"
 	return res, nil
 }
-

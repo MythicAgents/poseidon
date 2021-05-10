@@ -1,13 +1,16 @@
 package setenv
 
 import (
+	// Standard
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
-	"encoding/json"
-	"pkg/utils/structs"
 	"sync"
-	"pkg/profiles"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var mu sync.Mutex

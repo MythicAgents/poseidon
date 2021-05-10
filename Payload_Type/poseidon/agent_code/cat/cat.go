@@ -1,24 +1,27 @@
 package cat
- 
+
 import (
-	"os"
-	"pkg/utils/structs"
-	"pkg/profiles"
+	// Standard
 	"encoding/json"
+	"os"
 	"sync"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var mu sync.Mutex
 
 //Run - package function to run cat
 func Run(task structs.Task) {
-	
+
 	f, err := os.Open(task.Params)
 
 	msg := structs.Response{}
 	msg.TaskID = task.TaskID
 	if err != nil {
-		
+
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
@@ -33,7 +36,7 @@ func Run(task structs.Task) {
 	info, err := f.Stat()
 
 	if err != nil {
-		
+
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
@@ -48,7 +51,7 @@ func Run(task structs.Task) {
 	data := make([]byte, int(info.Size()))
 	n, err := f.Read(data)
 	if err != nil && n == 0 {
-		
+
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
@@ -59,7 +62,7 @@ func Run(task structs.Task) {
 		mu.Unlock()
 		return
 	}
-	
+
 	msg.UserOutput = string(data)
 	msg.Completed = true
 	resp, _ := json.Marshal(msg)

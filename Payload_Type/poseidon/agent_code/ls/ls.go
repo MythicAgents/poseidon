@@ -1,19 +1,23 @@
 package ls
 
 import (
+	// Standard
 	"encoding/json"
 	"io/ioutil"
-    "path/filepath"
-	"pkg/utils/structs"
-	"strconv"
-	"sync"
 	"os"
-	"strings"
-	"pkg/profiles"
 	"os/user"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
 	"syscall"
 
+	// 3rd Party
 	"github.com/djherbis/atime"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var mu sync.Mutex
@@ -22,13 +26,12 @@ const (
 	layoutStr = "01/02/2006 15:04:05"
 )
 
-
 type FilePermission struct {
-	UID int `json:"uid"`
-	GID int `json:"gid"`
+	UID         int    `json:"uid"`
+	GID         int    `json:"gid"`
 	Permissions string `json:"permissions"`
-	User string `json:"user,omitempty"`
-	Group string `json:"group,omitempty"`
+	User        string `json:"user,omitempty"`
+	Group       string `json:"group,omitempty"`
 }
 
 func GetPermission(finfo os.FileInfo) string {
@@ -54,7 +57,6 @@ func GetPermission(finfo os.FileInfo) string {
 	return ""
 }
 
-
 func Run(task structs.Task) {
 	msg := structs.Response{}
 	msg.TaskID = task.TaskID
@@ -63,7 +65,7 @@ func Run(task structs.Task) {
 	var e structs.FileBrowser
 	abspath, _ := filepath.Abs(args.Path)
 	dirInfo, err := os.Stat(abspath)
-    if err != nil {
+	if err != nil {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
@@ -78,52 +80,52 @@ func Run(task structs.Task) {
 	e.Permissions.Permissions = GetPermission(dirInfo)
 	e.Filename = dirInfo.Name()
 	e.ParentPath = filepath.Dir(abspath)
-	if strings.Compare(e.ParentPath, e.Filename) == 0{
-	    e.ParentPath = ""
+	if strings.Compare(e.ParentPath, e.Filename) == 0 {
+		e.ParentPath = ""
 	}
 	e.FileSize = dirInfo.Size()
-    e.LastModified = dirInfo.ModTime().Format(layoutStr)
-    at, err := atime.Stat(abspath)
-    if err != nil {
-    	e.LastAccess = ""
+	e.LastModified = dirInfo.ModTime().Format(layoutStr)
+	at, err := atime.Stat(abspath)
+	if err != nil {
+		e.LastAccess = ""
 	} else {
 		e.LastAccess = at.Format(layoutStr)
 	}
-    e.Success = true
-    if dirInfo.IsDir(){
-        files, err := ioutil.ReadDir(abspath)
-        if err != nil {
-            msg.UserOutput = err.Error()
-            msg.Completed = true
-            msg.Status = "error"
-            e.Success = false
-            msg.FileBrowser = e
-            resp, _ := json.Marshal(msg)
-            mu.Lock()
-            profiles.TaskResponses = append(profiles.TaskResponses, resp)
-            mu.Unlock()
-            return
-        }
+	e.Success = true
+	if dirInfo.IsDir() {
+		files, err := ioutil.ReadDir(abspath)
+		if err != nil {
+			msg.UserOutput = err.Error()
+			msg.Completed = true
+			msg.Status = "error"
+			e.Success = false
+			msg.FileBrowser = e
+			resp, _ := json.Marshal(msg)
+			mu.Lock()
+			profiles.TaskResponses = append(profiles.TaskResponses, resp)
+			mu.Unlock()
+			return
+		}
 
-        fileEntries := make([]structs.FileData, len(files))
-        for i := 0; i < len(files); i++ {
-            fileEntries[i].IsFile = !files[i].IsDir()
-            fileEntries[i].Permissions.Permissions = GetPermission(files[i])
-            fileEntries[i].Name = files[i].Name()
-            fileEntries[i].FullName = filepath.Join(abspath, files[i].Name())
-            fileEntries[i].FileSize = files[i].Size()
-            fileEntries[i].LastModified = files[i].ModTime().Format(layoutStr)
+		fileEntries := make([]structs.FileData, len(files))
+		for i := 0; i < len(files); i++ {
+			fileEntries[i].IsFile = !files[i].IsDir()
+			fileEntries[i].Permissions.Permissions = GetPermission(files[i])
+			fileEntries[i].Name = files[i].Name()
+			fileEntries[i].FullName = filepath.Join(abspath, files[i].Name())
+			fileEntries[i].FileSize = files[i].Size()
+			fileEntries[i].LastModified = files[i].ModTime().Format(layoutStr)
 			at, err := atime.Stat(abspath)
 			if err != nil {
 				fileEntries[i].LastAccess = ""
 			} else {
 				fileEntries[i].LastAccess = at.Format(layoutStr)
 			}
-        }
-        e.Files = fileEntries
-    }
-    msg.Completed = true
-    msg.FileBrowser = e
+		}
+		e.Files = fileEntries
+	}
+	msg.Completed = true
+	msg.FileBrowser = e
 	temp, _ := json.Marshal(msg.FileBrowser)
 	msg.UserOutput = string(temp)
 	resp, _ := json.Marshal(msg)

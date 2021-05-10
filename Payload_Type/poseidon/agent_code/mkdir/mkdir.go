@@ -1,13 +1,15 @@
 package mkdir
 
 import (
+	// Standard
+	"encoding/json"
 	"fmt"
 	"os"
-
-	"pkg/utils/structs"
 	"sync"
-	"pkg/profiles"
-	"encoding/json"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var mu sync.Mutex
@@ -29,7 +31,7 @@ func Run(task structs.Task) {
 		return
 	}
 
-    msg.Completed = true
+	msg.Completed = true
 	msg.UserOutput = fmt.Sprintf("Created directory: %s", task.Params)
 	resp, _ := json.Marshal(msg)
 	mu.Lock()

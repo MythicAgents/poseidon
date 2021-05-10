@@ -4,10 +4,10 @@ package functions
 
 import (
 	"fmt"
-	"unicode/utf16"
-	"os/user"
 	"os"
+	"os/user"
 	"runtime"
+	"unicode/utf16"
 )
 
 func isElevated() bool {

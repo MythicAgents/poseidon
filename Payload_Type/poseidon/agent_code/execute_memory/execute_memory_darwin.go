@@ -10,6 +10,7 @@ package execute_memory
 import "C"
 
 import "strconv"
+
 //import "fmt"
 
 type DarwinExecuteMemory struct {
@@ -20,7 +21,7 @@ func executeMemory(memory []byte, functionName string) (DarwinExecuteMemory, err
 	res := DarwinExecuteMemory{}
 	memoryLength := cap(memory)
 	realName := "_main"
-	if(functionName != "main" && functionName != ""){
+	if functionName != "main" && functionName != "" {
 		realName = "__Z" + strconv.Itoa(len(functionName)) + functionName + "v"
 	}
 
@@ -28,7 +29,7 @@ func executeMemory(memory []byte, functionName string) (DarwinExecuteMemory, err
 	//fmt.Printf("realName: %s\n", realName)
 	funcNameMod := C.CString(realName)
 	funcName := C.CString("_" + functionName)
-	r := C.executeMemory(C.CBytes(memory), C.int(memoryLength), funcName, funcNameMod);
+	r := C.executeMemory(C.CBytes(memory), C.int(memoryLength), funcName, funcNameMod)
 	res.Message = C.GoString(r)
 	return res, nil
 }

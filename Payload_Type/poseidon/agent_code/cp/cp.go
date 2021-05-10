@@ -1,14 +1,16 @@
 package cp
 
 import (
+	// Standard
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"sync"
-	"pkg/profiles"
 
-	"pkg/utils/structs"
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var mu sync.Mutex
@@ -50,7 +52,7 @@ func Run(task structs.Task) {
 	args := &Arguments{}
 	err := json.Unmarshal([]byte(task.Params), args)
 	if err != nil {
-		
+
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
@@ -65,7 +67,7 @@ func Run(task structs.Task) {
 	copiedBytes, err := copy(args.Source, args.Destination)
 
 	if err != nil {
-		
+
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"

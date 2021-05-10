@@ -1,12 +1,14 @@
 package getuser
 
 import (
+	// Standard
 	"encoding/json"
 	"os/user"
-
-	"pkg/utils/structs"
 	"sync"
-	"pkg/profiles"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var mu sync.Mutex
@@ -87,7 +89,7 @@ func Run(task structs.Task) {
 		mu.Unlock()
 		return
 	}
-    msg.UserOutput = string(res)
+	msg.UserOutput = string(res)
 	msg.Completed = true
 
 	resp, _ := json.Marshal(msg)

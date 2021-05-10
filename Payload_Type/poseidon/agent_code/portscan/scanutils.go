@@ -1,6 +1,7 @@
 package portscan
 
 import (
+	// Standard
 	"context"
 	"fmt"
 	"net"
@@ -9,8 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"pkg/utils/structs"
+	// External
 	"golang.org/x/sync/semaphore"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 type PortRange struct {

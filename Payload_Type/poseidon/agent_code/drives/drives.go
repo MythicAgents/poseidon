@@ -1,11 +1,13 @@
 package drives
 
 import (
+	// Standard
 	"encoding/json"
-
-	"pkg/utils/structs"
 	"sync"
-	"pkg/profiles"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var mu sync.Mutex
@@ -23,7 +25,6 @@ type Drive struct {
 func Run(task structs.Task) {
 	msg := structs.Response{}
 	msg.TaskID = task.TaskID
-	
 
 	res, err := listDrives()
 

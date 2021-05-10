@@ -1,15 +1,17 @@
 package ps
 
 import (
+	// Standard
 	"encoding/json"
 	"regexp"
-	"pkg/profiles"
-	"pkg/utils/structs"
 	"sync"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var mu sync.Mutex
-
 
 type Arguments struct {
 	RegexFilter string `json:"regex_filter"`

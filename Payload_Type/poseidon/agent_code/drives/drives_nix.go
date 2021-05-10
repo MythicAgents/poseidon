@@ -3,12 +3,14 @@
 package drives
 
 import (
+	// Standard
 	"io/ioutil"
 	"os"
 	"path"
 	"syscall"
 
-	"pkg/utils/functions"
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 )
 
 func getDrive(path string) Drive {
