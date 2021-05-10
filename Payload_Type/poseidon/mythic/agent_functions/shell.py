@@ -1,6 +1,6 @@
 from mythic_payloadtype_container.MythicCommandBase import *
 import json
-from mythic_payloadtype_container.MythicResponseRPC import *
+from mythic_payloadtype_container.MythicRPC import *
 
 
 class ShellArguments(TaskArguments):
@@ -18,25 +18,19 @@ class ShellCommand(CommandBase):
     help_cmd = "shell [command]"
     description = "Execute a shell command with 'bash -c'"
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
     author = "@xorrior"
     argument_class = ShellArguments
     attackmapping = ["T1059"]
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
-        resp = await MythicResponseRPC(task).register_artifact(
-            artifact_instance="/bin/bash -c {}".format(task.args.command_line),
-            artifact_type="Process Create",
-        )
-        resp = await MythicResponseRPC(task).register_artifact(
-            artifact_instance="{}".format(task.args.command_line),
-            artifact_type="Process Create",
-        )
+        resp = await MythicRPC().execute("create_artifact", task_id=task.id,
+                                         artifact="/bin/bash -c {}".format(task.args.command_line),
+                                         artifact_type="Process Create",
+                                         )
+        resp = await MythicRPC().execute("create_artifact", task_id=task.id,
+                                         artifact="{}".format(task.args.command_line),
+                                         artifact_type="Process Create",
+                                         )
         return task
 
     async def process_response(self, response: AgentResponse):

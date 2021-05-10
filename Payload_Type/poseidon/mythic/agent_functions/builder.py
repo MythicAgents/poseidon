@@ -18,14 +18,8 @@ class Poseidon(PayloadType):
     wrapped_payloads = []
     note = "A fully featured macOS and Linux Golang agent"
     supports_dynamic_loading = False
+    mythic_encrypts = True
     build_parameters = {
-        "os": BuildParameter(
-            name="os",
-            parameter_type=BuildParameterType.ChooseOne,
-            description="Choose the target OS",
-            choices=["darwin", "linux"],
-            default_value="linux",
-        ),
         "mode": BuildParameter(
             name="mode",
             parameter_type=BuildParameterType.ChooseOne,
@@ -58,7 +52,7 @@ class Poseidon(PayloadType):
         # this function gets called to create an instance of your payload
         resp = BuildResponse(status=BuildStatus.Error)
         if len(self.c2info) != 1:
-            resp.message = "Poseidon only accepts one c2 profile at a time"
+            resp.build_stderr = "Poseidon only accepts one c2 profile at a time"
             return resp
         try:
             agent_build_path = "/Mythic/agent_code"
@@ -67,7 +61,7 @@ class Poseidon(PayloadType):
             c2 = self.c2info[0]
             profile = c2.get_c2profile()["name"]
             if profile not in self.c2_profiles:
-                resp.message = "Invalid c2 profile name specified"
+                resp.build_message = "Invalid c2 profile name specified"
                 return resp
 
             # This package path is used with Go's "-X" link flag to set the value string variables in code at compile
@@ -80,6 +74,7 @@ class Poseidon(PayloadType):
 
             # Iterate over the C2 profile parameters and associated variable through Go's "-X" link flag
             for key, val in c2.get_parameters_dict().items():
+                # dictionary instances will be crypto components
                 if isinstance(val, dict):
                     ldflags += f" -X '{poseidon_repo_profile}.{key}={val['enc_key']}'"
                 elif key == "headers":
@@ -95,7 +90,7 @@ class Poseidon(PayloadType):
             command += (
                 "xgo -tags={} --targets={}/{} -buildmode={} -ldflags=\"{}\" -out poseidon .".format(
                     profile,
-                    "darwin" if self.get_parameter("os") == "darwin" else "linux",
+                    "darwin" if self.selected_os == "macOS" else "linux",
                     "amd64",
                     self.get_parameter("mode"),
                     ldflags,
@@ -113,13 +108,13 @@ class Poseidon(PayloadType):
             # Collect and data written Standard Output and Standard Error
             stdout, stderr = await proc.communicate()
             if stdout:
-                resp.message += f"\n[STDOUT]\n{stdout.decode()}"
+                resp.build_stdout += f"\n[STDOUT]\n{stdout.decode()}"
                 if debug:
-                    resp.message += f'\n[BUILD]{command}\n'
+                    resp.build_message += f'\n[BUILD]{command}\n'
             if stderr:
-                resp.build_error += f"\n[STDERR]\n{stderr.decode()}"
+                resp.build_stderr += f"\n[STDERR]\n{stderr.decode()}"
                 if debug:
-                    resp.build_error += f'\n[BUILD]{command}\n'
+                    resp.build_stderr += f'\n[BUILD]{command}\n'
 
             # default build mode
             if self.get_parameter("mode") == "default":
@@ -128,7 +123,7 @@ class Poseidon(PayloadType):
                     if os.path.exists(f"/build/poseidon-{self.get_parameter('os')}-amd64"):
                         resp.payload = open(f"/build/poseidon-{self.get_parameter('os')}-amd64", "rb").read()
                     else:
-                        resp.build_error += f"/build/poseidon-{self.get_parameter('os')}-amd64 does not exist"
+                        resp.build_stderr += f"/build/poseidon-{self.get_parameter('os')}-amd64 does not exist"
                         resp.status = BuildStatus.Error
                         return resp
                 # Darwin (macOS)
@@ -136,11 +131,11 @@ class Poseidon(PayloadType):
                     if os.path.exists(f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64"):
                         resp.payload = open(f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64", "rb").read()
                     else:
-                        resp.build_error += f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64 does not exist"
+                        resp.build_stderr += f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64 does not exist"
                         resp.status = BuildStatus.Error
                         return resp
                 else:
-                    resp.build_error += f"Unhandled operating system: {self.get_parameter('os')} for {self.get_parameter('mode')} build mode"
+                    resp.build_stderr += f"Unhandled operating system: {self.get_parameter('os')} for {self.get_parameter('mode')} build mode"
                     resp.status = BuildStatus.Error
                     return resp
             # C-shared (e.g., Dylib or SO)
@@ -150,19 +145,20 @@ class Poseidon(PayloadType):
                     if os.path.exists(f"/build/poseidon-{self.get_parameter('os')}-amd64.so"):
                         resp.payload = open(f"/build/poseidon-{self.get_parameter('os')}-amd64.so", "rb").read()
                     else:
-                        resp.build_error += f"/build/poseidon-{self.get_parameter('os')}-amd64.so does not exist"
+                        resp.build_stderr += f"/build/poseidon-{self.get_parameter('os')}-amd64.so does not exist"
                         resp.status = BuildStatus.Error
                         return resp
                 # Darwin (macOS)
                 elif self.get_parameter("os") == "darwin":
                     if os.path.exists(f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64.dylib"):
-                        resp.payload = open(f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64.dylib", "rb").read()
+                        resp.payload = open(f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64.dylib",
+                                            "rb").read()
                     else:
-                        resp.build_error += f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64.dylib does not exist"
+                        resp.build_stderr += f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64.dylib does not exist"
                         resp.status = BuildStatus.Error
                         return resp
                 else:
-                    resp.build_error += f"Unhandled operating system: {self.get_parameter('os')} for {self.get_parameter('mode')} build mode"
+                    resp.build_stderr += f"Unhandled operating system: {self.get_parameter('os')} for {self.get_parameter('mode')} build mode"
                     resp.status = BuildStatus.Error
                     return resp
             # C-shared (e.g., Dylib or SO)
@@ -179,7 +175,7 @@ class Poseidon(PayloadType):
                         shutil.make_archive(f"{agent_build_path}/poseidon", "zip", "/build")
                         resp.payload = open(f"{agent_build_path}/poseidon" + ".zip", "rb").read()
                     else:
-                        resp.build_error += f"/build/poseidon-{self.get_parameter('os')}-amd64.a does not exist"
+                        resp.build_stderr += f"/build/poseidon-{self.get_parameter('os')}-amd64.a does not exist"
                         resp.status = BuildStatus.Error
                         return resp
                 # Darwin (macOS)
@@ -188,27 +184,27 @@ class Poseidon(PayloadType):
                         shutil.make_archive(f"{agent_build_path}/poseidon", "zip", "/build")
                         resp.payload = open(f"{agent_build_path}/poseidon" + ".zip", "rb").read()
                     else:
-                        resp.build_error += f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64.a does not exist"
+                        resp.build_stderr += f"/build/poseidon-{self.get_parameter('os')}-10.06-amd64.a does not exist"
                         resp.status = BuildStatus.Error
                         return resp
                 else:
-                    resp.build_error += f"Unhandled operating system: {self.get_parameter('os')} for " \
-                                        f"{self.get_parameter('mode')} build mode"
+                    resp.build_stderr += f"Unhandled operating system: {self.get_parameter('os')} for " \
+                                         f"{self.get_parameter('mode')} build mode"
                     resp.status = BuildStatus.Error
                     return resp
             # Unhandled
             else:
-                resp.build_error += f"Unhandled build mode {self.get_parameter('mode')}"
+                resp.build_stderr += f"Unhandled build mode {self.get_parameter('mode')}"
                 resp.status = BuildStatus.Error
                 return resp
 
             # Successfully created the payload without error
-            resp.message += f'Created Poseidon payload!\n' \
-                            f'OS: {self.get_parameter("os")}, ' \
-                            f'Build Mode: {self.get_parameter("mode")}, ' \
-                            f'C2 Profile: {profile}\n'
+            resp.build_message += f'Created Poseidon payload!\n' \
+                                  f'OS: {self.get_parameter("os")}, ' \
+                                  f'Build Mode: {self.get_parameter("mode")}, ' \
+                                  f'C2 Profile: {profile}\n'
             resp.status = BuildStatus.Success
             return resp
         except Exception as e:
-            resp.build_error += "\n" + str(e)
+            resp.build_stderr += "\n" + str(e)
         return resp

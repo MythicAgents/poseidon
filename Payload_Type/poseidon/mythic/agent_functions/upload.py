@@ -1,6 +1,8 @@
 from mythic_payloadtype_container.MythicCommandBase import *
 import json
-from mythic_payloadtype_container.MythicFileRPC import *
+import base64
+import sys
+from mythic_payloadtype_container.MythicRPC import *
 
 
 class UploadArguments(TaskArguments):
@@ -11,17 +13,20 @@ class UploadArguments(TaskArguments):
                 name="Remote Path",
                 type=ParameterType.String,
                 description="Path where the uploaded file will be written.",
+                ui_position=2
             ),
             "file_id": CommandParameter(
                 name="File to Upload",
                 type=ParameterType.File,
                 description="The file to be written to the remote path.",
+                ui_position=1
             ),
             "overwrite": CommandParameter(
                  name="Overwrite Exiting File",
                  type=ParameterType.Boolean,
                  description="Overwrite file if it exists.",
-                 default_value=False
+                 default_value=False,
+                 ui_position=3
              )
         }
 
@@ -35,27 +40,30 @@ class UploadCommand(CommandBase):
     help_cmd = "upload"
     description = "upload a file to the target."
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = True
+    supported_ui_features = ["file_browser:upload"]
     author = "@xorrior"
     argument_class = UploadArguments
     attackmapping = []
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
-        original_file_name = json.loads(task.original_params)["File to Upload"]
-        response = await MythicFileRPC(task).register_file(
-            file=task.args.get_arg("file_id"),
-            saved_file_name=original_file_name,
-            delete_after_fetch=False,
-        )
-        if response.status == MythicStatus.Success:
-            task.args.add_arg("file_id", response.agent_file_id)
-        else:
-            raise Exception("Error from Mythic: " + response.error_message)
+        try:
+            original_file_name = json.loads(task.original_params)["File to Upload"]
+            if len(task.args.get_arg("remote_path")) == 0:
+                task.args.add_arg("remote_path", original_file_name)
+            elif task.args.get_arg("remote_path")[-1] == "/":
+                task.args.add_arg("remote_path", task.args.get_arg("remote_path") + original_file_name)
+            file_resp = await MythicRPC().execute("create_file", task_id=task.id,
+                file=base64.b64encode(task.args.get_arg("file_id")).decode(),
+                saved_file_name=original_file_name,
+                delete_after_fetch=False,
+            )
+            if file_resp.status == MythicStatus.Success:
+                task.args.add_arg("file_id", file_resp.response["agent_file_id"])
+                task.display_params = f"{original_file_name} to {task.args.get_arg('remote_path')}"
+            else:
+                raise Exception("Error from Mythic: " + str(file_resp.error))
+        except Exception as e:
+            raise Exception("Error from Mythic: " + str(sys.exc_info()[-1].tb_lineno) + str(e))
         return task
 
     async def process_response(self, response: AgentResponse):

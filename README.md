@@ -9,6 +9,8 @@ It leverages the [karalabe/xgo](https://github.com/karalabe/xgo) project to cros
 operating systems. This Poseidon instance supports Mythic 2.2 and will be updated as necessary.
 It does not support Mythic 2.1 and lower.
 
+The agent has `mythic_payloadtype_container==0.0.42` PyPi package installed and reports to Mythic as version "6".
+
 ## How to install an agent in this format within Mythic
 
 It is pretty simple for you, or another user, to install Poseidon. 

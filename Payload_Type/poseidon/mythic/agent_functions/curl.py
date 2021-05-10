@@ -11,29 +11,39 @@ class CurlArguments(TaskArguments):
                 type=ParameterType.String,
                 description="URL to request.",
                 default_value="https://www.google.com",
+                ui_position=1
             ),
             "method": CommandParameter(
                 name="method",
                 type=ParameterType.ChooseOne,
                 description="Type of request",
                 choices=["GET", "POST"],
+                ui_position=2
             ),
             "headers": CommandParameter(
                 name="headers",
                 type=ParameterType.String,
                 description="base64 encoded json with headers.",
                 required=False,
+                ui_position=3
             ),
             "body": CommandParameter(
-                name="body",
+                name="Base64 body content",
                 type=ParameterType.String,
                 description="base64 encoded body.",
                 required=False,
+                ui_position=4
             ),
         }
 
     async def parse_arguments(self):
-        self.load_args_from_json_string(self.command_line)
+        if len(self.command_line) == 0:
+            raise Exception("Must provide arguments")
+        else:
+            try:
+                self.load_args_from_json_string(self.command_line)
+            except:
+                raise Exception("Failed to process arguments as JSON. Did you use the popup?")
 
 
 class CurlCommand(CommandBase):
@@ -42,12 +52,6 @@ class CurlCommand(CommandBase):
     help_cmd = 'curl {  "url": "https://www.google.com",  "method": "GET",  "headers": "",  "body": "" }'
     description = "Execute a single web request."
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
     author = "@xorrior"
     argument_class = CurlArguments
     attackmapping = []

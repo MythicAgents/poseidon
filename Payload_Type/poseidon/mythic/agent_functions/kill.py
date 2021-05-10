@@ -8,6 +8,13 @@ class KillArguments(TaskArguments):
         self.args = {}
 
     async def parse_arguments(self):
+        if len(self.command_line) == 0:
+            raise Exception("Must supply a PID to kill")
+        else:
+            try:
+                test = int(self.command_line)
+            except:
+                raise Exception("Must supply an integer parameter")
         pass
 
 
@@ -17,12 +24,6 @@ class KillCommand(CommandBase):
     help_cmd = "kill [pid]"
     description = "Kill a process specified by PID."
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
     author = "@xorrior"
     argument_class = KillArguments
     attackmapping = []

@@ -7,7 +7,7 @@ class ListEntitlementsArguments(TaskArguments):
         super().__init__(command_line)
         self.args = {
             "pid": CommandParameter(
-                name="pid",
+                name="Pid to query (-1 for all)",
                 type=ParameterType.Number,
                 description="PID of process to query (-1 for all)",
             )
@@ -23,16 +23,14 @@ class ListEntitlementCommand(CommandBase):
     help_cmd = "list_entitlements"
     description = "Use CSOps Syscall to list the entitlements for processes (-1 for all processes)"
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
     author = "@its_a_feature_"
     argument_class = ListEntitlementsArguments
     attackmapping = []
     browser_script = BrowserScript(script_name="list_entitlements", author="@its_a_feature_")
+    attributes = CommandAttributes(
+        # uncomment when poseidon can dynamically compile commands
+        supported_os=[SupportedOS.MacOS]
+    )
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         return task

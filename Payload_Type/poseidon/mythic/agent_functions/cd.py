@@ -17,12 +17,6 @@ class CdCommand(CommandBase):
     help_cmd = "cd [new directory]"
     description = "Change working directory (can be relative, but no ~)."
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
     author = "@xorrior"
     argument_class = CdArguments
     attackmapping = ["T1005"]

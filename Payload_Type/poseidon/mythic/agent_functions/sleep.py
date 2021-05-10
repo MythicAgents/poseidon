@@ -12,21 +12,23 @@ class SleepArguments(TaskArguments):
                 required=False,
                 description="Jitter percentage.",
                 default_value=-1,
+                ui_position=2
             ),
             "interval": CommandParameter(
                 name="interval",
                 type=ParameterType.Number,
-                required=False,
+                required=True,
                 description="Sleep time in seconds",
                 default_value=-1,
+                ui_position=1
             ),
         }
 
     async def parse_arguments(self):
         if len(self.command_line) > 0:
-            if self.command_line[0] == "{":
+            try:
                 self.load_args_from_json_string(self.command_line)
-            else:
+            except:
                 pieces = self.command_line.split(" ")
                 if len(pieces) == 1:
                     self.add_arg("interval", pieces[0])
@@ -45,18 +47,15 @@ class SleepCommand(CommandBase):
     help_cmd = "sleep {interval} [jitter%]"
     description = "Update the sleep interval for the agent."
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
     author = "@xorrior"
     argument_class = SleepArguments
     attackmapping = []
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
+        task.display_params = str(task.args.get_arg("interval")) + "s"
+        if task.args.get_arg("jitter") != -1:
+            task.display_params += " with " + str(task.args.get_arg("jitter")) + "% jitter"
         return task
 
     async def process_response(self, response: AgentResponse):
-        pass
+        resp = await MythicRPC().execute("update_callback", sleep_info=response.response)

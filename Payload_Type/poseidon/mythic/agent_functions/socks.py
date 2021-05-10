@@ -1,5 +1,5 @@
 from mythic_payloadtype_container.MythicCommandBase import *
-from mythic_payloadtype_container.MythicSocksRPC import *
+from mythic_payloadtype_container.MythicRPC import *
 
 
 class SocksArguments(TaskArguments):
@@ -10,12 +10,15 @@ class SocksArguments(TaskArguments):
                 name="action",
                 type=ParameterType.ChooseOne,
                 choices=["start", "stop"],
+                default_value="start",
                 description="Start or Stop socks through this callback.",
+                ui_position=1
             ),
             "port": CommandParameter(
                 name="port",
                 type=ParameterType.Number,
                 description="Port number on Mythic server to open for socksv5",
+                ui_position=2
             ),
         }
 
@@ -29,27 +32,21 @@ class SocksCommand(CommandBase):
     help_cmd = "socks"
     description = "start or stop socks."
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
     author = "@xorrior"
     argument_class = SocksArguments
     attackmapping = []
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         if task.args.get_arg("action") == "start":
-            resp = await MythicSocksRPC(task).start_socks(task.args.get_arg("port"))
+            resp = await MythicRPC().execute("control_socks", task_id=task.id, start=True, port=task.args.get_arg("port"))
             if resp.status != MythicStatus.Success:
                 task.status = MythicStatus.Error
-                raise Exception(resp.error_message)
+                raise Exception(resp.error)
         else:
-            resp = await MythicSocksRPC(task).stop_socks()
+            resp = await MythicRPC().execute("control_socks", task_id=task.id, stop=True, port=task.args.get_arg("port"))
             if resp.status != MythicStatus.Success:
                 task.status = MythicStatus.Error
-                raise Exception(resp.error_message)
+                raise Exception(resp.error)
         return task
 
     async def process_response(self, response: AgentResponse):

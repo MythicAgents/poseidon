@@ -8,10 +8,15 @@ class DownloadArguments(TaskArguments):
         self.args = {}
 
     async def parse_arguments(self):
-        if len(self.command_line) > 0:
-            if self.command_line[0] == "{":
-                tmp_json = json.loads(self.command_line)
-                self.command_line = tmp_json["path"] + "/" + tmp_json["file"]
+        if len(self.command_line) == 0:
+            raise Exception("Must provide path to thing to download")
+        try:
+            # if we get JSON, it's from the file browser, so adjust accordingly
+            tmp_json = json.loads(self.command_line)
+            self.command_line = tmp_json["path"] + "/" + tmp_json["file"]
+        except:
+            # if it wasn't JSON, then just process it like a normal command-line argument
+            pass
 
 
 class DownloadCommand(CommandBase):
@@ -20,18 +25,15 @@ class DownloadCommand(CommandBase):
     help_cmd = "download /remote/path/to/file"
     description = "Download a file from the target."
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = True
-    is_remove_file = False
-    is_upload_file = False
+    supported_ui_features = ["file_browser:download"]
     author = "@xorrior"
     argument_class = DownloadArguments
     attackmapping = ["T1022", "T1030", "T1041"]
     browser_script = BrowserScript(script_name="download", author="@djhohnstein")
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
+        # adjust the display params to reflect the non-JSON version if needed
+        task.display_params = task.args.command_line
         return task
 
     async def process_response(self, response: AgentResponse):

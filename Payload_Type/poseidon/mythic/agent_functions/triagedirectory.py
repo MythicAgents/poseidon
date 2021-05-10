@@ -8,21 +8,16 @@ class TriageDirectoryArguments(TaskArguments):
         self.args = {}
 
     async def parse_arguments(self):
-        pass
+        if len(self.command_line) == 0:
+            self.command_line = "."
 
 
 class TriageDirectoryCommand(CommandBase):
     cmd = "triagedirectory"
     needs_admin = False
-    help_cmd = "triagedirectory"
+    help_cmd = "triagedirectory [path to directory]"
     description = "Find interesting files within a directory on a host."
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
     author = "@xorrior"
     argument_class = TriageDirectoryArguments
     attackmapping = ["T1083"]

@@ -43,15 +43,12 @@ class KeysCommand(CommandBase):
     help_cmd = "keys"
     description = "Interact with the linux keyring."
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
     author = "@xorrior"
     argument_class = KeysArguments
     attackmapping = []
+    attributes = CommandAttributes(
+        supported_os=[SupportedOS.Linux]
+    )
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         return task

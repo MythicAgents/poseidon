@@ -17,14 +17,12 @@ class ListtasksCommand(CommandBase):
     help_cmd = "listtasks"
     description = "Obtain a list of processes with obtainable task ports on macOS. This command should be used to determine target processes for the libinject command"
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
     author = "@xorrior"
     argument_class = ListtasksArguments
+    attributes = CommandAttributes(
+        # uncomment when poseidon can dynamically compile commands
+        supported_os=[SupportedOS.MacOS]
+    )
     attackmapping = ["T1057"]
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
