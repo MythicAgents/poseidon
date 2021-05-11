@@ -21,6 +21,12 @@ class ExecuteMemoryArguments(TaskArguments):
                 description="Select the Bundle/Dylib/Binary to execute in memory",
                 ui_position=1
             ),
+            "args": CommandParameter(
+                name="Argument String",
+                type=ParameterType.String,
+                description="Arguments to pass to function",
+                ui_position=3
+            ),
         }
 
     async def parse_arguments(self):
@@ -50,7 +56,7 @@ class ExecuteMemoryCommand(CommandBase):
         )
         if response.status == MythicStatus.Success:
             task.args.add_arg("file_id", response.response["agent_file_id"])
-            task.display_params = "function " + task.args.get_arg("function_name") + " of " + original_file_name
+            task.display_params = "function " + task.args.get_arg("function_name") + " of " + original_file_name + " with args: " + task.args.get_arg("args")
         else:
             raise Exception("Error from Mythic: " + response.error)
         return task

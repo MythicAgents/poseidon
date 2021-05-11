@@ -2,7 +2,7 @@
 #import <Foundation/Foundation.h>
 #include "stdio.h"
 
-char* executeMemory(void* memory, int memory_size, char* functionName, char* functionName2){
+char* executeMemory(void* memory, int memory_size, char* functionName, char* functionName2, char* argString){
 
 	NSObjectFileImage fileImage = NULL;
 	NSModule module = NULL;
@@ -40,8 +40,12 @@ char* executeMemory(void* memory, int memory_size, char* functionName, char* fun
 	if(function == NULL){
 		return "Failed to find address of function";
 	}
-	
-	char* output = (char*) function();
+	char* output = NULL;
+	@try{
+	    output = (char*) function(argString);
+	}@catch(NSException *e){
+	    output = e.reason.UTF8String;
+	}
 	NSUnLinkModule(module, NSUNLINKMODULE_OPTION_NONE);
 	NSDestroyObjectFileImage(fileImage);
 	return output;

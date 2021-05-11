@@ -17,8 +17,9 @@ type DarwinExecuteMemory struct {
 	Message string
 }
 
-func executeMemory(memory []byte, functionName string) (DarwinExecuteMemory, error) {
+func executeMemory(memory []byte, functionName string, argString string) (DarwinExecuteMemory, error) {
 	res := DarwinExecuteMemory{}
+
 	memoryLength := cap(memory)
 	realName := "_main"
 	if functionName != "main" && functionName != "" {
@@ -29,7 +30,8 @@ func executeMemory(memory []byte, functionName string) (DarwinExecuteMemory, err
 	//fmt.Printf("realName: %s\n", realName)
 	funcNameMod := C.CString(realName)
 	funcName := C.CString("_" + functionName)
-	r := C.executeMemory(C.CBytes(memory), C.int(memoryLength), funcName, funcNameMod)
+	cArgString := C.CString(argString)
+	r := C.executeMemory(C.CBytes(memory), C.int(memoryLength), funcName, funcNameMod, cArgString)
 	res.Message = C.GoString(r)
 	return res, nil
 }

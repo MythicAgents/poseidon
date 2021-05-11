@@ -18,6 +18,7 @@ var mu sync.Mutex
 type executeMemoryArgs struct {
 	FileID       string `json:"file_id"`
 	FunctionName string `json:"function_name"`
+	ArgString    string `json:"args"`
 }
 
 type getFile func(r structs.FileRequest, ch chan []byte) ([]byte, error)
@@ -54,13 +55,13 @@ func Run(task structs.Task, ch chan []byte, f getFile) {
 		mu.Unlock()
 		return
 	}
-	fmt.Printf("started run in execute_memory\n")
+	//fmt.Printf("started run in execute_memory\n")
 	var final string
-	fmt.Printf("%d\n", cap(fBytes))
-	fmt.Printf("In Run, function_name: %s\n", args.FunctionName)
-	resp, _ := executeMemory(fBytes, args.FunctionName)
-	fmt.Printf("got response from executeMemory\n")
-	fmt.Printf(resp.Message)
+	//fmt.Printf("%d\n", cap(fBytes))
+	//fmt.Printf("In Run, function_name: %s\n", args.FunctionName)
+	resp, _ := executeMemory(fBytes, args.FunctionName, args.ArgString)
+	//fmt.Printf("got response from executeMemory\n")
+	//fmt.Printf(resp.Message)
 	final = resp.Message
 	if len(final) == 0 {
 		final = "Function did not return data"

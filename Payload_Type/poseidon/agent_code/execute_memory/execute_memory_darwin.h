@@ -8,5 +8,5 @@
 #include <stdio.h>
 
 
-extern char* executeMemory(void* memory, int memory_size, char* functionName, char* functionName2);
+extern char* executeMemory(void* memory, int memory_size, char* functionName, char* functionName2, char* argString);
 

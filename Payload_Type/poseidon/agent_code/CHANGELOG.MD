@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added build flag to mit the symbol table and debug information, `-s` from the agent to reduce file size
 - Added empty `buildid` during agent generation
 - Added `c-shared` build mode
+- Added `execute_memory` functionality for in-proc execution of Dylibs and Mach-O executables in macOS
+- Added `jsimport` functionality to load JXA scripts into memory in macOS
+- Added `jsimport_call` functionality to run code from the imported scripts from `jsimport` in macOS
 
 ### Changed
 

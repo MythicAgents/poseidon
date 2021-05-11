@@ -6,7 +6,7 @@ type LinuxExecuteMemory struct {
 	Message string
 }
 
-func executeMemory(memory []byte, functionName string) (LinuxExecuteMemory, error) {
+func executeMemory(memory []byte, functionName string, argString string) (LinuxExecuteMemory, error) {
 	res := LinuxExecuteMemory{}
 	res.Message = "Not Supported"
 	return res, nil
