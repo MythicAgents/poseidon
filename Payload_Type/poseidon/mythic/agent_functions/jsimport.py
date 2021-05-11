@@ -5,20 +5,14 @@ import json
 from mythic_payloadtype_container.MythicRPC import *
 
 
-class ExecuteMemoryArguments(TaskArguments):
+class JsImportArguments(TaskArguments):
     def __init__(self, command_line):
         super().__init__(command_line)
         self.args = {
-            "function_name": CommandParameter(
-                name="function_name",
-                type=ParameterType.String,
-                description="Which function should be executed?",
-                ui_position=2
-            ),
             "file_id": CommandParameter(
-                name="Binary/Bundle to execute",
+                name="JXA Script to Load",
                 type=ParameterType.File,
-                description="Select the Bundle/Dylib/Binary to execute in memory",
+                description="Select the JXA Script to load into memory",
                 ui_position=1
             ),
         }
@@ -27,14 +21,14 @@ class ExecuteMemoryArguments(TaskArguments):
         self.load_args_from_json_string(self.command_line)
 
 
-class ExecuteMemoryCommand(CommandBase):
-    cmd = "execute_memory"
+class JsImportCommand(CommandBase):
+    cmd = "jsimport"
     needs_admin = False
-    help_cmd = "execute_memory"
-    description = "Upload a binary into memory and execute a function in-proc"
+    help_cmd = "jsimport"
+    description = "Upload a script into memory for use with jsimport_call"
     version = 1
     author = "@its_a_feature_"
-    argument_class = ExecuteMemoryArguments
+    argument_class = JsImportArguments
     attributes = CommandAttributes(
         # uncomment when poseidon can dynamically compile commands
         supported_os=[SupportedOS.MacOS]
@@ -42,7 +36,7 @@ class ExecuteMemoryCommand(CommandBase):
     attackmapping = []
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
-        original_file_name = json.loads(task.original_params)["Binary/Bundle to execute"]
+        original_file_name = json.loads(task.original_params)["JXA Script to Load"]
         response = await MythicRPC().execute("create_file", task_id=task.id,
             file=base64.b64encode(task.args.get_arg("file_id")).decode(),
             saved_file_name=original_file_name,
@@ -50,7 +44,7 @@ class ExecuteMemoryCommand(CommandBase):
         )
         if response.status == MythicStatus.Success:
             task.args.add_arg("file_id", response.response["agent_file_id"])
-            task.display_params = "function " + task.args.get_arg("function_name") + " of " + original_file_name
+            task.display_params = "script " + original_file_name
         else:
             raise Exception("Error from Mythic: " + response.error)
         return task

