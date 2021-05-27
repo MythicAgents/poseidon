@@ -87,7 +87,7 @@ func New() Profile {
 
 	// Convert sleep from string to integer
 	i, err := strconv.Atoi(callback_interval)
-	if err != nil {
+	if err == nil {
 		profile.Interval = i
 	} else {
 		profile.Interval = 10
@@ -95,7 +95,7 @@ func New() Profile {
 
 	// Convert jitter from string to integer
 	j, err := strconv.Atoi(callback_jitter)
-	if err != nil {
+	if err == nil {
 		profile.Jitter = j
 	} else {
 		profile.Jitter = 23
