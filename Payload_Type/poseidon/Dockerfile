@@ -1,1 +1,1 @@
-FROM itsafeaturemythic/xgolang_payload:0.0.9
+FROM itsafeaturemythic/xgolang_payload:0.0.10
