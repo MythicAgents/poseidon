@@ -4,7 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## 1.0.0 - 2021-XX-XX
+## 1.0.1 - 2021-06-23
+
+### Added
+
+- HTTP profile will use HTTP_PROXY, HTTPS_PROXY & NO_PROXY environment variables if a proxy was not explicitly provided
+- Added "Ignore Proxy" to payload builder to ignore any HTTP environment variables, if any
+
+## 1.0.0 - 2021-05-27
 
 ### Added
 
