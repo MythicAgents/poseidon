@@ -29,6 +29,13 @@ class Poseidon(PayloadType):
             choices=["default", "c-archive", "c-shared"],
             default_value="default",
         ),
+        "proxy_bypass": BuildParameter(
+            name="proxy_bypass",
+            parameter_type=BuildParameterType.ChooseOne,
+            choices=["false", "true"],
+            default_value="false",
+            description="Ignore HTTP proxy environment settings configured on the target host?",
+        ),
     }
     c2_profiles = ["websocket", "http"]
     support_browser_scripts = [
@@ -87,6 +94,7 @@ class Poseidon(PayloadType):
                     if val:
                         ldflags += f" -X '{poseidon_repo_profile}.{key}={val}'"
 
+            ldflags += " -X '{}.proxy_bypass={}'".format(poseidon_repo_profile, self.get_parameter("proxy_bypass"))
             # Set the Go -buildid argument to an empty string to remove the indicator
             ldflags += " -buildid="
             command = "rm -rf /build; rm -rf /deps;"
