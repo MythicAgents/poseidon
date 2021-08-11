@@ -1,7 +1,7 @@
 from mythic_payloadtype_container.MythicCommandBase import *
 import json
 
-class LaunchPersistArguments(TaskArguments):
+class PersistLaunchArguments(TaskArguments):
     def __init__(self, command_line):
         super().__init__(command_line)
         self.args = {
