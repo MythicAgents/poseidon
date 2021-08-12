@@ -23,7 +23,7 @@ class PersistLaunchdArguments(TaskArguments):
                 default_value=False,
                 description="When this value is set to true, Launchd will immediately start the daemon/agent once it has been registered",
             ),
-            "Label":CommandParamter(
+            "Label":CommandParameter(
                 name="Label",
                 type=ParameterType.String,
                 default_value="com.apple.mdmupdateagent",
