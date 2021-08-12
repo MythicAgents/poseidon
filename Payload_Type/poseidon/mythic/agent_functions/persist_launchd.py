@@ -1,7 +1,7 @@
 from mythic_payloadtype_container.MythicCommandBase import *
 import json
 
-class PersistLaunchArguments(TaskArguments):
+class PersistLaunchdArguments(TaskArguments):
     def __init__(self, command_line):
         super().__init__(command_line)
         self.args = {
@@ -53,7 +53,7 @@ class PersistLaunchArguments(TaskArguments):
         else:
             raise ValueError("Missing arguments")
 
-class PersistLaunchCommand(CommandBase):
+class PersistLaunchdCommand(CommandBase):
     cmd = "persist_launch"
     needs_admin = False
     help_cmd = "persist_launch"
@@ -61,7 +61,7 @@ class PersistLaunchCommand(CommandBase):
     version = 1
     author = "@xorrior"
     attackmapping = ["T1159", "T1160"]
-    argument_class = PersistLaunchArguments
+    argument_class = PersistLaunchdArguments
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         return task
