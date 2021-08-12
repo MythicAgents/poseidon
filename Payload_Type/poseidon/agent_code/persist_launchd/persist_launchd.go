@@ -1,4 +1,4 @@
-package persist_launch
+package persist_launchd
 
 import (
 	// Standard
