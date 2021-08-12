@@ -50,7 +50,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/upload"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/xpc"
 )
-import "github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/persist_launch"
+import "github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/persist_launchd"
 
 const (
 	NONE_CODE = 100
@@ -205,7 +205,7 @@ func main() {
 		"execute_memory":    39,
 		"jsimport":          40,
 		"jsimport_call":     41,
-		"persist_launch":    42,
+		"persist_launchd":   42,
 		"none":              NONE_CODE,
 	}
 
@@ -622,7 +622,7 @@ func main() {
 					break
 				case 42:
 					//Execute persist_launch command to install launchd persistence
-					go persist_launch.Run(task.Tasks[j])
+					go persist_launchd.Run(task.Tasks[j])
 					break
 				case NONE_CODE:
 					// No tasks, do nothing
