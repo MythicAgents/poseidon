@@ -13,13 +13,13 @@ class PersistLaunchdArguments(TaskArguments):
             ),
             "KeepAlive": CommandParameter(
                 name="KeepAlive",
-                type=ParamterType.Boolean,
+                type=ParameterType.Boolean,
                 default_value=True,
                 description="When this value is set to true, Launchd will restart the daemon if it dies",
             ),
             "RunAtLoad": CommandParameter(
                 name="RunAtLoad",
-                type=ParamterType.Boolean,
+                type=ParameterType.Boolean,
                 default_value=False,
                 description="When this value is set to true, Launchd will immediately start the daemon/agent once it has been registered",
             ),
