@@ -54,9 +54,9 @@ class PersistLaunchdArguments(TaskArguments):
             raise ValueError("Missing arguments")
 
 class PersistLaunchdCommand(CommandBase):
-    cmd = "persist_launch"
+    cmd = "persist_launchd"
     needs_admin = False
-    help_cmd = "persist_launch"
+    help_cmd = "persist_launchd"
     description = "Create a launch agent or daemon plist file and save it to ~/Library/LaunchAgents or /Library/LaunchDaemons"
     version = 1
     author = "@xorrior"
