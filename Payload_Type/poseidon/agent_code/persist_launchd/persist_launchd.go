@@ -76,7 +76,7 @@ func Run(task structs.Task) {
 		return
 	}
 
-	if args.LocalAgent {
+	if args.LocalAgent && len(args.Path) == 0 {
 		args.Path = fmt.Sprintf("~/Library/LaunchAgents/%s.plist", args.Label)
 	}
 
