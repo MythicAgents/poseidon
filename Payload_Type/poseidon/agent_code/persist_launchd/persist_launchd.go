@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/user"
 	"sync"
 
 	// External
@@ -77,7 +78,10 @@ func Run(task structs.Task) {
 	}
 
 	if args.LocalAgent && len(args.Path) == 0 {
-		args.Path = fmt.Sprintf("~/Library/LaunchAgents/%s.plist", args.Label)
+		usr, _ := user.Current()
+		dir := usr.HomeDir
+
+		args.Path = fmt.Sprintf("%s/Library/LaunchAgents/%s.plist", dir, args.Label)
 	}
 
 	f, err := os.Create(args.Path)
