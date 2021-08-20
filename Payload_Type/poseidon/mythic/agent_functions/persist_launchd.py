@@ -62,6 +62,9 @@ class PersistLaunchdCommand(CommandBase):
     author = "@xorrior"
     attackmapping = ["T1159", "T1160"]
     argument_class = PersistLaunchdArguments
+    attributes = CommandAttributes(
+        supported_os=[SupportedOS.MacOS]
+    )
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         return task
