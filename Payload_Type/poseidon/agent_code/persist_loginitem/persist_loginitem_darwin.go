@@ -3,7 +3,7 @@
 package persist_loginitem
 
 /*
-#cgo CFLAGS: -x objective-c fmacro-backtrace-limit=0 -std=gnu11 -Wobjc-property-no-attribute -Wunguarded-availability-new
+#cgo CFLAGS: -x objective-c -fmacro-backtrace-limit=0 -std=gnu11 -Wobjc-property-no-attribute -Wunguarded-availability-new
 #cgo LDFLAGS: -framework Foundation
 #include "persist_loginitem_darwin.h"
 */
