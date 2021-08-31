@@ -65,4 +65,6 @@ func Run(task structs.Task) {
 		profiles.TaskResponses = append(profiles.TaskResponses, resp)
 		mu.Unlock()
 	}
+
+	return
 }
