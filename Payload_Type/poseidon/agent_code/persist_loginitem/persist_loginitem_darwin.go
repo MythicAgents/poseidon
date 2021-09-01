@@ -18,13 +18,21 @@ func (j *PersistLoginItemDarwin) Success() bool {
 }
 
 func runCommand(path string, name string, global bool) (PersistLoginItemDarwin, error) {
+	var glbl int
 	cpath := C.CString(path)
 	cname := C.CString(name)
-	cbool := C.BOOL(global)
-	res := C.persist_loginitem(cpath, cname, cbool)
-	gores := C.GoBool(res)
+	if global {
+		glbl = 1
+	} else {
+		glbl = 0
+	}
+	res := C.persist_loginitem(cpath, cname, glbl)
 
 	r := PersistLoginItemDarwin{}
-	r.Successful = gores
+	if res == 1 {
+		r.Successful = true
+	} else {
+		r.Successful = false
+	}
 	return r, nil
 }
