@@ -6,7 +6,7 @@
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
 
-bool persist_loginitem(char *path, char *name, bool global) {
+int persist_loginitem(char *path, char *name, int global) {
     LSSharedFileListRef loginItemsRef = NULL;
     @try {
         NSString *pathString = [NSString stringWithUTF8String:path];
@@ -22,15 +22,15 @@ bool persist_loginitem(char *path, char *name, bool global) {
             LSSharedFileListItemRef item = LSSharedFileListInsertItemURL(loginItemsRef, kLSSharedFileListItemLast, (__bridge CFStringRef)(nameString), NULL, url, NULL, NULL);
             if (item != NULL) {
                 CFRelease(item);
-                return true;
+                return 1;
             } else {
-                return false;
+                return -1;
             }
         } else {
-            return false;
+            return -1;
         }
         
     } @catch (NSException *exception) {
-        return false;
+        return -1;
     }
 }
