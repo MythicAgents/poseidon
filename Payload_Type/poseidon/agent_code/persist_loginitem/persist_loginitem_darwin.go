@@ -4,7 +4,7 @@ package persist_loginitem
 
 /*
 #cgo CFLAGS: -x objective-c -fmacro-backtrace-limit=0 -std=gnu11 -Wobjc-property-no-attribute -Wunguarded-availability-new
-#cgo LDFLAGS: -framework Foundation
+#cgo LDFLAGS: -framework Foundation -framework CoreServices
 #include "persist_loginitem_darwin.h"
 */
 import "C"
@@ -26,7 +26,8 @@ func runCommand(path string, name string, global bool) (PersistLoginItemDarwin, 
 	} else {
 		glbl = 0
 	}
-	res := C.persist_loginitem(cpath, cname, glbl)
+	iglbl := C.int(glbl)
+	res := C.persist_loginitem(cpath, cname, iglbl)
 
 	r := PersistLoginItemDarwin{}
 	if res == 1 {
