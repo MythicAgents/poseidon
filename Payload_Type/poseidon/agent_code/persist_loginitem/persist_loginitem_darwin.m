@@ -1,5 +1,5 @@
 #import <Foundation/Foundation.h>
-#include "persist_loginitem.h"
+#include "persist_loginitem_darwin.h"
 
 // https://github.com/sfsam/Itsycal/blob/11e6e9d265379a610ef103850995e280873f9505/Itsycal/MoLoginItem.m
 #pragma clang diagnostic push
