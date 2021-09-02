@@ -12,9 +12,9 @@ int persist_loginitem(char *path, char *name, int global) {
         NSString *pathString = [NSString stringWithUTF8String:path];
         NSString *nameString = [NSString stringWithUTF8String:name];
         if (global) {
-            loginItemsRef = LSSharedFileListCreate(NULL, kLSSharedFileListGlobalLoginItems, kLSSharedFileListLoginItemHidden);
+            loginItemsRef = LSSharedFileListCreate(NULL, kLSSharedFileListGlobalLoginItems, NULL);
         } else {
-            loginItemsRef = LSSharedFileListCreate(NULL, kLSSharedFileListSessionLoginItems, kLSSharedFileListLoginItemHidden);
+            loginItemsRef = LSSharedFileListCreate(NULL, kLSSharedFileListSessionLoginItems, NULL);
         }
         
         if (loginItemsRef) {
