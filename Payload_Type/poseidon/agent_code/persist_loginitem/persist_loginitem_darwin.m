@@ -12,9 +12,9 @@ int persist_loginitem(char *path, char *name, int global) {
         NSString *pathString = [NSString stringWithUTF8String:path];
         NSString *nameString = [NSString stringWithUTF8String:name];
         if (global) {
-            loginItemsRef = LSSharedFileListCreate(NULL, kLSSharedFileListGlobalLoginItems, NULL);
+            loginItemsRef = LSSharedFileListCreate(NULL, kLSSharedFileListGlobalLoginItems, kLSSharedFileListLoginItemHidden);
         } else {
-            loginItemsRef = LSSharedFileListCreate(NULL, kLSSharedFileListSessionLoginItems, NULL);
+            loginItemsRef = LSSharedFileListCreate(NULL, kLSSharedFileListSessionLoginItems, kLSSharedFileListLoginItemHidden);
         }
         
         if (loginItemsRef) {
@@ -31,6 +31,7 @@ int persist_loginitem(char *path, char *name, int global) {
         }
         
     } @catch (NSException *exception) {
+        NSLog(@"%@", exception);
         return -1;
     }
 }
