@@ -63,7 +63,6 @@ class PersistLaunchdCommand(CommandBase):
     attackmapping = ["T1159", "T1160"]
     argument_class = PersistLaunchdArguments
     attributes = CommandAttributes(
-        # eventually uncomment this once poseidon supports dynamic compilation of commands
         supported_os=[SupportedOS.MacOS]
     )
 
