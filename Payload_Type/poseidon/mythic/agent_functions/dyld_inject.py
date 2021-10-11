@@ -1,7 +1,7 @@
 from mythic_payloadtype_container.MythicCommandBase import *
 import json
 
-class SpawnLibinjectArguments(TaskArguments):
+class DyldInjectArguments(TaskArguments):
     def __init__(self, command_line):
         super().__init__(command_line)
         self.args = {
@@ -41,15 +41,15 @@ class SpawnLibinjectArguments(TaskArguments):
         else:
             raise ValueError("Missing arguments")
     
-class SpawnLibinjectCommand(CommandBase):
-    cmd = "spawn_libinject"
+class DyldInjectCommand(CommandBase):
+    cmd = "dyld_inject"
     needs_admin = False
-    help_cmd = "spawn_libinject"
-    description = "Spawn an application/binary and inject a dylib with the DYLD_INSERT_LIBRARIES environment variable"
+    help_cmd = "dyld_inject"
+    description = "Spawn an application/binary and inject a dylib into application with the DYLD_INSERT_LIBRARIES environment variable"
     version = 1
     author = "@xorrior @_r3ggi"
     attackmapping = ["T1574.006"]
-    argument_class = SpawnLibinjectArguments
+    argument_class = DyldInjectArguments
     attributes = CommandAttributes(
         supported_os=[SupportedOS.MacOS]
     )

