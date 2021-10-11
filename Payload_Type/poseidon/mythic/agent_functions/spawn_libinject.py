@@ -7,13 +7,13 @@ class SpawnLibinjectArguments(TaskArguments):
         self.args = {
             "application" : CommandParameter(
                 name="application",
-                type=ParamterType.String,
+                type=ParameterType.String,
                 required=True,
                 description="Path to the target application/binary"
             ),
             "dylibpath": CommandParameter(
                 name="dylibpath",
-                type=ParamterType.String,
+                type=ParameterType.String,
                 required=True,
                 description="Path to the dylib on disk that will be injected into the target application"
             ),
