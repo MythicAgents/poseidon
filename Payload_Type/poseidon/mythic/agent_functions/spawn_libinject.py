@@ -42,9 +42,9 @@ class SpawnLibinjectArguments(TaskArguments):
             raise ValueError("Missing arguments")
     
 class SpawnLibinjectCommand(CommandBase):
-    cmd = "spawnlibinject"
+    cmd = "spawn_libinject"
     needs_admin = False
-    help_cmd = "spawnlibinject"
+    help_cmd = "spawn_libinject"
     description = "Spawn an application/binary and inject a dylib with the DYLD_INSERT_LIBRARIES environment variable"
     version = 1
     author = "@xorrior @_r3ggi"
