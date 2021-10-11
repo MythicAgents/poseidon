@@ -5,7 +5,7 @@ class SpawnLibinjectArguments(TaskArguments):
     def __init__(self, command_line):
         super().__init__(command_line)
         self.args = {
-            "application" : CommandParamter(
+            "application" : CommandParameter(
                 name="application",
                 type=ParamterType.String,
                 required=True,
