@@ -17,7 +17,7 @@ func (j *DyldInjectDarwin) Success() bool {
 	return j.Successful
 }
 
-func runCommand(app string, dylib string, args string, hide bool) (DyldInjectDarwin, error) {
+func runCommand(app string, dylib string, hide bool) (DyldInjectDarwin, error) {
 	capp := C.CString(app)
 	cdylib := C.CString(dylib)
 	cargs := C.CString(args)
