@@ -31,7 +31,7 @@ func runCommand(app string, dylib string, hide bool) (DyldInjectDarwin, error) {
 	}
 
 	ihide := C.int(chide)
-	res := C.dyld_inject(capp, cdylib, cargs, ihide)
+	res := C.dyld_inject(capp, cdylib, ihide)
 
 	r := DyldInjectDarwin{}
 	if res == 0 {
