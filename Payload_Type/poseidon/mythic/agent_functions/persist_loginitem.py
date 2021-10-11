@@ -22,6 +22,7 @@ class PersistLoginItemArguments(TaskArguments):
                 type=ParameterType.Boolean,
                 description="Set this to true if the login item should be installed for all users. This requires administrative privileges",
                 required=True,
+                default_value=True
             ),
         }
 

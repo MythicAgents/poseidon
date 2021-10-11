@@ -21,6 +21,7 @@ class DyldInjectArguments(TaskArguments):
                 name="hideApp",
                 type=ParameterType.Boolean,
                 required=True,
+                default_value=False,
                 description="If true, launch the application with the kLSLaunchAndHide flag set. If false, use the kLSLaunchDefaults flag"
             )
         }

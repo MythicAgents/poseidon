@@ -28,6 +28,7 @@ class PersistLaunchdArguments(TaskArguments):
                 type=ParameterType.String,
                 default_value="com.apple.mdmupdateagent",
                 description="The label for launch persistence",
+                required=True
             ),
             "LaunchPath": CommandParameter(
                 name="LaunchPath",
@@ -39,6 +40,7 @@ class PersistLaunchdArguments(TaskArguments):
                 name="LocalAgent",
                 type=ParameterType.Boolean,
                 default_value=True,
+                required=True,
                 description="Should be a local user launch agent"
             ),
         }
