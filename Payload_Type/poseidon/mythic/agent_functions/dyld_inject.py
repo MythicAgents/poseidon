@@ -17,12 +17,6 @@ class DyldInjectArguments(TaskArguments):
                 required=True,
                 description="Path to the dylib on disk that will be injected into the target application"
             ),
-            "arguments": CommandParameter(
-                name="arguments",
-                type=ParameterType.String,
-                required=False,
-                description="Command line arguments for the target application/binary"
-            ),
             "hideApp": CommandParameter(
                 name="hideApp",
                 type=ParameterType.Boolean,
