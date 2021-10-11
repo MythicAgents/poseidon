@@ -20,7 +20,6 @@ func (j *DyldInjectDarwin) Success() bool {
 func runCommand(app string, dylib string, hide bool) (DyldInjectDarwin, error) {
 	capp := C.CString(app)
 	cdylib := C.CString(dylib)
-	cargs := C.CString(args)
 
 	var chide int
 
