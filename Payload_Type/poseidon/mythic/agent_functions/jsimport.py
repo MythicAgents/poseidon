@@ -6,19 +6,22 @@ from mythic_payloadtype_container.MythicRPC import *
 
 
 class JsImportArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {
-            "file_id": CommandParameter(
-                name="JXA Script to Load",
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = [
+            CommandParameter(
+                name="file_id",
+                display_name="JXA Script to Load",
                 type=ParameterType.File,
                 description="Select the JXA Script to load into memory",
-                ui_position=1
             ),
-        }
+        ]
 
     async def parse_arguments(self):
         self.load_args_from_json_string(self.command_line)
+
+    async def parse_dictionary(self, dictionary):
+        self.load_args_from_dictionary(dictionary)
 
 
 class JsImportCommand(CommandBase):

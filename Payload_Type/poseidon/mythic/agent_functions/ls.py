@@ -3,9 +3,9 @@ import json
 
 
 class LsArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {}
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = []
 
     async def parse_arguments(self):
         self.add_arg("file_browser", False, type=ParameterType.Boolean)
@@ -20,6 +20,14 @@ class LsArguments(TaskArguments):
             self.add_arg("path", self.command_line)
         else:
             self.add_arg("path", ".")
+
+    async def parse_dictionary(self, dictionary):
+        if "path" in dictionary and "file" in dictionary:
+            self.add_arg("file_browser", value=True, type=ParameterType.Boolean)
+            self.add_arg("path", value=dictionary["path"] + "/" + dictionary["file"])
+        else:
+            self.add_arg("file_browser", value=False, type=ParameterType.Boolean)
+            self.add_arg("path", value=".")
 
 
 class LsCommand(CommandBase):

@@ -6,32 +6,50 @@ from mythic_payloadtype_container.MythicRPC import *
 
 
 class UploadArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {
-            "remote_path": CommandParameter(
-                name="Remote Path",
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = [
+            CommandParameter(
+                name="remote_path",
+                display_name="Remote Path",
                 type=ParameterType.String,
                 description="Path where the uploaded file will be written.",
-                ui_position=2
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        ui_position=2
+                    )
+                ]
             ),
-            "file_id": CommandParameter(
-                name="File to Upload",
+            CommandParameter(
+                name="file_id",
+                display_name="File to Upload",
                 type=ParameterType.File,
                 description="The file to be written to the remote path.",
-                ui_position=1
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        ui_position=1
+                    )
+                ]
             ),
-            "overwrite": CommandParameter(
-                 name="Overwrite Exiting File",
-                 type=ParameterType.Boolean,
-                 description="Overwrite file if it exists.",
-                 default_value=False,
-                 ui_position=3
+            CommandParameter(
+                name="overwrite",
+                display_name="Overwrite Exiting File",
+                type=ParameterType.Boolean,
+                description="Overwrite file if it exists.",
+                default_value=False,
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        ui_position=3
+                    )
+                ]
              )
-        }
+        ]
 
     async def parse_arguments(self):
         self.load_args_from_json_string(self.command_line)
+
+    async def parse_dictionary(self, dictionary):
+        self.load_args_from_dictionary(dictionary)
 
 
 class UploadCommand(CommandBase):

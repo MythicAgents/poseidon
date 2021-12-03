@@ -3,18 +3,22 @@ import json
 
 
 class ListEntitlementsArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {
-            "pid": CommandParameter(
-                name="Pid to query (-1 for all)",
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = [
+            CommandParameter(
+                name="pid",
+                display_name="Pid to query (-1 for all)",
                 type=ParameterType.Number,
                 description="PID of process to query (-1 for all)",
             )
-        }
+        ]
 
     async def parse_arguments(self):
         self.load_args_from_json_string(self.command_line)
+
+    async def parse_dictionary(self, dictionary):
+        self.load_args_from_dictionary(dictionary)
 
 
 class ListEntitlementCommand(CommandBase):

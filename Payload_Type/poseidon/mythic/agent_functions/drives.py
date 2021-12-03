@@ -3,9 +3,9 @@ import json
 
 
 class DrivesArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {}
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = []
 
     async def parse_arguments(self):
         pass
@@ -17,14 +17,11 @@ class DrivesCommand(CommandBase):
     help_cmd = "drives"
     description = "Get information about mounted drives on Linux hosts only."
     version = 1
-    is_exit = False
-    is_file_browse = False
-    is_process_list = False
-    is_download_file = False
-    is_remove_file = False
-    is_upload_file = False
     author = "@xorrior"
     argument_class = DrivesArguments
+    attributes = CommandAttributes(
+        supported_os=[SupportedOS.Linux]
+    )
     attackmapping = ["T1135"]
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:

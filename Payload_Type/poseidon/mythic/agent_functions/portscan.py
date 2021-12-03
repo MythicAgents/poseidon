@@ -3,22 +3,30 @@ import json
 
 
 class PortScanArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {
-            "ports": CommandParameter(
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = [
+            CommandParameter(
                 name="ports",
                 type=ParameterType.String,
                 description="List of ports to scan. Can use the dash separator to specify a range.",
-                ui_position=2
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        ui_position=2
+                    )
+                ]
             ),
-            "hosts": CommandParameter(
+            CommandParameter(
                 name="hosts",
                 type=ParameterType.Array,
                 description="List of hosts to scan",
-                ui_position=1
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        ui_position=1
+                    )
+                ]
             ),
-        }
+        ]
 
     async def parse_arguments(self):
         if len(self.command_line) == 0:
@@ -28,6 +36,10 @@ class PortScanArguments(TaskArguments):
                 self.load_args_from_json_string(self.command_line)
             except:
                 raise Exception("JSON not supplied, did you use the popup?")
+
+
+    async def parse_dictionary(self, dictionary):
+        self.load_args_from_dictionary(dictionary)
 
 
 class PortScanCommand(CommandBase):

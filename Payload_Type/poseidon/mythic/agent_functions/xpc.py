@@ -3,66 +3,92 @@ import json
 
 
 class XpcArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {
-            "command": CommandParameter(
-                name="command",
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = [
+            CommandParameter(
+                name="listStatusAction",
                 type=ParameterType.ChooseOne,
-                description="Choose an XPC command.",
+                description="Pick to list launchd services or the status of a service",
                 choices=[
                     "list",
-                    "start",
-                    "stop",
-                    "load",
-                    "unload",
                     "status",
-                    "procinfo",
-                    "submit",
-                    "send",
                 ],
-                ui_position=1
+                parameter_group_info=[
+                    ParameterGroupInfo(group_name="list/status"),
+                ]
             ),
-            "program": CommandParameter(
+            CommandParameter(
+                name="startStopAction",
+                display_name="Pick to start or stop the action",
+                type=ParameterType.ChooseOne,
+                description="Choose to start or stop the specified service",
+                choices=["start", "stop"],
+                parameter_group_info=[
+                    ParameterGroupInfo(group_name="start/stop")
+                ]
+            ),
+            CommandParameter(
+                name="loadUnloadAction",
+                display_name="Pick to load or unload the plist",
+                description="Path to a property list to either load or unload",
+                type=ParameterType.ChooseOne,
+                choices=["load", "unload"],
+                parameter_group_info=[
+                    ParameterGroupInfo(group_name="load/unload")
+                ]
+            ),
+            CommandParameter(
                 name="program",
                 type=ParameterType.String,
                 description="Program/binary to execute if using 'submit' command",
-                required=False,
+                parameter_group_info=[
+                    ParameterGroupInfo(group_name="submit")
+                ]
             ),
-            "file": CommandParameter(
-                name="Path to file to load on target",
+            CommandParameter(
+                name="file",
+                display_name="Path to file to load on target",
                 type=ParameterType.String,
                 description="Path to the plist file if using load/unload commands",
-                required=False,
+                parameter_group_info=[
+                    ParameterGroupInfo(group_name="load/unload")
+                ]
             ),
-            "servicename": CommandParameter(
+            CommandParameter(
                 name="servicename",
                 type=ParameterType.String,
                 description="Name of the service to communicate with. Used with the submit, send, start/stop commands",
-                required=False,
+                parameter_group_info=[
+                    ParameterGroupInfo(group_name="send"),
+                    ParameterGroupInfo(group_name="submit"),
+                    ParameterGroupInfo(group_name="start/stop"),
+                    ParameterGroupInfo(group_name="list/status"),
+                ]
             ),
-            "keepalive": CommandParameter(
-                name="keepalive",
-                type=ParameterType.Boolean,
-                description="KeepAlive boolean",
-                required=False,
-            ),
-            "pid": CommandParameter(
+            CommandParameter(
                 name="pid",
                 type=ParameterType.Number,
                 description="PID of the process",
-                required=False,
+                parameter_group_info=[
+                    ParameterGroupInfo(group_name="procinfo")
+                ]
             ),
-            "data": CommandParameter(
+            CommandParameter(
                 name="data",
                 type=ParameterType.String,
                 description="base64 encoded json data to send to a target service",
-                required=False,
+                parameter_group_info=[
+                    ParameterGroupInfo(group_name="send")
+                ]
             ),
-        }
+        ]
 
     async def parse_arguments(self):
         self.load_args_from_json_string(self.command_line)
+
+    async def parse_dictionary(self, dictionary):
+        self.load_args_from_dictionary(dictionary)
 
 
 class XpcCommand(CommandBase):

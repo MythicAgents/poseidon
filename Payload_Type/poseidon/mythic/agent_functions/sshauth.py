@@ -3,71 +3,146 @@ import json
 
 
 class SSHAuthArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {
-            "username": CommandParameter(
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = [
+            CommandParameter(
                 name="username",
                 type=ParameterType.String,
                 description="Authenticate to the designated hosts using this username.",
-                ui_position=1
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        ui_position=1,
+                        group_name="scp-private-key"
+                    ),
+                    ParameterGroupInfo(
+                        group_name="scp-plaintext-password"
+                    ),
+                    ParameterGroupInfo(
+                        group_name="run-command-plaintext-password"
+                    ),
+                    ParameterGroupInfo(
+                        group_name="run-command-private-key"
+                    )
+                ]
             ),
-            "source": CommandParameter(
+            CommandParameter(
                 name="source",
                 type=ParameterType.String,
                 description="If doing SCP, this is the source file",
-                required=False,
                 default_value="",
-                ui_position=7
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        group_name="scp-private-key"
+                    ),
+                    ParameterGroupInfo(
+                        group_name="scp-plaintext-password"
+                    )
+                ]
             ),
-            "destination": CommandParameter(
+            CommandParameter(
                 name="destination",
                 type=ParameterType.String,
                 description="If doing SCP, this is the destination file",
-                required=False,
                 default_value="",
-                ui_position=8
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        group_name="scp-private-key"
+                    ),
+                    ParameterGroupInfo(
+                        group_name="scp-plaintext-password"
+                    )
+                ]
             ),
-            "private_key": CommandParameter(
+            CommandParameter(
                 name="private_key",
                 type=ParameterType.String,
                 description="Authenticate to the designated hosts using this private key",
-                required=False,
-                ui_position=3
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        group_name="scp-private-key"
+                    ),
+                    ParameterGroupInfo(
+                        group_name="command-private-key"
+                    )
+                ]
             ),
-            "port": CommandParameter(
+            CommandParameter(
                 name="port",
                 type=ParameterType.Number,
                 description="SSH Port if different than 22",
                 default_value="22",
-                ui_position=5
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        required=False,
+                        group_name="scp-private-key"
+                    ),
+                    ParameterGroupInfo(
+                        required=False,
+                        group_name="scp-plaintext-password"
+                    ),
+                    ParameterGroupInfo(
+                        group_name="run-command-plaintext-password"
+                    ),
+                    ParameterGroupInfo(
+                        group_name="run-command-private-key"
+                    )
+                ]
             ),
-            "password": CommandParameter(
+            CommandParameter(
                 name="password",
                 type=ParameterType.String,
                 description="Authenticate to the designated hosts using this password",
-                required=False,
                 default_value="",
-                ui_position=2
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        group_name="scp-plaintext-password"
+                    ),
+                    ParameterGroupInfo(
+                        group_name="command-plaintext-password"
+                    )
+                ]
             ),
-            "hosts": CommandParameter(
+            CommandParameter(
                 name="hosts",
                 type=ParameterType.Array,
                 description="Hosts that you will auth to",
-                ui_position=4
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        group_name="scp-plaintext-password"
+                    ),
+                    ParameterGroupInfo(
+                        group_name="scp-private-key"
+                    ),
+                    ParameterGroupInfo(
+                        group_name="run-command-plaintext-password"
+                    ),
+                    ParameterGroupInfo(
+                        group_name="run-command-private-key"
+                    )
+                ]
             ),
-            "command": CommandParameter(
+            CommandParameter(
                 name="command",
                 type=ParameterType.String,
                 description="Command to execute on remote systems if not doing SCP",
-                required=False,
                 default_value="",
-                ui_position=6
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        group_name="run-command-plaintext-password"
+                    ),
+                    ParameterGroupInfo(
+                        group_name="run-command-private-key"
+                    )
+                ]
             ),
-        }
+        ]
 
     async def parse_arguments(self):
         self.load_args_from_json_string(self.command_line)
+
+    async def parse_dictionary(self, dictionary):
+        self.load_args_from_dictionary(dictionary)
 
 
 class SSHAuthCommand(CommandBase):
@@ -85,13 +160,13 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         task.display_params = "Authenticate as " + task.args.get_arg("username")
-        if task.args.get_arg("private_key") != "":
+        if "private-key" in task.args.get_parameter_group_name():
             task.display_params += " with a private key "
         else:
             task.display_params += " with password, " + task.args.get_arg("password") + ", "
-        if task.args.get_arg("command") != "":
+        if "command" in task.args.get_parameter_group_name():
             task.display_params += "to run command, " + task.args.get_arg("command")
-        elif task.args.get_arg("source") != "":
+        elif "scp" in task.args.get_parameter_group_name():
             task.display_params += "to copy local file, " + task.args.get_arg("source") + ", to " + task.args.get_arg("destination")
         return task
 

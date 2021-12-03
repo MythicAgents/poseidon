@@ -1,40 +1,46 @@
 from mythic_payloadtype_container.MythicCommandBase import *
-import json
+import base64
 
 
 class CurlArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {
-            "url": CommandParameter(
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = [
+            CommandParameter(
                 name="url",
                 type=ParameterType.String,
                 description="URL to request.",
                 default_value="https://www.google.com",
-                ui_position=1
+                parameter_group_info=[
+                    ParameterGroupInfo(ui_position=1)
+                ]
             ),
-            "method": CommandParameter(
+            CommandParameter(
                 name="method",
                 type=ParameterType.ChooseOne,
                 description="Type of request",
                 choices=["GET", "POST"],
-                ui_position=2
+                parameter_group_info=[
+                    ParameterGroupInfo(ui_position=2)
+                ]
             ),
-            "headers": CommandParameter(
+            CommandParameter(
                 name="headers",
                 type=ParameterType.String,
-                description="base64 encoded json with headers.",
-                required=False,
-                ui_position=3
+                description="JSON string of headers: {\"Host\":\"a.b.c.com\"}",
+                parameter_group_info=[
+                    ParameterGroupInfo(ui_position=3, required=False)
+                ]
             ),
-            "body": CommandParameter(
+            CommandParameter(
                 name="Base64 body content",
                 type=ParameterType.String,
                 description="base64 encoded body.",
-                required=False,
-                ui_position=4
+                parameter_group_info=[
+                    ParameterGroupInfo(ui_position=4, required=False)
+                ]
             ),
-        }
+        ]
 
     async def parse_arguments(self):
         if len(self.command_line) == 0:
@@ -44,6 +50,11 @@ class CurlArguments(TaskArguments):
                 self.load_args_from_json_string(self.command_line)
             except:
                 raise Exception("Failed to process arguments as JSON. Did you use the popup?")
+
+    async def parse_dictionary(self, dictionary):
+        self.load_args_from_dictionary(dictionary)
+        if self.get_arg("headers") is not None:
+            self.add_arg("headers", base64.b64encode(self.get_arg("headers").encode()).decode())
 
 
 class CurlCommand(CommandBase):

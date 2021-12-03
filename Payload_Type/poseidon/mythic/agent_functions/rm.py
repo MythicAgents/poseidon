@@ -3,9 +3,9 @@ import json
 
 
 class RmArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {}
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = []
 
     async def parse_arguments(self):
         if len(self.command_line) > 0:
@@ -18,6 +18,9 @@ class RmArguments(TaskArguments):
                 self.command_line = json.dumps(data)
         else:
             raise Exception("No command line arguments")
+
+    async def parse_dictionary(self, dictionary):
+        self.command_line = json.dumps(dictionary)
 
 
 class RmCommand(CommandBase):
