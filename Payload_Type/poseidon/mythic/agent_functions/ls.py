@@ -40,7 +40,8 @@ class LsCommand(CommandBase):
     author = "@xorrior"
     argument_class = LsArguments
     attackmapping = ["T1083"]
-    browser_script = BrowserScript(script_name="ls", author="@its_a_feature_")
+    browser_script = [BrowserScript(script_name="ls", author="@its_a_feature_"),
+                      BrowserScript(script_name="ls_new", author="@its_a_feature_", for_new_ui=True)]
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         if task.args.has_arg("file_browser") and task.args.get_arg("file_browser"):
