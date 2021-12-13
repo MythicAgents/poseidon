@@ -695,7 +695,13 @@ func (c *C2Default) SendFileChunks(task structs.Task, fileData []byte, ch chan [
 		//log.Printf("Receive file download registration response %s\n", resp)
 		if _, ok := fileDetails["file_id"]; ok {
 			if ok {
-				//log.Println("Found response with file_id key ", fileid)
+				updateUserOutput := structs.Response{}
+                updateUserOutput.TaskID = task.TaskID
+                updateUserOutput.UserOutput = "{\"file_id\": \"" + fmt.Sprintf("%v", fileDetails["file_id"]) + "\", \"total_chunks\": \"" +  strconv.Itoa(int(chunks)) + "\"}"
+                finalEnc, _ := json.Marshal(updateUserOutput)
+                mu.Lock()
+                TaskResponses = append(TaskResponses, finalEnc)
+                mu.Unlock()
 				break
 			} else {
 				//log.Println("Didn't find response with file_id key")
