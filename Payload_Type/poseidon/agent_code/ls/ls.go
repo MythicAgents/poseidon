@@ -120,6 +120,9 @@ func Run(task structs.Task) {
 			}
 		}
 		e.Files = fileEntries
+	}else{
+	    fileEntries := make([]structs.FileData, 0)
+	    e.Files = fileEntries
 	}
 	msg.Completed = true
 	msg.FileBrowser = e
