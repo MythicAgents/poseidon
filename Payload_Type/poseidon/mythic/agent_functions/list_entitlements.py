@@ -10,7 +10,11 @@ class ListEntitlementsArguments(TaskArguments):
                 name="pid",
                 display_name="Pid to query (-1 for all)",
                 type=ParameterType.Number,
+                default_value=-1,
                 description="PID of process to query (-1 for all)",
+                parameter_group_info=[ParameterGroupInfo(
+                    required=False
+                )]
             )
         ]
 
@@ -30,13 +34,17 @@ class ListEntitlementCommand(CommandBase):
     author = "@its_a_feature_"
     argument_class = ListEntitlementsArguments
     attackmapping = []
-    browser_script = BrowserScript(script_name="list_entitlements", author="@its_a_feature_")
+    browser_script = BrowserScript(script_name="list_entitlements_new", author="@its_a_feature_", for_new_ui=True)
     attributes = CommandAttributes(
         # uncomment when poseidon can dynamically compile commands
         supported_os=[SupportedOS.MacOS]
     )
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
+        if task.args.get_arg("pid") == -1:
+            task.display_params = " for all running processes"
+        else:
+            task.display_params = " for pid " + str(task.args.get_arg("pid"))
         return task
 
     async def process_response(self, response: AgentResponse):

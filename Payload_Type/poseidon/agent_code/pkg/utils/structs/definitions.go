@@ -157,8 +157,8 @@ type FileBrowser struct {
 	ParentPath   string         `json:"parent_path"`
 	Success      bool           `json:"success"`
 	FileSize     int64          `json:"size"`
-	LastModified string         `json:"modify_time"`
-	LastAccess   string         `json:"access_time"`
+	LastModified int64         `json:"modify_time"`
+	LastAccess   int64         `json:"access_time"`
 }
 
 type FileData struct {
@@ -167,8 +167,8 @@ type FileData struct {
 	Name     string         `json:"name"`
 	FullName string `json:"full_name"`
 	FileSize     int64          `json:"size"`
-	LastModified string         `json:"modify_time"`
-	LastAccess   string         `json:"access_time"`
+	LastModified int64         `json:"modify_time"`
+	LastAccess   int64         `json:"access_time"`
 }
 
 type TaskResponseMessageResponse struct {

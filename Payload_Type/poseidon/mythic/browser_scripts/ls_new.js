@@ -1,13 +1,13 @@
 function(task, response){
 	var rows = [];
 	let headers = [
-            {"plaintext": "name", "type": "string"},
-            {"plaintext": "size", "type": "size"},
-            {"plaintext": "user", "type": "string"},
-            {"plaintext": "group", "type": "string"},
-            {"plaintext": "permissions", "type": "string", "width": 8},
-			{"plaintext": "modified", "type": "string"},
-            {"plaintext": "ls", "type": "button", "width": 10},
+            {"plaintext": "name", "type": "string", "fillWidth": true},
+            {"plaintext": "size", "type": "size", "width": 150},
+            {"plaintext": "user", "type": "string", "width": 200},
+            {"plaintext": "group", "type": "string", "width": 200},
+            {"plaintext": "permissions", "type": "string", "width": 150},
+			{"plaintext": "modified", "type": "date", "width": 300},
+            {"plaintext": "ls", "type": "button", "width": 100},
         ];
 
 	for(let i = 0; i < response.length; i++){
@@ -20,18 +20,23 @@ function(task, response){
 		}
 		let perms = JSON.parse(data['permissions']['permissions']);
 		rows.push({
-			"name": {"plaintext": data['name']},
+			"name": {"plaintext": data['name'],
+				"startIcon": data["is_file"] ? "file":"openFolder",
+				"startIconColor": data["is_file"] ? "": "gold",
+				"copyIcon": true },
 			"size": {"plaintext": data['size']},
-			"modified": {"plaintext": data["modify_time"]},
+			"modified": {"plaintext": (new Date(data["modify_time"])).toISOString(),
+				"plaintextHoverText":  (new Date(data["modify_time"])).toDateString()},
 			"user": {"plaintext": perms['user']},
 			"group": {"plaintext": perms['group']},
 			"permissions": {"plaintext": perms["permissions"]},
 			"ls": {"button": {
-					"name": "ls .",
+					"name": "",
 					"type": "task",
 					"ui_feature": "file_browser:list",
-					"parameters": ls_path
-
+					"parameters": ls_path,
+					"hoverText": "Issue ls for this entry",
+					"startIcon": "list",
 				}
 			}
 		});
@@ -40,18 +45,23 @@ function(task, response){
 		{
 			let perms = JSON.parse(files[j]['permissions']['permissions']);
 			rows.push({
-				"name": {"plaintext": files[j]['name']},
+				"name": {"plaintext": files[j]['name'], "startIcon": files[j]["is_file"] ? "file":"openFolder",
+					"copyIcon": true,
+					"startIconColor": files[j]["is_file"] ? "": "gold"
+				},
 				"size": {"plaintext": files[j]['size']},
-				"modified": {"plaintext": files[j]["modify_time"]},
+				"modified": {"plaintext": (new Date(files[j]["modify_time"])).toISOString(),
+					"plaintextHoverText":(new Date(files[j]["modify_time"])).toDateString()},
 				"user": {"plaintext": perms['user']},
 				"group": {"plaintext": perms['group']},
 				"permissions": {"plaintext": perms["permissions"]},
 				"ls": {"button": {
-						"name": "ls .",
+						"name": "",
 						"type": "task",
 						"ui_feature": "file_browser:list",
-						"parameters": ls_path
-
+						"parameters": ls_path,
+						"hoverText": "Issue ls for this entry",
+						"startIcon": "list",
 					}
 				}
 			});
@@ -59,29 +69,6 @@ function(task, response){
 		return {"table":[{
             "headers": headers,
             "rows": rows,
-            "title": "File Listing Data"
         }]};
 	}
 }
-
-
-/*
-httpGetAsync("{{http}}://{{links.server_ip}}:{{links.server_port}}{{links.api_base}}/filebrowserobj/" + data['id'] + "/permissions", (response)=>{
-                  try{
-                      let perms = JSON.parse(response);
-                      if(perms['status'] === "success"){
-                          try {
-                              this.file_browser_permissions = JSON.parse(perms['permissions']);
-                          } catch (error) {
-                              this.file_browser_permissions = {"Permissions": perms['permissions']};
-                          }
-                      }else{
-                          alertTop("warning", "Failed to fetch permissions: " + perms['error']);
-                      }
-                  }catch(error){
-                      console.log(error);
-                      alertTop("danger", "Session expired, please refresh");
-                  }
-              }, "GET", null);
-
-*/
