@@ -16,7 +16,8 @@ class UploadArguments(TaskArguments):
                 description="Path where the uploaded file will be written.",
                 parameter_group_info=[
                     ParameterGroupInfo(
-                        ui_position=2
+                        ui_position=2,
+                        required=False
                     )
                 ]
             ),
@@ -39,7 +40,8 @@ class UploadArguments(TaskArguments):
                 default_value=False,
                 parameter_group_info=[
                     ParameterGroupInfo(
-                        ui_position=3
+                        ui_position=3,
+                        required=False
                     )
                 ]
              )
@@ -65,7 +67,7 @@ class UploadCommand(CommandBase):
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         try:
-            original_file_name = json.loads(task.original_params)["File to Upload"]
+            original_file_name = json.loads(task.original_params)["file_id"]
             if len(task.args.get_arg("remote_path")) == 0:
                 task.args.add_arg("remote_path", original_file_name)
             elif task.args.get_arg("remote_path")[-1] == "/":
