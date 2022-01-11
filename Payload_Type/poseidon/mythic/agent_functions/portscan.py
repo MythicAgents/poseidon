@@ -19,7 +19,7 @@ class PortScanArguments(TaskArguments):
             CommandParameter(
                 name="hosts",
                 type=ParameterType.Array,
-                description="List of hosts to scan",
+                description="List of host IPs or CIDR notations",
                 parameter_group_info=[
                     ParameterGroupInfo(
                         ui_position=1
@@ -51,7 +51,7 @@ class PortScanCommand(CommandBase):
     author = "@djhohnstein"
     argument_class = PortScanArguments
     attackmapping = ["T1046"]
-    browser_script = BrowserScript(script_name="portscan", author="@djhohnstein")
+    browser_script = BrowserScript(script_name="portscan_new", author="@djhohnstein", for_new_ui=True)
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         return task
