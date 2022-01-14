@@ -67,21 +67,19 @@ class UploadCommand(CommandBase):
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         try:
-            original_file_name = json.loads(task.original_params)["file_id"]
+            file_resp = await MythicRPC().execute("get_file",
+                                                  file_id=task.args.get_arg("file_id"),
+                                                  task_id=task.id,
+                                                  get_contents=False)
+            if file_resp.status == MythicRPCStatus.Success:
+                original_file_name = file_resp.response[0]["filename"]
+            else:
+                raise Exception("Error from Mythic: " + str(file_resp.error))
             if len(task.args.get_arg("remote_path")) == 0:
                 task.args.add_arg("remote_path", original_file_name)
             elif task.args.get_arg("remote_path")[-1] == "/":
                 task.args.add_arg("remote_path", task.args.get_arg("remote_path") + original_file_name)
-            file_resp = await MythicRPC().execute("create_file", task_id=task.id,
-                file=base64.b64encode(task.args.get_arg("file_id")).decode(),
-                saved_file_name=original_file_name,
-                delete_after_fetch=False,
-            )
-            if file_resp.status == MythicStatus.Success:
-                task.args.add_arg("file_id", file_resp.response["agent_file_id"])
-                task.display_params = f"{original_file_name} to {task.args.get_arg('remote_path')}"
-            else:
-                raise Exception("Error from Mythic: " + str(file_resp.error))
+            task.display_params = f"{original_file_name} to {task.args.get_arg('remote_path')}"
         except Exception as e:
             raise Exception("Error from Mythic: " + str(sys.exc_info()[-1].tb_lineno) + str(e))
         return task

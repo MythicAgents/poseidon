@@ -65,17 +65,19 @@ class ExecuteMemoryCommand(CommandBase):
     attackmapping = []
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
-        original_file_name = json.loads(task.original_params)["Binary/Bundle to execute"]
-        response = await MythicRPC().execute("create_file", task_id=task.id,
-            file=base64.b64encode(task.args.get_arg("file_id")).decode(),
-            saved_file_name=original_file_name,
-            delete_after_fetch=True,
-        )
-        if response.status == MythicStatus.Success:
-            task.args.add_arg("file_id", response.response["agent_file_id"])
-            task.display_params = "function " + task.args.get_arg("function_name") + " of " + original_file_name + " with args: " + task.args.get_arg("args")
+        file_resp = await MythicRPC().execute("get_file",
+                                              file_id=task.args.get_arg("file_id"),
+                                              task_id=task.id,
+                                              get_contents=False)
+        if file_resp.status == MythicRPCStatus.Success:
+            original_file_name = file_resp.response[0]["filename"]
         else:
-            raise Exception("Error from Mythic: " + response.error)
+            raise Exception("Error from Mythic: " + str(file_resp.error))
+        await MythicRPC().execute("update_file",
+                                  file_id=task.args.get_arg("file_id"),
+                                  delete_after_fetch=True,
+                                  comment="Uploaded into memory for execute_memory")
+        task.display_params = "function " + task.args.get_arg("function_name") + " of " + original_file_name + " with args: " + task.args.get_arg("args")
         return task
 
     async def process_response(self, response: AgentResponse):

