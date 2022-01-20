@@ -28,7 +28,7 @@ class DownloadCommand(CommandBase):
     supported_ui_features = ["file_browser:download"]
     author = "@xorrior"
     argument_class = DownloadArguments
-    attackmapping = ["T1022", "T1030", "T1041"]
+    attackmapping = ["T1020", "T1030", "T1041"]
     browser_script = [BrowserScript(script_name="download", author="@djhohnstein"),
                       BrowserScript(script_name="download_new", author="@djhohnstein", for_new_ui=True)]
 

@@ -38,7 +38,7 @@ class JxaCommand(CommandBase):
     version = 1
     author = "@xorrior"
     argument_class = JxaArguments
-    attackmapping = []
+    attackmapping = [ "T1059.002"]
     attributes = CommandAttributes(
         # eventually uncomment this once poseidon supports dynamic compilation of commands
         supported_os=[SupportedOS.MacOS]

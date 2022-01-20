@@ -62,7 +62,7 @@ class ExecuteMemoryCommand(CommandBase):
         # uncomment when poseidon can dynamically compile commands
         supported_os=[SupportedOS.MacOS]
     )
-    attackmapping = []
+    attackmapping = ["T1106", "T1620", "T1105"]
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         file_resp = await MythicRPC().execute("get_file",

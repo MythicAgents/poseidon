@@ -65,7 +65,7 @@ class CurlCommand(CommandBase):
     version = 1
     author = "@xorrior"
     argument_class = CurlArguments
-    attackmapping = []
+    attackmapping = ["T1213"]
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         return task

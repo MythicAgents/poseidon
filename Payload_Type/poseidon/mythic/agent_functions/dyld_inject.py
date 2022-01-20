@@ -53,7 +53,8 @@ class DyldInjectArguments(TaskArguments):
 
     async def parse_dictionary(self, dictionary):
         self.load_args_from_dictionary(dictionary)
-    
+
+
 class DyldInjectCommand(CommandBase):
     cmd = "dyld_inject"
     needs_admin = False

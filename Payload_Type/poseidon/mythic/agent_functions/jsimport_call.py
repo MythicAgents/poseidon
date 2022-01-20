@@ -38,7 +38,7 @@ class JsImportCallCommand(CommandBase):
     version = 1
     author = "@its_a_feature_"
     argument_class = JsImportCallArguments
-    attackmapping = ["T1155", "T1064"]
+    attackmapping = ["T1059.002"]
     attributes = CommandAttributes(
         # eventually uncomment this once poseidon supports dynamic compilation of commands
         supported_os=[SupportedOS.MacOS]

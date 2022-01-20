@@ -103,7 +103,7 @@ class XpcCommand(CommandBase):
         # uncomment when poseidon can dynamically compile commands
         supported_os=[SupportedOS.MacOS]
     )
-    attackmapping = []
+    attackmapping = ["T1559"]
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         return task

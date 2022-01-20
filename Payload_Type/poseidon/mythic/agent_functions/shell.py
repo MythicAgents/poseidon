@@ -20,7 +20,7 @@ class ShellCommand(CommandBase):
     version = 1
     author = "@xorrior"
     argument_class = ShellArguments
-    attackmapping = ["T1059"]
+    attackmapping = ["T1059.004"]
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         resp = await MythicRPC().execute("create_artifact", task_id=task.id,

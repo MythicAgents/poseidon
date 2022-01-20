@@ -155,7 +155,7 @@ You can also use this to execute a specific command on the remote hosts via SSH 
     version = 1
     author = "@xorrior"
     argument_class = SSHAuthArguments
-    attackmapping = ["T1110"]
+    attackmapping = ["T1110.003"]
     browser_script = BrowserScript(script_name="sshauth", author="@djhohnstein")
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:

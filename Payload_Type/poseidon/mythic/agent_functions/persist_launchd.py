@@ -72,7 +72,7 @@ class PersistLaunchdCommand(CommandBase):
     description = "Create a launch agent or daemon plist file and save it to ~/Library/LaunchAgents or /Library/LaunchDaemons"
     version = 1
     author = "@xorrior"
-    attackmapping = ["T1159", "T1160"]
+    attackmapping = ["T1543.001", "T1543.004"]
     argument_class = PersistLaunchdArguments
     attributes = CommandAttributes(
         supported_os=[SupportedOS.MacOS]

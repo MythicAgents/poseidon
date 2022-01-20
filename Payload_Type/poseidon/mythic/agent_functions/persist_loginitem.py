@@ -44,7 +44,7 @@ class PersistLoginItem(CommandBase):
     description = "Add a login item for the current user via the LSSharedFileListInsertItemURL function."
     version = 1
     author = "@xorrior"
-    attackmapping = ["T1547.011"]
+    attackmapping = ["T1547.011", "T1547.015"]
     argument_class = PersistLoginItemArguments
     attributes = CommandAttributes(
         supported_os=[SupportedOS.MacOS]

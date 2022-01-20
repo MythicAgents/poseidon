@@ -18,7 +18,7 @@ class PwdCommand(CommandBase):
     version = 1
     author = "@xorrior"
     argument_class = PwdArguments
-    attackmapping = []
+    attackmapping = ["T1083"]
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         return task

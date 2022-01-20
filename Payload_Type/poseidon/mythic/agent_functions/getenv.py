@@ -19,7 +19,7 @@ class GetEnvCommand(CommandBase):
     version = 1
     author = "@xorrior"
     argument_class = GetEnvArguments
-    attackmapping = []
+    attackmapping = ["T1082"]
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         return task

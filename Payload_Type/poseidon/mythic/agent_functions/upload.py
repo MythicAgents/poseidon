@@ -63,7 +63,7 @@ class UploadCommand(CommandBase):
     supported_ui_features = ["file_browser:upload"]
     author = "@xorrior"
     argument_class = UploadArguments
-    attackmapping = []
+    attackmapping = ["T1020", "T1030", "T1041", "T1105"]
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         try:

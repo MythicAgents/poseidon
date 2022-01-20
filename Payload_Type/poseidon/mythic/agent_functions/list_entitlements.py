@@ -33,7 +33,7 @@ class ListEntitlementCommand(CommandBase):
     version = 1
     author = "@its_a_feature_"
     argument_class = ListEntitlementsArguments
-    attackmapping = []
+    attackmapping = ["T1057"]
     browser_script = BrowserScript(script_name="list_entitlements_new", author="@its_a_feature_", for_new_ui=True)
     attributes = CommandAttributes(
         # uncomment when poseidon can dynamically compile commands
