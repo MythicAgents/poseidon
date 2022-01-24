@@ -10,7 +10,7 @@ Inject a library from on-host into a process on macOS.
   
 - Needs Admin: False  
 - Version: 1  
-- Author: @xorrior  
+- Author: Jonathan Levin, @xorrior  
 
 ### Arguments
 
