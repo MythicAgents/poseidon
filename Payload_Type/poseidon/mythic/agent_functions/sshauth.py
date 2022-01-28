@@ -63,7 +63,7 @@ class SSHAuthArguments(TaskArguments):
                         group_name="scp-private-key"
                     ),
                     ParameterGroupInfo(
-                        group_name="command-private-key"
+                        group_name="run-command-private-key"
                     )
                 ]
             ),
@@ -99,7 +99,7 @@ class SSHAuthArguments(TaskArguments):
                         group_name="scp-plaintext-password"
                     ),
                     ParameterGroupInfo(
-                        group_name="command-plaintext-password"
+                        group_name="run-command-plaintext-password"
                     )
                 ]
             ),

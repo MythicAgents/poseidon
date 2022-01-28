@@ -26,7 +26,7 @@ class ScreencaptureCommand(CommandBase):
         # uncomment this when poseidon supports dynamic compilation
         supported_os=[SupportedOS.MacOS]
     )
-    browser_script = BrowserScript(script_name="screencapture", author="@djhohnstein")
+    browser_script = BrowserScript(script_name="screencapture_new", author="@djhohnstein", for_new_ui=True)
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         return task
