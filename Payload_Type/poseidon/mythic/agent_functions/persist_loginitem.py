@@ -37,6 +37,7 @@ class PersistLoginItemArguments(TaskArguments):
         self.load_args_from_dictionary(dictionary)
 
 
+
 class PersistLoginItem(CommandBase):
     cmd = "persist_loginitem"
     needs_admin = False

@@ -33,6 +33,7 @@ class PersistLaunchdArguments(TaskArguments):
                 ]
             ),
             CommandParameter(
+
                 name="Label",
                 type=ParameterType.String,
                 default_value="com.apple.mdmupdateagent",
@@ -73,6 +74,7 @@ class PersistLaunchdCommand(CommandBase):
     version = 1
     author = "@xorrior"
     attackmapping = ["T1543.001", "T1543.004"]
+
     argument_class = PersistLaunchdArguments
     attributes = CommandAttributes(
         supported_os=[SupportedOS.MacOS]
