@@ -3,25 +3,38 @@ import json
 
 
 class LibinjectArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {
-            "pid": CommandParameter(
-                name="Pid to inject into",
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = [
+             CommandParameter(
+                name="pid",
+                display_name="Pid to inject into",
                 type=ParameterType.Number,
                 description="PID of process to inject into.",
-                ui_position=1
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        ui_position=1
+                    )
+                ]
             ),
-            "library": CommandParameter(
-                name="Absolute path to dylib on target to load",
+            CommandParameter(
+                name="library",
+                display_name="Absolute path to dylib on target to load",
                 type=ParameterType.String,
                 description="Path to the dylib to inject",
-                ui_position=2
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        ui_position=2
+                    )
+                ]
             ),
-        }
+        ]
 
     async def parse_arguments(self):
         self.load_args_from_json_string(self.command_line)
+
+    async def parse_dictionary(self, dictionary):
+        self.load_args_from_dictionary(dictionary)
 
 
 class LibinjectCommand(CommandBase):

@@ -3,9 +3,9 @@ import json
 
 
 class LsArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {}
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = []
 
     async def parse_arguments(self):
         self.add_arg("file_browser", False, type=ParameterType.Boolean)
@@ -21,6 +21,14 @@ class LsArguments(TaskArguments):
         else:
             self.add_arg("path", ".")
 
+    async def parse_dictionary(self, dictionary):
+        if "path" in dictionary and "file" in dictionary:
+            self.add_arg("file_browser", value=True, type=ParameterType.Boolean)
+            self.add_arg("path", value=dictionary["path"] + "/" + dictionary["file"])
+        else:
+            self.add_arg("file_browser", value=False, type=ParameterType.Boolean)
+            self.add_arg("path", value=".")
+
 
 class LsCommand(CommandBase):
     cmd = "ls"
@@ -32,7 +40,8 @@ class LsCommand(CommandBase):
     author = "@xorrior"
     argument_class = LsArguments
     attackmapping = ["T1083"]
-    browser_script = BrowserScript(script_name="ls", author="@its_a_feature_")
+    browser_script = [BrowserScript(script_name="ls", author="@its_a_feature_"),
+                      BrowserScript(script_name="ls_new", author="@its_a_feature_", for_new_ui=True)]
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         if task.args.has_arg("file_browser") and task.args.get_arg("file_browser"):

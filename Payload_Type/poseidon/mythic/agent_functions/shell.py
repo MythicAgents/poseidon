@@ -4,9 +4,9 @@ from mythic_payloadtype_container.MythicRPC import *
 
 
 class ShellArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {}
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = []
 
     async def parse_arguments(self):
         pass
@@ -20,7 +20,7 @@ class ShellCommand(CommandBase):
     version = 1
     author = "@xorrior"
     argument_class = ShellArguments
-    attackmapping = ["T1059"]
+    attackmapping = ["T1059.004"]
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         resp = await MythicRPC().execute("create_artifact", task_id=task.id,

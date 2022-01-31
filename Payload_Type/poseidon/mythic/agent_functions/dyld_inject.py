@@ -2,29 +2,45 @@ from mythic_payloadtype_container.MythicCommandBase import *
 import json
 
 class DyldInjectArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {
-            "application" : CommandParameter(
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = [
+             CommandParameter(
                 name="application",
                 type=ParameterType.String,
-                required=True,
-                description="Path to the target application/binary"
+                description="Path to the target application/binary",
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        required=True,
+                        ui_position=1
+                    )
+                ]
             ),
-            "dylibpath": CommandParameter(
+            CommandParameter(
                 name="dylibpath",
                 type=ParameterType.String,
-                required=True,
-                description="Path to the dylib on disk that will be injected into the target application"
+                description="Path to the dylib on disk that will be injected into the target application",
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        required=True,
+                        ui_position=2
+                    )
+                ]
             ),
-            "hideApp": CommandParameter(
+            CommandParameter(
                 name="hideApp",
                 type=ParameterType.Boolean,
-                required=True,
                 default_value=False,
-                description="If true, launch the application with the kLSLaunchAndHide flag set. If false, use the kLSLaunchDefaults flag"
+                description="If true, launch the application with the kLSLaunchAndHide flag set. If false, use the kLSLaunchDefaults flag",
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        required=True,
+                        ui_position=3
+                    )
+                ]
             )
-        }
+        ]
+
 
     async def parse_arguments(self):
         if len(self.command_line) > 0:
@@ -35,7 +51,10 @@ class DyldInjectArguments(TaskArguments):
 
         else:
             raise ValueError("Missing arguments")
-    
+
+    async def parse_dictionary(self, dictionary):
+        self.load_args_from_dictionary(dictionary)
+
 class DyldInjectCommand(CommandBase):
     cmd = "dyld_inject"
     needs_admin = False

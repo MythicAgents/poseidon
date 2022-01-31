@@ -125,13 +125,28 @@ type TaskResponseMessage struct {
 	Socks     []SocksMsg        `json:"socks"`
 }
 
+type ProcessDetails struct {
+	ProcessID           int                    `json:"process_id"`
+	ParentProcessID     int                    `json:"parent_process_id"`
+	Arch                string                 `json:"architecture"`
+	User                string                 `json:"user"`
+	BinPath             string                 `json:"bin_path"`
+	Arguments           []string               `json:"args"`
+	Environment         map[string]interface{} `json:"env"`
+	SandboxPath         string                 `json:"sandboxpath"`
+	ScriptingProperties map[string]interface{} `json:"scripting_properties"`
+	Name                string                 `json:"name"`
+	BundleID            string                 `json:"bundleid"`
+}
+
 type Response struct {
 	TaskID       string           `json:"task_id"`
 	UserOutput   string           `json:"user_output"`
 	Completed    bool             `json:"completed"`
 	Status       string           `json:"status"`
-	FileBrowser  FileBrowser `json:"file_browser"`
+	FileBrowser  FileBrowser      `json:"file_browser"`
 	RemovedFiles []RmFiles        `json:"removed_files,omitempty"`
+	Processes    []ProcessDetails           `json:"processes,omitempty"`
 }
 
 func (r *Response) SetError(errString string) {
@@ -157,8 +172,8 @@ type FileBrowser struct {
 	ParentPath   string         `json:"parent_path"`
 	Success      bool           `json:"success"`
 	FileSize     int64          `json:"size"`
-	LastModified string         `json:"modify_time"`
-	LastAccess   string         `json:"access_time"`
+	LastModified int64         `json:"modify_time"`
+	LastAccess   int64         `json:"access_time"`
 }
 
 type FileData struct {
@@ -167,8 +182,8 @@ type FileData struct {
 	Name     string         `json:"name"`
 	FullName string `json:"full_name"`
 	FileSize     int64          `json:"size"`
-	LastModified string         `json:"modify_time"`
-	LastAccess   string         `json:"access_time"`
+	LastModified int64         `json:"modify_time"`
+	LastAccess   int64         `json:"access_time"`
 }
 
 type TaskResponseMessageResponse struct {

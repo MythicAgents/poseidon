@@ -19,8 +19,8 @@ class Poseidon(PayloadType):
     note = "A fully featured macOS and Linux Golang agent"
     supports_dynamic_loading = False
     mythic_encrypts = True
-    build_parameters = {
-        "mode": BuildParameter(
+    build_parameters = [
+        BuildParameter(
             name="mode",
             parameter_type=BuildParameterType.ChooseOne,
             description="Choose the build mode option. Select default for executables, "
@@ -29,14 +29,13 @@ class Poseidon(PayloadType):
             choices=["default", "c-archive", "c-shared"],
             default_value="default",
         ),
-        "proxy_bypass": BuildParameter(
+        BuildParameter(
             name="proxy_bypass",
-            parameter_type=BuildParameterType.ChooseOne,
-            choices=["false", "true"],
-            default_value="false",
+            parameter_type=BuildParameterType.Boolean,
+            default_value=False,
             description="Ignore HTTP proxy environment settings configured on the target host?",
         ),
-    }
+    ]
     c2_profiles = ["websocket", "http"]
     support_browser_scripts = [
         BrowserScript(script_name="create_table", author="@djhohnstein"),

@@ -6,31 +6,48 @@ from mythic_payloadtype_container.MythicRPC import *
 
 
 class ExecuteMemoryArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {
-            "function_name": CommandParameter(
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = [
+            CommandParameter(
                 name="function_name",
                 type=ParameterType.String,
                 description="Which function should be executed?",
-                ui_position=2
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        ui_position=2
+                    )
+                ]
             ),
-            "file_id": CommandParameter(
-                name="Binary/Bundle to execute",
+            CommandParameter(
+                name="file_id",
+                display_name="Binary/Bundle to execute",
                 type=ParameterType.File,
                 description="Select the Bundle/Dylib/Binary to execute in memory",
-                ui_position=1
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        ui_position=1
+                    )
+                ]
             ),
-            "args": CommandParameter(
-                name="Argument String",
+            CommandParameter(
+                name="args",
+                display_name="Argument String",
                 type=ParameterType.String,
                 description="Arguments to pass to function",
-                ui_position=3
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        ui_position=3
+                    )
+                ]
             ),
-        }
+        ]
 
     async def parse_arguments(self):
         self.load_args_from_json_string(self.command_line)
+
+    async def parse_dictionary(self, dictionary):
+        self.load_args_from_dictionary(dictionary)
 
 
 class ExecuteMemoryCommand(CommandBase):
@@ -45,20 +62,22 @@ class ExecuteMemoryCommand(CommandBase):
         # uncomment when poseidon can dynamically compile commands
         supported_os=[SupportedOS.MacOS]
     )
-    attackmapping = []
+    attackmapping = ["T1106", "T1620", "T1105"]
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
-        original_file_name = json.loads(task.original_params)["Binary/Bundle to execute"]
-        response = await MythicRPC().execute("create_file", task_id=task.id,
-            file=base64.b64encode(task.args.get_arg("file_id")).decode(),
-            saved_file_name=original_file_name,
-            delete_after_fetch=True,
-        )
-        if response.status == MythicStatus.Success:
-            task.args.add_arg("file_id", response.response["agent_file_id"])
-            task.display_params = "function " + task.args.get_arg("function_name") + " of " + original_file_name + " with args: " + task.args.get_arg("args")
+        file_resp = await MythicRPC().execute("get_file",
+                                              file_id=task.args.get_arg("file_id"),
+                                              task_id=task.id,
+                                              get_contents=False)
+        if file_resp.status == MythicRPCStatus.Success:
+            original_file_name = file_resp.response[0]["filename"]
         else:
-            raise Exception("Error from Mythic: " + response.error)
+            raise Exception("Error from Mythic: " + str(file_resp.error))
+        await MythicRPC().execute("update_file",
+                                  file_id=task.args.get_arg("file_id"),
+                                  delete_after_fetch=True,
+                                  comment="Uploaded into memory for execute_memory")
+        task.display_params = "function " + task.args.get_arg("function_name") + " of " + original_file_name + " with args: " + task.args.get_arg("args")
         return task
 
     async def process_response(self, response: AgentResponse):

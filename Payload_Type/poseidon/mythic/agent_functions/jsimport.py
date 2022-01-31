@@ -6,19 +6,22 @@ from mythic_payloadtype_container.MythicRPC import *
 
 
 class JsImportArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {
-            "file_id": CommandParameter(
-                name="JXA Script to Load",
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = [
+            CommandParameter(
+                name="file_id",
+                display_name="JXA Script to Load",
                 type=ParameterType.File,
                 description="Select the JXA Script to load into memory",
-                ui_position=1
             ),
-        }
+        ]
 
     async def parse_arguments(self):
         self.load_args_from_json_string(self.command_line)
+
+    async def parse_dictionary(self, dictionary):
+        self.load_args_from_dictionary(dictionary)
 
 
 class JsImportCommand(CommandBase):
@@ -33,20 +36,22 @@ class JsImportCommand(CommandBase):
         # uncomment when poseidon can dynamically compile commands
         supported_os=[SupportedOS.MacOS]
     )
-    attackmapping = []
+    attackmapping = ["T1020", "T1030", "T1041", "T1620", "T1105"]
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
-        original_file_name = json.loads(task.original_params)["JXA Script to Load"]
-        response = await MythicRPC().execute("create_file", task_id=task.id,
-            file=base64.b64encode(task.args.get_arg("file_id")).decode(),
-            saved_file_name=original_file_name,
-            delete_after_fetch=True,
-        )
-        if response.status == MythicStatus.Success:
-            task.args.add_arg("file_id", response.response["agent_file_id"])
-            task.display_params = "script " + original_file_name
+        file_resp = await MythicRPC().execute("get_file",
+                                              file_id=task.args.get_arg("file_id"),
+                                              task_id=task.id,
+                                              get_contents=False)
+        if file_resp.status == MythicRPCStatus.Success:
+            original_file_name = file_resp.response[0]["filename"]
         else:
-            raise Exception("Error from Mythic: " + response.error)
+            raise Exception("Error from Mythic: " + str(file_resp.error))
+        task.display_params = f"script {original_file_name}"
+        file_resp = await MythicRPC().execute("update_file",
+                                              file_id=task.args.get_arg("file_id"),
+                                              delete_after_fetch=True,
+                                              comment="Uploaded into memory for jsimport")
         return task
 
     async def process_response(self, response: AgentResponse):

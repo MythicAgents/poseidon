@@ -22,9 +22,6 @@ import (
 
 var mu sync.Mutex
 
-const (
-	layoutStr = "01/02/2006 15:04:05"
-)
 
 type FilePermission struct {
 	UID         int    `json:"uid"`
@@ -84,12 +81,12 @@ func Run(task structs.Task) {
 		e.ParentPath = ""
 	}
 	e.FileSize = dirInfo.Size()
-	e.LastModified = dirInfo.ModTime().Format(layoutStr)
+	e.LastModified = dirInfo.ModTime().Unix() * 1000
 	at, err := atime.Stat(abspath)
 	if err != nil {
-		e.LastAccess = ""
+		e.LastAccess = 0
 	} else {
-		e.LastAccess = at.Format(layoutStr)
+		e.LastAccess = at.Unix() * 1000
 	}
 	e.Success = true
 	if dirInfo.IsDir() {
@@ -114,15 +111,18 @@ func Run(task structs.Task) {
 			fileEntries[i].Name = files[i].Name()
 			fileEntries[i].FullName = filepath.Join(abspath, files[i].Name())
 			fileEntries[i].FileSize = files[i].Size()
-			fileEntries[i].LastModified = files[i].ModTime().Format(layoutStr)
+			fileEntries[i].LastModified = files[i].ModTime().Unix() * 1000
 			at, err := atime.Stat(abspath)
 			if err != nil {
-				fileEntries[i].LastAccess = ""
+				fileEntries[i].LastAccess = 0
 			} else {
-				fileEntries[i].LastAccess = at.Format(layoutStr)
+				fileEntries[i].LastAccess = at.Unix() * 1000
 			}
 		}
 		e.Files = fileEntries
+	}else{
+	    fileEntries := make([]structs.FileData, 0)
+	    e.Files = fileEntries
 	}
 	msg.Completed = true
 	msg.FileBrowser = e

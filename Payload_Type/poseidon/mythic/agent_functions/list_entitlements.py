@@ -3,18 +3,26 @@ import json
 
 
 class ListEntitlementsArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {
-            "pid": CommandParameter(
-                name="Pid to query (-1 for all)",
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = [
+            CommandParameter(
+                name="pid",
+                display_name="Pid to query (-1 for all)",
                 type=ParameterType.Number,
+                default_value=-1,
                 description="PID of process to query (-1 for all)",
+                parameter_group_info=[ParameterGroupInfo(
+                    required=False
+                )]
             )
-        }
+        ]
 
     async def parse_arguments(self):
         self.load_args_from_json_string(self.command_line)
+
+    async def parse_dictionary(self, dictionary):
+        self.load_args_from_dictionary(dictionary)
 
 
 class ListEntitlementCommand(CommandBase):
@@ -25,14 +33,18 @@ class ListEntitlementCommand(CommandBase):
     version = 1
     author = "@its_a_feature_"
     argument_class = ListEntitlementsArguments
-    attackmapping = []
-    browser_script = BrowserScript(script_name="list_entitlements", author="@its_a_feature_")
+    attackmapping = ["T1057"]
+    browser_script = BrowserScript(script_name="list_entitlements_new", author="@its_a_feature_", for_new_ui=True)
     attributes = CommandAttributes(
         # uncomment when poseidon can dynamically compile commands
         supported_os=[SupportedOS.MacOS]
     )
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
+        if task.args.get_arg("pid") == -1:
+            task.display_params = " for all running processes"
+        else:
+            task.display_params = " for pid " + str(task.args.get_arg("pid"))
         return task
 
     async def process_response(self, response: AgentResponse):

@@ -2,48 +2,55 @@ from mythic_payloadtype_container.MythicCommandBase import *
 import json
 
 class PersistLaunchdArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {
-            "args": CommandParameter(
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = [
+            CommandParameter(
                 name="args",
                 type=ParameterType.Array,
-                required=True,
                 description="List of arguments to execute in the ProgramArguments section of the PLIST",
             ),
-            "KeepAlive": CommandParameter(
+            CommandParameter(
                 name="KeepAlive",
                 type=ParameterType.Boolean,
                 default_value=True,
                 description="When this value is set to true, Launchd will restart the daemon if it dies",
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        required=False
+                    )
+                ]
             ),
-            "RunAtLoad": CommandParameter(
+            CommandParameter(
                 name="RunAtLoad",
                 type=ParameterType.Boolean,
                 default_value=False,
                 description="When this value is set to true, Launchd will immediately start the daemon/agent once it has been registered",
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        required=False
+                    )
+                ]
             ),
-            "Label":CommandParameter(
+            CommandParameter(
+
                 name="Label",
                 type=ParameterType.String,
                 default_value="com.apple.mdmupdateagent",
                 description="The label for launch persistence",
-                required=True
             ),
-            "LaunchPath": CommandParameter(
+            CommandParameter(
                 name="LaunchPath",
                 type=ParameterType.String,
-                required=True,
                 description="Path to save the new plist"
             ),
-            "LocalAgent": CommandParameter(
+            CommandParameter(
                 name="LocalAgent",
                 type=ParameterType.Boolean,
                 default_value=True,
-                required=True,
                 description="Should be a local user launch agent"
             ),
-        }
+        ]
 
     async def parse_arguments(self):
         if len(self.command_line) > 0:
@@ -55,6 +62,10 @@ class PersistLaunchdArguments(TaskArguments):
         else:
             raise ValueError("Missing arguments")
 
+    async def parse_dictionary(self, dictionary):
+        self.load_args_from_dictionary(dictionary)
+
+
 class PersistLaunchdCommand(CommandBase):
     cmd = "persist_launchd"
     needs_admin = False
@@ -62,7 +73,8 @@ class PersistLaunchdCommand(CommandBase):
     description = "Create a launch agent or daemon plist file and save it to ~/Library/LaunchAgents or /Library/LaunchDaemons"
     version = 1
     author = "@xorrior"
-    attackmapping = ["T1159", "T1160"]
+    attackmapping = ["T1543.001", "T1543.004"]
+
     argument_class = PersistLaunchdArguments
     attributes = CommandAttributes(
         supported_os=[SupportedOS.MacOS]

@@ -3,26 +3,33 @@ import json
 
 
 class SleepArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {
-            "jitter": CommandParameter(
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = [
+            CommandParameter(
                 name="jitter",
                 type=ParameterType.Number,
-                required=False,
                 description="Jitter percentage.",
                 default_value=-1,
-                ui_position=2
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        ui_position=2,
+                        required=False
+                    )
+                ]
             ),
-            "interval": CommandParameter(
+            CommandParameter(
                 name="interval",
                 type=ParameterType.Number,
-                required=True,
                 description="Sleep time in seconds",
                 default_value=-1,
-                ui_position=1
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        ui_position=1
+                    )
+                ]
             ),
-        }
+        ]
 
     async def parse_arguments(self):
         if len(self.command_line) > 0:
@@ -39,6 +46,9 @@ class SleepArguments(TaskArguments):
                     raise Exception("Wrong number of arguments. should be 1 or 2")
         else:
             raise Exception("Missing arguments for sleep")
+
+    async def parse_dictionary(self, dictionary):
+        self.load_args_from_dictionary(dictionary)
 
 
 class SleepCommand(CommandBase):

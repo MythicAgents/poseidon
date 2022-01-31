@@ -3,10 +3,10 @@ import json
 
 
 class KeysArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {
-            "command": CommandParameter(
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = [
+            CommandParameter(
                 name="command",
                 type=ParameterType.ChooseOne,
                 description="Choose a way to interact with keys.",
@@ -15,26 +15,46 @@ class KeysArguments(TaskArguments):
                     "dumpuser",
                     "dumpprocess",
                     "dumpthreads",
-                    "search",
                 ],
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        required=False
+                    )
+                ]
             ),
-            "keyword": CommandParameter(
+            CommandParameter(
                 name="keyword",
                 type=ParameterType.String,
                 description="Name of the key to search for",
-                required=False,
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        required=False,
+                        group_name="search"
+                    )
+                ]
             ),
-            "typename": CommandParameter(
+            CommandParameter(
                 name="typename",
                 type=ParameterType.ChooseOne,
                 description="Choose the type of key",
                 choices=["keyring", "user", "login", "logon", "session"],
-                required=False,
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        required=False,
+                        group_name="search"
+                    )
+                ]
             ),
-        }
+        ]
 
     async def parse_arguments(self):
         self.load_args_from_json_string(self.command_line)
+
+    async def parse_dictionary(self, dictionary):
+        self.load_args_from_dictionary(dictionary)
+        if self.get_group_name() == "search":
+            self.remove_arg("command")
+            self.add_arg("command", value="search", parameter_group_info=[ParameterGroupInfo(group_name="search")])
 
 
 class KeysCommand(CommandBase):

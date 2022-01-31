@@ -2,29 +2,26 @@ from mythic_payloadtype_container.MythicCommandBase import *
 import json
 
 class PersistLoginItemArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {
-            "path": CommandParameter(
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = [
+            CommandParameter(
                 name="path",
                 type=ParameterType.String,
                 description="Path to the binary to execute at login",
-                required=True,
             ),
-            "name": CommandParameter(
+            CommandParameter(
                 name="name",
                 type=ParameterType.String,
                 description="The name that is displayed in the Login Items section of the Users & Groups preferences pane",
-                required=True,
             ),
-            "global": CommandParameter(
+            CommandParameter(
                 name="global",
                 type=ParameterType.Boolean,
                 description="Set this to true if the login item should be installed for all users. This requires administrative privileges",
-                required=True,
                 default_value=True
             ),
-        }
+        ]
 
     async def parse_arguments(self):
         if len(self.command_line) > 0:
@@ -36,6 +33,11 @@ class PersistLoginItemArguments(TaskArguments):
         else:
             raise ValueError("Missing arguments")
 
+    async def parse_dictionary(self, dictionary):
+        self.load_args_from_dictionary(dictionary)
+
+
+
 class PersistLoginItem(CommandBase):
     cmd = "persist_loginitem"
     needs_admin = False
@@ -43,7 +45,7 @@ class PersistLoginItem(CommandBase):
     description = "Add a login item for the current user via the LSSharedFileListInsertItemURL function."
     version = 1
     author = "@xorrior"
-    attackmapping = ["T1547.011"]
+    attackmapping = ["T1547.011", "T1547.015"]
     argument_class = PersistLoginItemArguments
     attributes = CommandAttributes(
         supported_os=[SupportedOS.MacOS]

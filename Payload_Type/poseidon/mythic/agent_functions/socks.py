@@ -3,24 +3,32 @@ from mythic_payloadtype_container.MythicRPC import *
 
 
 class SocksArguments(TaskArguments):
-    def __init__(self, command_line):
-        super().__init__(command_line)
-        self.args = {
-            "action": CommandParameter(
+    def __init__(self, command_line, **kwargs):
+        super().__init__(command_line, **kwargs)
+        self.args = [
+            CommandParameter(
                 name="action",
                 type=ParameterType.ChooseOne,
                 choices=["start", "stop"],
                 default_value="start",
                 description="Start or Stop socks through this callback.",
-                ui_position=1
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        ui_position=1
+                    )
+                ]
             ),
-            "port": CommandParameter(
+            CommandParameter(
                 name="port",
                 type=ParameterType.Number,
                 description="Port number on Mythic server to open for socksv5",
-                ui_position=2
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        ui_position=2
+                    )
+                ]
             ),
-        }
+        ]
 
     async def parse_arguments(self):
         self.load_args_from_json_string(self.command_line)
@@ -34,7 +42,7 @@ class SocksCommand(CommandBase):
     version = 1
     author = "@xorrior"
     argument_class = SocksArguments
-    attackmapping = []
+    attackmapping = ["T1572"]
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         if task.args.get_arg("action") == "start":
