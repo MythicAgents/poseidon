@@ -33,7 +33,7 @@ class CurlArguments(TaskArguments):
                 ]
             ),
             CommandParameter(
-                name="Base64 body content",
+                name="body",
                 type=ParameterType.String,
                 description="base64 encoded body.",
                 parameter_group_info=[
