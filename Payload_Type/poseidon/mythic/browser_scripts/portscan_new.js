@@ -20,7 +20,7 @@ function(task, response){
 						"hostname": {"plaintext": data[j]["hosts"][k]['hostname']},
 						"ipv4": {"plaintext": data[j]["hosts"][k]["ipv4"]},
 						"pretty name": {"plaintext":data[j]["hosts"][k]["pretty_name"]},
-						"open ports": {"plaintext": data[j]["hosts"][k]["open_ports"]}
+						"open ports": {"plaintext": JSON.stringify(data[j]["hosts"][k]["open_ports"])}
 					});
 				}
 				tables.push({
