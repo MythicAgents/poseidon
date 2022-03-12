@@ -3,14 +3,13 @@ package portscan
 import (
 	// Standard
 	"encoding/json"
-	"log"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
@@ -69,7 +68,6 @@ func doScan(hostList []string, portListStrs []string, job *structs.Job) []CIDR {
 
 	var results []CIDR
 	// Scan the hosts
-	go job.MonitorStop()
 	for i := 0; i < len(hostList); i++ {
 		newCidr, err := NewCIDR(hostList[i])
 		if err != nil {
@@ -95,42 +93,27 @@ func Run(task structs.Task) {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 	if len(params.Hosts) == 0 {
 		msg.UserOutput = "No hosts given to scan"
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 	if len(params.Ports) == 0 {
 		msg.UserOutput = "No ports given to scan"
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 
 	portStrings := strings.Split(params.Ports, ",")
-	log.Println("Beginning portscan...")
+	//log.Println("Beginning portscan...")
 	results := doScan(params.Hosts, portStrings, task.Job)
-	if task.Job.Monitoring {
-		go task.Job.SendKill()
-	}
 	// log.Println("Finished!")
 	data, err := json.MarshalIndent(results, "", "    ")
 	// // fmt.Println("Data:", string(data))
@@ -138,19 +121,12 @@ func Run(task structs.Task) {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 	// fmt.Println("Sending on up the data:\n", string(data))
 	msg.UserOutput = string(data)
 	msg.Completed = true
-	resp, _ := json.Marshal(msg)
-	mu.Lock()
-	profiles.TaskResponses = append(profiles.TaskResponses, resp)
-	mu.Unlock()
+	task.Job.SendResponses <- msg
 	return
 }

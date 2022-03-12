@@ -50,7 +50,7 @@ class JsImportCommand(CommandBase):
         task.display_params = f"script {original_file_name}"
         file_resp = await MythicRPC().execute("update_file",
                                               file_id=task.args.get_arg("file_id"),
-                                              delete_after_fetch=True,
+                                              delete_after_fetch=False,
                                               comment="Uploaded into memory for jsimport")
         return task
 

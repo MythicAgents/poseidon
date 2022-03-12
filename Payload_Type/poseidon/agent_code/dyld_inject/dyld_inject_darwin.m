@@ -6,7 +6,7 @@
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
 
-bool openUsingLSWith(NSString *path, NSDictionary<NSString*, NSString*> *env, bool hide) {
+bool openUsingLSWith(NSString *path, NSDictionary *env, bool hide) {
     FSRef appFSURL;
     OSStatus stat = FSPathMakeRef((const UInt8 *)[path UTF8String], &appFSURL, NULL);
     

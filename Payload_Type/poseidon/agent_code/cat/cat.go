@@ -2,16 +2,13 @@ package cat
 
 import (
 	// Standard
-	"encoding/json"
+
 	"os"
-	"sync"
 
 	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
-
-var mu sync.Mutex
 
 //Run - package function to run cat
 func Run(task structs.Task) {
@@ -25,11 +22,7 @@ func Run(task structs.Task) {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 
@@ -40,11 +33,7 @@ func Run(task structs.Task) {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 
@@ -55,19 +44,12 @@ func Run(task structs.Task) {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 
 	msg.UserOutput = string(data)
 	msg.Completed = true
-	resp, _ := json.Marshal(msg)
-	mu.Lock()
-	profiles.TaskResponses = append(profiles.TaskResponses, resp)
-	mu.Unlock()
+	task.Job.SendResponses <- msg
 	return
 }

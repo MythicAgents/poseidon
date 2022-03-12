@@ -2,52 +2,35 @@ package structs
 
 import (
 	"encoding/json"
-	"log"
-	"time"
+	"net"
+	"os"
 )
 
-// Defaultconfig - C2 Profile configuration for the default profile
-type Defaultconfig struct {
-	KEYX          string `json:"keyx"`
-	Key           string `json:"key"`
-	BaseURL       string `json:"baseurl"`
-	PostURI       string `json:"post_uri"`
-	GetURI        string `json:"get_uri"`
-	QueryPathName string `json:"query_path_name"`
-	ProxyURL      string `json:"proxy_url"`
-	ProxyUser     string `json:"proxy_user"`
-	ProxyPass     string `json:"proxy_pass"`
-	Sleep         int    `json:"sleep"`
-	Jitter        int    `json:"jitter"`
-	HeaderList []HeaderStruct `json:"headers"`
+// Profile is the primary client interface for Mythic C2 profiles
+type Profile interface {
+	// CheckIn method for sending the initial checkin to the server
+	CheckIn() interface{}
+	// PostResponse is used to send a task response to the server
+	SendMessage(output []byte) interface{}
+	// NegotiateKey starts the Encrypted Key Exchange (EKE) negotiation for encrypted communications
+	NegotiateKey() bool
+	// Get the name of the c2 profile
+	ProfileType() string
+	// Start the main C2 profile tasking loop or listening loop
+	Start()
+	// Set Sleep Interval
+	SetSleepInterval(interval int) string
+	// Set sleep Jitter
+	SetSleepJitter(jitter int) string
+	// Get Sleep time
+	GetSleepTime() int
 }
+
 type HeaderStruct struct {
-    Name    string  `json:"name"`
-    Key     string  `json:"key"`
-    Value   string  `json:"value"`
-    Custom bool `json:"custom"`
-}
-
-// Websocketconfig - C2 Profile configuration for the websocket profile
-type Websocketconfig struct {
-	KEYX       string `json:"keyx"`
-	Key        string `json:"key"`
-	BaseURL    string `json:"baseurl"`
-	UserAgent  string `json:"useragent"`
-	Sleep      int    `json:"sleep"`
-	HostHeader string `json:"hostheader"`
-	Jitter     int    `json:"jitter"`
-	Endpoint   string `json:"endpoint"`
-}
-
-// Slackconfig - C2 Profile configuration for the slack profile
-type Slackconfig struct {
-	KEYX      string `json:"keyx"`
-	Key       string `json:"key"`
-	Sleep     int    `json:"sleep"`
-	Jitter    int    `json:"jitter"`
-	ApiKey    string `json:"apikey"`
-	ChannelID string `json:"channelid"`
+	Name   string `json:"name"`
+	Key    string `json:"key"`
+	Value  string `json:"value"`
+	Custom bool   `json:"custom"`
 }
 
 // Struct definition for CheckIn messages
@@ -63,8 +46,7 @@ type CheckInMessage struct {
 	Domain         string `json:"domain"`
 	IntegrityLevel int    `json:"integrity_level"`
 	ExternalIP     string `json:"external_ip"`
-	EncryptionKey  string `json:"encryption_key"`
-	DecryptionKey  string `json:"decryption_key"`
+	ProcessName    string `json:"process_name"`
 }
 
 type CheckInMessageResponse struct {
@@ -90,17 +72,22 @@ type EkeKeyExchangeMessageResponse struct {
 
 // Struct definitions for Tasking request messages
 
-type TaskRequestMessage struct {
-	Action      string             `json:"action"`
-	TaskingSize int                `json:"tasking_size"`
-	Delegates   []*json.RawMessage `json:"delegates"`
+type MythicMessage struct {
+	Action           string                  `json:"action"`
+	TaskingSize      int                     `json:"tasking_size"`
+	GetDelegateTasks bool                    `json:"get_delegate_tasks"`
+	Delegates        *[]DelegateMessage      `json:"delegates,omitempty"`
+	Responses        *[]json.RawMessage      `json:"responses,omitempty"`
+	Socks            *[]SocksMsg             `json:"socks,omitempty"`
+	Edges            *[]P2PConnectionMessage `json:"edges,omitempty"`
 }
 
-type TaskRequestMessageResponse struct {
-	Action    string             `json:"action"`
-	Tasks     []Task             `json:"tasks"`
-	Delegates []*json.RawMessage `json:"delegates"`
-	Socks     []SocksMsg         `json:"socks"`
+type MythicMessageResponse struct {
+	Action    string            `json:"action"`
+	Tasks     []Task            `json:"tasks"`
+	Delegates []DelegateMessage `json:"delegates"`
+	Socks     []SocksMsg        `json:"socks"`
+	Responses []json.RawMessage `json:"responses"`
 }
 
 type Task struct {
@@ -112,17 +99,51 @@ type Task struct {
 }
 
 type Job struct {
-	KillChannel chan (int)
-	Stop        *int
-	Monitoring  bool
+	Stop                               *int
+	C2                                 Profile
+	ReceiveResponses                   chan (json.RawMessage)
+	SendResponses                      chan (Response)
+	SendFileToMythic                   chan (SendFileToMythicStruct)
+	GetFileFromMythic                  chan (GetFileFromMythicStruct)
+	FileTransfers                      map[string](chan json.RawMessage)
+	SaveFileFunc                       func(fileUUID string, data []byte)
+	RemoveSavedFile                    func(fileUUID string)
+	GetSavedFile                       func(fileUUID string) []byte
+	CheckIfNewInternalTCPConnection    func(newInternalConnectionString string) bool
+	AddNewInternalTCPConnectionChannel chan (net.Conn)
+	RemoveInternalTCPConnectionChannel chan (string)
 }
 
-// Struct definitions for TaskResponse Messages
-type TaskResponseMessage struct {
-	Action    string            `json:"action"`
-	Responses []json.RawMessage `json:"responses"`
-	Delegates []json.RawMessage `json:"delegates"`
-	Socks     []SocksMsg        `json:"socks"`
+type SendFileToMythicStruct struct {
+	// the following are set by calling Task
+	Task         *Task
+	IsScreenshot bool
+	// if this came from on disk, this would be the filename, otherwise it's just a nice way to identify the file
+	FileName              string
+	SendUserStatusUpdates bool
+	//set this if the file belong on disk so we know where it came from
+	FullPath string
+	// must supply either the raw bytes (Data) to transfer for the File that should be read and chunked
+	Data *[]byte
+	File *os.File
+	// channel to indicate once the file transfer has finished so that the task can act accordingly
+	FinishedTransfer chan (int)
+	// the following are set and used by Poseidon, Task doesn't use
+	// two components used by Poseidon internally to track and handle chunk responses from Mythic for this specific file transfer
+	TrackingUUID         string
+	FileTransferResponse chan (json.RawMessage)
+}
+type GetFileFromMythicStruct struct {
+	// the following are set by the calling Task
+	Task                  *Task
+	FullPath              string
+	FileID                string
+	SendUserStatusUpdates bool
+	// set by the calling Task to receive data from Mythic one chunk at a time
+	ReceivedChunkChannel chan ([]byte)
+	// the following are set and used by Poseidon, Task doesn't use
+	TrackingUUID         string
+	FileTransferResponse chan (json.RawMessage)
 }
 
 type ProcessDetails struct {
@@ -138,15 +159,24 @@ type ProcessDetails struct {
 	Name                string                 `json:"name"`
 	BundleID            string                 `json:"bundleid"`
 }
+type Keylog struct {
+	User        string `json:"user"`
+	WindowTitle string `json:"window_title"`
+	Keystrokes  string `json:"keystrokes"`
+}
 
 type Response struct {
-	TaskID       string           `json:"task_id"`
-	UserOutput   string           `json:"user_output"`
-	Completed    bool             `json:"completed"`
-	Status       string           `json:"status"`
-	FileBrowser  FileBrowser      `json:"file_browser"`
-	RemovedFiles []RmFiles        `json:"removed_files,omitempty"`
-	Processes    []ProcessDetails           `json:"processes,omitempty"`
+	TaskID       string               `json:"task_id"`
+	UserOutput   string               `json:"user_output,omitempty"`
+	Completed    bool                 `json:"completed,omitempty"`
+	Status       string               `json:"status,omitempty"`
+	FileBrowser  *FileBrowser         `json:"file_browser,omitempty"`
+	RemovedFiles *[]RmFiles           `json:"removed_files,omitempty"`
+	Processes    *[]ProcessDetails    `json:"processes,omitempty"`
+	TrackingUUID string               `json:"tracking_uuid,omitempty"`
+	Upload       *FileUploadMessage   `json:"upload,omitempty"`
+	Download     *FileDownloadMessage `json:"download,omitempty"`
+	Keylogs      *[]Keylog            `json:"keystrokes,omitempty"`
 }
 
 func (r *Response) SetError(errString string) {
@@ -172,86 +202,55 @@ type FileBrowser struct {
 	ParentPath   string         `json:"parent_path"`
 	Success      bool           `json:"success"`
 	FileSize     int64          `json:"size"`
-	LastModified int64         `json:"modify_time"`
-	LastAccess   int64         `json:"access_time"`
+	LastModified int64          `json:"modify_time"`
+	LastAccess   int64          `json:"access_time"`
 }
 
 type FileData struct {
 	IsFile       bool           `json:"is_file"`
 	Permissions  PermissionJSON `json:"permissions"`
-	Name     string         `json:"name"`
-	FullName string `json:"full_name"`
+	Name         string         `json:"name"`
+	FullName     string         `json:"full_name"`
 	FileSize     int64          `json:"size"`
-	LastModified int64         `json:"modify_time"`
-	LastAccess   int64         `json:"access_time"`
+	LastModified int64          `json:"modify_time"`
+	LastAccess   int64          `json:"access_time"`
 }
 
-type TaskResponseMessageResponse struct {
-	Action    string            `json:"action"`
-	Responses []json.RawMessage `json:"responses"`
-	Delegates []json.RawMessage `json:"delegates"`
+type DelegateMessage struct {
+	Message       string `json:"message"`
+	UUID          string `json:"uuid"`
+	C2ProfileName string `json:"c2_profile"`
+	MythicUUID    string `json:"mythic_uuid,omitempty"`
 }
 
-type ServerResponse struct {
-	TaskID string `json:"uuid"`
-	Status string `json:"status"`
-	Error  string `json:"error"`
+type FileUploadMessage struct {
+	ChunkSize   int    `json:"chunk_size"`
+	TotalChunks int    `json:"total_chunks"`
+	FileID      string `json:"file_id"`
+	ChunkNum    int    `json:"chunk_num"`
+	FullPath    string `json:"full_path"`
+	ChunkData   string `json:"chunk_data"`
 }
-
-type UserOutput struct {
-	Output []byte `json:"user_output"`
-}
-
-// Struct definitions for file downloads and uploads
-type FileDownloadInitialMessage struct {
-	NumChunks    int    `json:"total_chunks"`
-	TaskID       string `json:"task_id"`
+type FileDownloadMessage struct {
+	TotalChunks  int    `json:"total_chunks"`
+	ChunkNum     int    `json:"chunk_num"`
 	FullPath     string `json:"full_path"`
-	IsScreenshot bool   `json:"is_screenshot"`
+	ChunkData    string `json:"chunk_data"`
+	FileID       string `json:"file_id,omitempty"`
+	IsScreenshot bool   `json:"is_screenshot,omitempty"`
 }
 
-type FileDownloadInitialMessageResponse struct {
-	Status string `json:"status"`
-	FileID string `json:"file_id"`
-}
-
-type FileDownloadChunkMessage struct {
-	ChunkNum  int    `json:"chunk_num"`
-	FileID    string `json:"file_id"`
-	ChunkData string `json:"chunk_data"`
-	TaskID    string `json:"task_id"`
-}
-
-type FileUploadChunkMessage struct {
-	Action    string `json:"action"`
-	ChunkSize int    `json:"chunk_size"`
-	FileID    string `json:"file_id"`
-	ChunkNum  int    `json:"chunk_num"`
-	FullPath  string `json:"full_path"`
-	TaskID    string `json:"task_id"`
-}
-
-type FileUploadChunkMessageResponse struct {
-	Action      string `json:"action"`
+type FileUploadMessageResponse struct {
 	TotalChunks int    `json:"total_chunks"`
 	ChunkNum    int    `json:"chunk_num"`
 	ChunkData   string `json:"chunk_data"`
 	FileID      string `json:"file_id"`
 }
-
-//Message - struct definition for external C2 messages
-type Message struct {
-	Tag    string `json:"tag"`
-	Client bool   `json:"client"`
-	Data   string `json:"data"`
-}
-
-//ThreadMsg used to send task results back to the receiving channel
-type ThreadMsg struct {
-	TaskItem   Task
-	TaskResult []byte
-	Error      bool
-	Completed  bool
+type P2PConnectionMessage struct {
+	Source        string `json:"source"`
+	Destination   string `json:"destination"`
+	Action        string `json:"action"`
+	C2ProfileName string `json:"c2_profile"`
 }
 
 // TaskStub to post list of currently processing tasks.
@@ -261,113 +260,25 @@ type TaskStub struct {
 	ID      string `json:"id"`
 }
 
-// Job struct that will listen for messages on the kill channel,
-// set the Stop param to an exit code, and checks if it's in a
-// monitoring state.
-
-//FileRegisterResponse used for holding the response after file registration
-type FileRegisterResponse struct {
-	Status string `json:"status"`
-	FileID string `json:"file_id"`
-}
-
-// FileRegisterRequest used to register a file download
-type FileRegisterRequest struct {
-	Chunks int    `json:"total_chunks"`
-	Task   string `json:"task"`
-}
-
-// NestedApfellTaskResponse used to hold the task response field
-type NestedApfellTaskResponse struct {
-	Status    string `json:"status"`
-	Timestamp string `json:"timestamp"`
-	Command   string `json:"command"`
-	Params    string `json:"params"`
-	AttackID  int    `json:"attack_id"`
-	Callback  int    `json:"callback"`
-	Operator  string `json:"operator"`
-}
-
-// FileChunk used to send a file download chunk to apfell
-type FileChunk struct {
-	ChunkNumber int    `json:"chunk_num"`
-	ChunkData   string `json:"chunk_data"`
-	FileID      string `json:"file_id"`
-}
-
-// FileChunkResponse used to handle the FileChunk response from Apfell
-type FileChunkResponse struct {
-	Status string `json:"status"`
-}
-
-//FileRequest - handle parameters for the file upload response
-type FileRequest struct {
-	TaskID string `json:"task_id"`
-	FileID string `json:"file_id"`
-	FullPath string `json:"full_path"`
-	ChunkNumber int `json:"chunk_num"`
-	TotalChunks int `json:"total_chunks"`
-}
-
-/*
-type HadesFileRequest struct {
-	TaskID string `json:"task_id"`
-	FileID string `json:"file_id"`
-	FullPath string `json:"full_path"`
-	ChunkNumber int `json:"chunk_num"`
-	TotalChunks int `json:"total_chunks"`
-}
- */
-
-// CheckInStruct used for Checkin messages to Apfell
-type CheckInStruct struct {
-	User           string `json:"user"`
-	Host           string `json:"host"`
-	Pid            int    `json:"pid"`
-	IP             string `json:"ip"`
-	UUID           string `json:"uuid"`
-	IntegrityLevel int    `json:"integrity_level"`
-}
-
 type FileBrowserArguments struct {
-	File string `json:"file"`
-	Path         string    `json:"path"`
-	Host string `json:"host"`
-	FileBrowser         bool    `json:"file_browser"`
+	File        string `json:"file"`
+	Path        string `json:"path"`
+	Host        string `json:"host"`
+	FileBrowser bool   `json:"file_browser"`
 }
 
 // Struct for dealing with Socks messages
 type SocksMsg struct {
 	ServerId int32  `json:"server_id"`
 	Data     string `json:"data"`
-	Exit bool `json:"exit"`
+	Exit     bool   `json:"exit"`
 }
 
-// MonitorStop tells the job that it needs to wait for a kill signal.
-// The individual module is required to listen for the job.Stop
-// variable to be > 0, and take requisite actions to tear-down.
-func (j *Job) MonitorStop() {
-	if !j.Monitoring {
-		j.Monitoring = true
-		for {
-			select {
-			case <-j.KillChannel:
-				log.Println("Got kill message for job")
-				*j.Stop = 1
-				j.Monitoring = false
-				return
-			default:
-				// â¦
-				// log.Println("Sleeping in the kill chan...")
-				time.Sleep(time.Second)
-			}
-		}
-	}
-}
-
-// SendKill sends a kill message to the channel.
-func (j *Job) SendKill() {
-	j.KillChannel <- 1
+//Message - struct definition for external C2 messages
+type Message struct {
+	Tag    string `json:"tag"`
+	Client bool   `json:"client"`
+	Data   string `json:"data"`
 }
 
 // ToStub converts a Task item to a TaskStub that's easily
@@ -378,4 +289,21 @@ func (t *Task) ToStub() TaskStub {
 		ID:      t.TaskID,
 		Params:  t.Params,
 	}
+}
+
+func (t *Task) ShouldStop() bool {
+	if *t.Job.Stop == 1 {
+		msg := Response{}
+		msg.TaskID = t.TaskID
+		msg.UserOutput = "\nTask Cancelled"
+		msg.Completed = true
+		msg.Status = "error"
+		t.Job.SendResponses <- msg
+		return true
+	} else {
+		return false
+	}
+}
+func (t *Task) DidStop() bool {
+	return *t.Job.Stop == 1
 }

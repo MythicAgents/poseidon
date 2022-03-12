@@ -4,14 +4,11 @@ import (
 	// Standard
 	"encoding/json"
 	"os/user"
-	"sync"
 
 	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
-
-var mu sync.Mutex
 
 type SerializableUser struct {
 	// Uid is the user ID.
@@ -48,11 +45,7 @@ func Run(task structs.Task) {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 
@@ -68,11 +61,7 @@ func Run(task structs.Task) {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 
@@ -82,19 +71,11 @@ func Run(task structs.Task) {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 	msg.UserOutput = string(res)
 	msg.Completed = true
-
-	resp, _ := json.Marshal(msg)
-	mu.Lock()
-	profiles.TaskResponses = append(profiles.TaskResponses, resp)
-	mu.Unlock()
+	task.Job.SendResponses <- msg
 	return
 }

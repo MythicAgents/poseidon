@@ -1,6 +1,7 @@
 // +build darwin
 
 package functions
+
 /*
 #cgo CFLAGS: -x objective-c
 #cgo LDFLAGS: -framework Foundation
@@ -8,29 +9,75 @@ package functions
 */
 import "C"
 import (
+	"bufio"
 	"fmt"
-	"unicode/utf16"
-	"os/user"
 	"os"
+	"os/user"
 	"runtime"
+	"strings"
+	"unicode/utf16"
 )
+
 func cstring(s *C.NSString) *C.char { return C.nsstring2cstring(s) }
 func gostring(s *C.NSString) string { return C.GoString(cstring(s)) }
 func isElevated() bool {
 	currentUser, _ := user.Current()
 	return currentUser.Uid == "0"
 }
-func getArchitecture() string{
-    return runtime.GOARCH
+func getArchitecture() string {
+	return runtime.GOARCH
 }
-func getDomain() string{
-    host, _ := os.Hostname()
-    return host
+func getProcessName() string {
+	name, err := os.Executable()
+	if err != nil {
+		return ""
+	} else {
+		return name
+	}
 }
-func getOS() string{
-    return gostring( C.GetOSVersion() );
-    //return runtime.GOOS
+func getDomain() string {
+	fp, err := os.Open("/etc/krb5.conf")
+	if err != nil {
+		// /etc/krb5.conf doesn't exist, try some other way to get domain information
+	} else {
+		defer fp.Close()
+		scanner := bufio.NewScanner(fp)
+		for scanner.Scan() {
+			text := scanner.Text()
+			if strings.Contains(text, "default_realm") {
+				pieces := strings.Split(text, "=")
+				if len(pieces) > 1 {
+					return pieces[1]
+				}
+			}
+		}
+	}
+	return ""
 }
+func getOS() string {
+	return gostring(C.GetOSVersion())
+	//return runtime.GOOS
+}
+func getUser() string {
+	currentUser, err := user.Current()
+	if err != nil {
+		return ""
+	} else {
+		return currentUser.Username
+	}
+}
+func getPID() int {
+	return os.Getpid()
+}
+func getHostname() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return ""
+	} else {
+		return hostname
+	}
+}
+
 // Helper function to convert DWORD byte counts to
 // human readable sizes.
 func UINT32ByteCountDecimal(b uint32) string {

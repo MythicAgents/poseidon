@@ -6,7 +6,7 @@ import shutil
 import json
 
 # Enable additional message details to the Mythic UI
-debug = False
+debug = True
 
 
 class Poseidon(PayloadType):
@@ -36,25 +36,10 @@ class Poseidon(PayloadType):
             description="Ignore HTTP proxy environment settings configured on the target host?",
         ),
     ]
-    c2_profiles = ["websocket", "http"]
-    support_browser_scripts = [
-        BrowserScript(script_name="create_table", author="@djhohnstein"),
-        BrowserScript(script_name="collapsable", author="@djhohnstein"),
-        BrowserScript(
-            script_name="file_size_to_human_readable_string", author="@djhohnstein"
-        ),
-        BrowserScript(
-            script_name="create_process_additional_info_modal", author="@djhohnstein"
-        ),
-        BrowserScript(
-            script_name="show_process_additional_info_modal", author="@djhohnstein"
-        ),
-        BrowserScript(
-            script_name="copy_additional_info_to_clipboard", author="@djhohnstein"
-        ),
-    ]
+    c2_profiles = ["websocket", "http", "poseidon_tcp"]
 
     async def build(self) -> BuildResponse:
+        macOSVersion = "10.12"
         # this function gets called to create an instance of your payload
         resp = BuildResponse(status=BuildStatus.Error)
         target_os = "linux"
@@ -138,10 +123,10 @@ class Poseidon(PayloadType):
                         return resp
                 # Darwin (macOS)
                 elif target_os == "darwin":
-                    if os.path.exists(f"/build/poseidon-{target_os}-10.06-amd64"):
-                        resp.payload = open(f"/build/poseidon-{target_os}-10.06-amd64", "rb").read()
+                    if os.path.exists(f"/build/poseidon-{target_os}-{macOSVersion}-amd64"):
+                        resp.payload = open(f"/build/poseidon-{target_os}-{macOSVersion}-amd64", "rb").read()
                     else:
-                        resp.build_stderr += f"/build/poseidon-{target_os}-10.06-amd64 does not exist"
+                        resp.build_stderr += f"/build/poseidon-{target_os}-{macOSVersion}-amd64 does not exist"
                         resp.status = BuildStatus.Error
                         return resp
                 else:
@@ -160,11 +145,11 @@ class Poseidon(PayloadType):
                         return resp
                 # Darwin (macOS)
                 elif target_os == "darwin":
-                    if os.path.exists(f"/build/poseidon-{target_os}-10.06-amd64.dylib"):
-                        resp.payload = open(f"/build/poseidon-{target_os}-10.06-amd64.dylib",
+                    if os.path.exists(f"/build/poseidon-{target_os}-{macOSVersion}-amd64.dylib"):
+                        resp.payload = open(f"/build/poseidon-{target_os}-{macOSVersion}-amd64.dylib",
                                             "rb").read()
                     else:
-                        resp.build_stderr += f"/build/poseidon-{target_os}-10.06-amd64.dylib does not exist"
+                        resp.build_stderr += f"/build/poseidon-{target_os}-{macOSVersion}-amd64.dylib does not exist"
                         resp.status = BuildStatus.Error
                         return resp
                 else:
@@ -190,7 +175,7 @@ class Poseidon(PayloadType):
                         return resp
                 # Darwin (macOS)
                 elif target_os == "darwin":
-                    if os.path.exists(f"/build/poseidon-{target_os}-10.06-amd64.a"):
+                    if os.path.exists(f"/build/poseidon-{target_os}-{macOSVersion}-amd64.a"):
                         shutil.make_archive(f"{agent_build_path}/poseidon", "zip", "/build")
                         resp.payload = open(f"{agent_build_path}/poseidon" + ".zip", "rb").read()
                     else:

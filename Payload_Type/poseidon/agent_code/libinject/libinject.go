@@ -4,14 +4,11 @@ import (
 	// Standard
 	"encoding/json"
 	"fmt"
-	"sync"
 
 	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
-
-var mu sync.Mutex
 
 // Inject C source taken from: http://www.newosxbook.com/src.jl?tree=listings&file=inject.c
 type Injection interface {
@@ -37,11 +34,7 @@ func Run(task structs.Task) {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 
@@ -51,11 +44,7 @@ func Run(task structs.Task) {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 
@@ -66,9 +55,6 @@ func Run(task structs.Task) {
 	}
 
 	msg.Completed = true
-	resp, _ := json.Marshal(msg)
-	mu.Lock()
-	profiles.TaskResponses = append(profiles.TaskResponses, resp)
-	mu.Unlock()
+	task.Job.SendResponses <- msg
 	return
 }

