@@ -18,7 +18,7 @@ class KeysArguments(TaskArguments):
                 ],
                 parameter_group_info=[
                     ParameterGroupInfo(
-                        required=False
+                        required=True
                     )
                 ]
             ),
@@ -28,7 +28,7 @@ class KeysArguments(TaskArguments):
                 description="Name of the key to search for",
                 parameter_group_info=[
                     ParameterGroupInfo(
-                        required=False,
+                        required=True,
                         group_name="search"
                     )
                 ]
@@ -40,7 +40,7 @@ class KeysArguments(TaskArguments):
                 choices=["keyring", "user", "login", "logon", "session"],
                 parameter_group_info=[
                     ParameterGroupInfo(
-                        required=False,
+                        required=True,
                         group_name="search"
                     )
                 ]
@@ -52,7 +52,7 @@ class KeysArguments(TaskArguments):
 
     async def parse_dictionary(self, dictionary):
         self.load_args_from_dictionary(dictionary)
-        if self.get_group_name() == "search":
+        if self.get_parameter_group_name() == "search":
             self.remove_arg("command")
             self.add_arg("command", value="search", parameter_group_info=[ParameterGroupInfo(group_name="search")])
 

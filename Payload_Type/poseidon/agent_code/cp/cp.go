@@ -6,18 +6,17 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sync"
+	"path/filepath"
+	"strings"
 
 	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
-var mu sync.Mutex
-
 type Arguments struct {
-	Source      string `json:"source"`
-	Destination string `json:"destination"`
+	SourceFile      string `json:"source"`
+	DestinationFile string `json:"destination"`
 }
 
 func copy(src, dst string) (int64, error) {
@@ -52,38 +51,38 @@ func Run(task structs.Task) {
 	args := &Arguments{}
 	err := json.Unmarshal([]byte(task.Params), args)
 	if err != nil {
-
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
+	fixedSourcePath := args.SourceFile
+	if strings.HasPrefix(fixedSourcePath, "~/") {
+		dirname, _ := os.UserHomeDir()
+		fixedSourcePath = filepath.Join(dirname, fixedSourcePath[2:])
+	}
+	args.SourceFile, _ = filepath.Abs(fixedSourcePath)
+	fixedDestinationPath := args.DestinationFile
+	if strings.HasPrefix(fixedDestinationPath, "~/") {
+		dirname, _ := os.UserHomeDir()
+		fixedDestinationPath = filepath.Join(dirname, fixedDestinationPath[2:])
+	}
+	args.DestinationFile, _ = filepath.Abs(fixedDestinationPath)
 
-	copiedBytes, err := copy(args.Source, args.Destination)
+	copiedBytes, err := copy(args.SourceFile, args.DestinationFile)
 
 	if err != nil {
 
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 
 	msg.Completed = true
-	msg.UserOutput = fmt.Sprintf("Copied %d bytes to %s", copiedBytes, args.Destination)
-	resp, _ := json.Marshal(msg)
-	mu.Lock()
-	profiles.TaskResponses = append(profiles.TaskResponses, resp)
-	mu.Unlock()
+	msg.UserOutput = fmt.Sprintf("Copied %d bytes to %s", copiedBytes, args.DestinationFile)
+	task.Job.SendResponses <- msg
 	return
 }

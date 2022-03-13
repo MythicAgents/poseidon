@@ -1,5 +1,5 @@
 from mythic_payloadtype_container.MythicCommandBase import *
-import json
+import sys
 
 
 class XpcArguments(TaskArguments):
@@ -7,63 +7,81 @@ class XpcArguments(TaskArguments):
         super().__init__(command_line, **kwargs)
         self.args = [
             CommandParameter(
-                name="listStatusAction",
-                type=ParameterType.ChooseOne,
-                description="Pick to list launchd services or the status of a service",
-                choices=[
-                    "list",
-                    "status",
-                ],
+                name="list",
+                type=ParameterType.Boolean,
+                description="Flag to indicate asking launchd to list running services",
+                default_value=True,
                 parameter_group_info=[
-                    ParameterGroupInfo(group_name="list/status"),
+                    ParameterGroupInfo(group_name="list")
                 ]
             ),
             CommandParameter(
-                name="startStopAction",
-                display_name="Pick to start or stop the action",
-                type=ParameterType.ChooseOne,
-                description="Choose to start or stop the specified service",
-                choices=["start", "stop"],
+                name="start",
+                type=ParameterType.Boolean,
+                description="Flag to indicate asking launchd to start a service",
+                default_value=True,
                 parameter_group_info=[
-                    ParameterGroupInfo(group_name="start/stop")
+                    ParameterGroupInfo(group_name="start")
                 ]
             ),
             CommandParameter(
-                name="loadUnloadAction",
-                display_name="Pick to load or unload the plist",
-                description="Path to a property list to either load or unload",
-                type=ParameterType.ChooseOne,
-                choices=["load", "unload"],
+                name="stop",
+                type=ParameterType.Boolean,
+                description="Flag to indicate asking launchd to stop a service",
+                default_value=True,
                 parameter_group_info=[
-                    ParameterGroupInfo(group_name="load/unload")
+                    ParameterGroupInfo(group_name="stop")
                 ]
             ),
             CommandParameter(
                 name="program",
                 type=ParameterType.String,
-                description="Program/binary to execute if using 'submit' command",
+                description="Program/binary to execute",
                 parameter_group_info=[
                     ParameterGroupInfo(group_name="submit")
                 ]
             ),
             CommandParameter(
-                name="file",
-                display_name="Path to file to load on target",
-                type=ParameterType.String,
-                description="Path to the plist file if using load/unload commands",
+                name="load",
+                display_name="Flag to indicate the load command",
+                type=ParameterType.Boolean,
+                default_value=True,
+                description="Must be True to run 'load' with a file path to a plist file",
                 parameter_group_info=[
-                    ParameterGroupInfo(group_name="load/unload")
+                    ParameterGroupInfo(group_name="load")
+                ]
+            ),
+            CommandParameter(
+                name="unload",
+                display_name="Flag to indicate the unload command",
+                type=ParameterType.Boolean,
+                default_value=True,
+                description="Must be True to run 'unload' with a file path to a plist file",
+                parameter_group_info=[
+                    ParameterGroupInfo(group_name="unload")
+                ]
+            ),
+            CommandParameter(
+                name="file",
+                display_name="Path to file to load/unload on target",
+                type=ParameterType.String,
+                description="Path to the plist file on disk to load/unload",
+                parameter_group_info=[
+                    ParameterGroupInfo(group_name="unload"),
+                    ParameterGroupInfo(group_name="load")
                 ]
             ),
             CommandParameter(
                 name="servicename",
                 type=ParameterType.String,
                 description="Name of the service to communicate with. Used with the submit, send, start/stop commands",
+                default_value="",
                 parameter_group_info=[
                     ParameterGroupInfo(group_name="send"),
                     ParameterGroupInfo(group_name="submit"),
-                    ParameterGroupInfo(group_name="start/stop"),
-                    ParameterGroupInfo(group_name="list/status"),
+                    ParameterGroupInfo(group_name="start"),
+                    ParameterGroupInfo(group_name="stop"),
+                    ParameterGroupInfo(group_name="status"),
                 ]
             ),
             CommandParameter(
@@ -86,9 +104,17 @@ class XpcArguments(TaskArguments):
 
     async def parse_arguments(self):
         self.load_args_from_json_string(self.command_line)
+        await self.adjust_values()
 
     async def parse_dictionary(self, dictionary):
         self.load_args_from_dictionary(dictionary)
+        await self.adjust_values()
+
+    async def adjust_values(self):
+        groupName = self.get_parameter_group_name()
+        # python3.8 doesn't have switch statements, so have to use if statements
+        self.add_arg("command", groupName, parameter_group_info=[ParameterGroupInfo(group_name=groupName)])
+        self.remove_arg(groupName)
 
 
 class XpcCommand(CommandBase):

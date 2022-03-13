@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"sync"
+	"path/filepath"
+	"strings"
 
 	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
-
-var mu sync.Mutex
 
 type Arguments struct {
 	SourceFile      string `json:"source"`
@@ -29,23 +28,27 @@ func Run(task structs.Task) {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
+	fixedSourcePath := args.SourceFile
+	if strings.HasPrefix(fixedSourcePath, "~/") {
+		dirname, _ := os.UserHomeDir()
+		fixedSourcePath = filepath.Join(dirname, fixedSourcePath[2:])
+	}
+	args.SourceFile, _ = filepath.Abs(fixedSourcePath)
+	fixedDestinationPath := args.DestinationFile
+	if strings.HasPrefix(fixedDestinationPath, "~/") {
+		dirname, _ := os.UserHomeDir()
+		fixedDestinationPath = filepath.Join(dirname, fixedDestinationPath[2:])
+	}
+	args.DestinationFile, _ = filepath.Abs(fixedDestinationPath)
 
 	if _, err = os.Stat(args.SourceFile); os.IsNotExist(err) {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 
@@ -55,18 +58,11 @@ func Run(task structs.Task) {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 	msg.Completed = true
 	msg.UserOutput = fmt.Sprintf("Moved %s to %s", args.SourceFile, args.DestinationFile)
-	resp, _ := json.Marshal(msg)
-	mu.Lock()
-	profiles.TaskResponses = append(profiles.TaskResponses, resp)
-	mu.Unlock()
+	task.Job.SendResponses <- msg
 	return
 }

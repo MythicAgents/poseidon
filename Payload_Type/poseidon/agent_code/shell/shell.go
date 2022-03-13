@@ -3,18 +3,14 @@ package shell
 import (
 	// Standard
 	"bytes"
-	"encoding/json"
 	"os"
 	"os/exec"
 	"strings"
-	"sync"
 
 	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
-
-var mu sync.Mutex
 
 //Run - Function that executes the shell command
 func Run(task structs.Task) {
@@ -24,10 +20,7 @@ func Run(task structs.Task) {
 	if _, err := os.Stat(shellBin); err != nil {
 		if _, err = os.Stat("/bin/sh"); err != nil {
 			msg.SetError("Could not find /bin/bash or /bin/sh")
-			resp, _ := json.Marshal(msg)
-			mu.Lock()
-			profiles.TaskResponses = append(profiles.TaskResponses, resp)
-			mu.Unlock()
+			task.Job.SendResponses <- msg
 			return
 		} else {
 			shellBin = "/bin/sh"
@@ -49,12 +42,9 @@ func Run(task structs.Task) {
 	msg.UserOutput = outputString
 	msg.Completed = true
 	if err != nil {
-	    msg.Status = "error"
-	    msg.UserOutput += "\n" + err.Error()
+		msg.Status = "error"
+		msg.UserOutput += "\n" + err.Error()
 	}
-	resp, _ := json.Marshal(msg)
-	mu.Lock()
-	profiles.TaskResponses = append(profiles.TaskResponses, resp)
-	mu.Unlock()
+	task.Job.SendResponses <- msg
 	return
 }

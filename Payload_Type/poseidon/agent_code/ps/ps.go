@@ -4,14 +4,11 @@ import (
 	// Standard
 	"encoding/json"
 	"regexp"
-	"sync"
 
 	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
-
-var mu sync.Mutex
 
 type Arguments struct {
 	RegexFilter string `json:"regex_filter"`
@@ -57,7 +54,7 @@ type Process interface {
 
 //ProcessArray - struct that will hold all of the Process results
 type ProcessArray struct {
-	Results []structs.ProcessDetails `json:"Processes"`
+	Results []structs.ProcessDetails `json:"processes"`
 }
 
 //Run - interface method that retrieves a process list
@@ -68,11 +65,7 @@ func Run(task structs.Task) {
 	params := Arguments{}
 	if err != nil {
 		msg.SetError(err.Error())
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 	_ = json.Unmarshal([]byte(task.Params), &params)
@@ -119,19 +112,12 @@ func Run(task structs.Task) {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 	msg.Completed = true
 	msg.UserOutput = string(jsonProcs)
-	msg.Processes = slice
-	resp, _ := json.Marshal(msg)
-	mu.Lock()
-	profiles.TaskResponses = append(profiles.TaskResponses, resp)
-	mu.Unlock()
+	msg.Processes = &slice
+	task.Job.SendResponses <- msg
 	return
 }

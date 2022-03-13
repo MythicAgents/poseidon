@@ -28,6 +28,7 @@ class SSHAuthArguments(TaskArguments):
             ),
             CommandParameter(
                 name="source",
+                display_name="Source Filename",
                 type=ParameterType.String,
                 description="If doing SCP, this is the source file",
                 default_value="",
@@ -42,6 +43,7 @@ class SSHAuthArguments(TaskArguments):
             ),
             CommandParameter(
                 name="destination",
+                display_name="Destination Filename",
                 type=ParameterType.String,
                 description="If doing SCP, this is the destination file",
                 default_value="",
@@ -56,6 +58,7 @@ class SSHAuthArguments(TaskArguments):
             ),
             CommandParameter(
                 name="private_key",
+                display_name="Path to Private Key on disk",
                 type=ParameterType.String,
                 description="Authenticate to the designated hosts using this private key",
                 parameter_group_info=[
@@ -69,9 +72,10 @@ class SSHAuthArguments(TaskArguments):
             ),
             CommandParameter(
                 name="port",
+                display_name="SSH Port",
                 type=ParameterType.Number,
                 description="SSH Port if different than 22",
-                default_value="22",
+                default_value=22,
                 parameter_group_info=[
                     ParameterGroupInfo(
                         required=False,
@@ -105,6 +109,7 @@ class SSHAuthArguments(TaskArguments):
             ),
             CommandParameter(
                 name="hosts",
+                display_name="Array of CIDR notation for hosts",
                 type=ParameterType.Array,
                 description="Hosts that you will auth to",
                 parameter_group_info=[
@@ -124,8 +129,9 @@ class SSHAuthArguments(TaskArguments):
             ),
             CommandParameter(
                 name="command",
+                display_name="Command to execute",
                 type=ParameterType.String,
-                description="Command to execute on remote systems if not doing SCP",
+                description="Command to execute on remote systems",
                 default_value="",
                 parameter_group_info=[
                     ParameterGroupInfo(
@@ -156,7 +162,7 @@ You can also use this to execute a specific command on the remote hosts via SSH 
     author = "@xorrior"
     argument_class = SSHAuthArguments
     attackmapping = ["T1110.003"]
-    browser_script = BrowserScript(script_name="sshauth", author="@djhohnstein")
+    browser_script = BrowserScript(script_name="sshauth_new", author="@djhohnstein", for_new_ui=True)
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         task.display_params = "Authenticate as " + task.args.get_arg("username")

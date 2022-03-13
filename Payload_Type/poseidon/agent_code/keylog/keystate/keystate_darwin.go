@@ -1,6 +1,6 @@
 // +build darwin
-package keystate
 
+package keystate
 
 import "errors"
 

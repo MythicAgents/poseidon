@@ -4,15 +4,12 @@ import (
 	// Standard
 	"encoding/json"
 	"strings"
-	"sync"
 
 	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/ps"
 )
-
-var mu sync.Mutex
 
 type Arguments struct {
 	PID int `json:"pid"`
@@ -61,9 +58,6 @@ func Run(task structs.Task) {
 
 	msg.Completed = true
 	msg.UserOutput = final
-	resp, _ := json.Marshal(msg)
-	mu.Lock()
-	profiles.TaskResponses = append(profiles.TaskResponses, resp)
-	mu.Unlock()
+	task.Job.SendResponses <- msg
 	return
 }

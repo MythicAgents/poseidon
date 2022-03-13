@@ -16,7 +16,7 @@ import (
 	"github.com/tmc/scp"
 
 	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/portscan"
 )
@@ -209,11 +209,7 @@ func Run(task structs.Task) {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 	// log.Println("Parsed task params!")
@@ -221,11 +217,7 @@ func Run(task structs.Task) {
 		msg.UserOutput = "Missing host(s) parameter."
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 
@@ -233,11 +225,7 @@ func Run(task structs.Task) {
 		msg.UserOutput = "Missing password parameter"
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 
@@ -245,11 +233,7 @@ func Run(task structs.Task) {
 		msg.UserOutput = "Missing username parameter."
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 
@@ -286,32 +270,20 @@ func Run(task structs.Task) {
 			msg.UserOutput = err.Error()
 			msg.Completed = true
 			msg.Status = "error"
-
-			resp, _ := json.Marshal(msg)
-			mu.Lock()
-			profiles.TaskResponses = append(profiles.TaskResponses, resp)
-			mu.Unlock()
+			task.Job.SendResponses <- msg
 			return
 		} else {
 			// fmt.Println("Sending on up the data:\n", string(data))
 			msg.UserOutput = string(data)
 			msg.Completed = true
-
-			resp, _ := json.Marshal(msg)
-			mu.Lock()
-			profiles.TaskResponses = append(profiles.TaskResponses, resp)
-			mu.Unlock()
+			task.Job.SendResponses <- msg
 			return
 		}
 	} else {
 		// log.Println("No successful auths.")
 		msg.UserOutput = "No successful authenication attempts"
 		msg.Completed = true
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 

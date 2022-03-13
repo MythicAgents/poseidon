@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
@@ -63,29 +63,17 @@ func Run(task structs.Task) {
 		msg.UserOutput = "Error: No path given."
 		msg.Completed = true
 		msg.Status = "error"
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	}
 	result := NewDirectoryTriageResult()
-	go task.Job.MonitorStop()
 	err := triageDirectory(task.Params, result, task.Job)
-	// If it didn't end prematurely, send the kill.
-	if task.Job.Monitoring {
-		go task.Job.SendKill()
-	}
 	// fmt.Println(result)
 	if err != nil {
 		msg.UserOutput = err.Error()
 		msg.Completed = true
 		msg.Status = "error"
-
-		resp, _ := json.Marshal(msg)
-		mu.Lock()
-		profiles.TaskResponses = append(profiles.TaskResponses, resp)
-		mu.Unlock()
+		task.Job.SendResponses <- msg
 		return
 	} else {
 		if !isDirectoryTriageResultEmpty(*result) {
@@ -96,36 +84,21 @@ func Run(task structs.Task) {
 				msg.UserOutput = err.Error()
 				msg.Completed = true
 				msg.Status = "error"
-
-				resp, _ := json.Marshal(msg)
-				mu.Lock()
-				profiles.TaskResponses = append(profiles.TaskResponses, resp)
-				mu.Unlock()
+				task.Job.SendResponses <- msg
 				return
 			} else {
 				msg.UserOutput = string(data)
 				msg.Completed = true
-				resp, _ := json.Marshal(msg)
-				mu.Lock()
-				profiles.TaskResponses = append(profiles.TaskResponses, resp)
-				mu.Unlock()
+				task.Job.SendResponses <- msg
 				return
 			}
 		} else {
 			msg.UserOutput = "Task completed and nothing noteworthy found."
 			msg.Completed = true
-			resp, _ := json.Marshal(msg)
-			mu.Lock()
-			profiles.TaskResponses = append(profiles.TaskResponses, resp)
-			mu.Unlock()
+			task.Job.SendResponses <- msg
 			return
 		}
 	}
-	resp, _ := json.Marshal(msg)
-	mu.Lock()
-	profiles.TaskResponses = append(profiles.TaskResponses, resp)
-	mu.Unlock()
-	return
 }
 
 func isDirectoryTriageResultEmpty(result DirectoryTriageResult) bool {
