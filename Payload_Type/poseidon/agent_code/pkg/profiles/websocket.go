@@ -70,9 +70,31 @@ type C2Websockets struct {
 
 // New creates a new HTTP C2 profile from the package's global variables and returns it
 func New() structs.Profile {
+	var final_url string
+	var last_slash int
+	if callback_port == "443" && strings.Contains(callback_host, "wss://") {
+		final_url = callback_host
+	} else if callback_port == "80" && strings.Contains(callback_host, "ws://") {
+		final_url = callback_host
+	} else {
+		last_slash = strings.Index(callback_host[8:], "/")
+		if last_slash == -1 {
+			//there is no 3rd slash
+			final_url = fmt.Sprintf("%s:%s", callback_host, callback_port)
+		} else {
+			//there is a 3rd slash, so we need to splice in the port
+			last_slash += 8 // adjust this back to include our offset initially
+			//fmt.Printf("index of last slash: %d\n", last_slash)
+			//fmt.Printf("splitting into %s and %s\n", string(callback_host[0:last_slash]), string(callback_host[last_slash:]))
+			final_url = fmt.Sprintf("%s:%s%s", string(callback_host[0:last_slash]), callback_port, string(callback_host[last_slash:]))
+		}
+	}
+	if final_url[len(final_url)-1:] != "/" {
+		final_url = final_url + "/"
+	}
 	profile := C2Websockets{
 		HostHeader: domain_front,
-		BaseURL:    fmt.Sprintf("%s:%s/", callback_host, callback_port),
+		BaseURL:    final_url,
 		UserAgent:  USER_AGENT,
 		Key:        AESPSK,
 		Endpoint:   ENDPOINT_REPLACE,
