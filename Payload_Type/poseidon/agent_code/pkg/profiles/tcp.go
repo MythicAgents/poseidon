@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -41,17 +42,33 @@ type C2Default struct {
 	Port                 string
 	EgressTCPConnections map[string]net.Conn
 	FinishedStaging      bool
+	Killdate             time.Time
 }
 
 func New() structs.Profile {
+	killDateString := fmt.Sprintf("%sT00:00:00.000Z", killdate)
+	killDateTime, err := time.Parse("2006-01-02T15:04:05.000Z", killDateString)
+	if err != nil {
+		os.Exit(1)
+	}
 	profile := C2Default{
 		Key:                  AESPSK,
 		Port:                 port,
 		ExchangingKeys:       encrypted_exchange_check == "T",
 		EgressTCPConnections: make(map[string]net.Conn),
 		FinishedStaging:      false,
+		Killdate:             killDateTime,
 	}
 	return &profile
+}
+func (c *C2Default) CheckForKillDate() {
+	for true {
+		time.Sleep(time.Duration(10) * time.Second)
+		today := time.Now()
+		if today.After(c.Killdate) {
+			os.Exit(1)
+		}
+	}
 }
 func (c *C2Default) Start() {
 	// start listening
@@ -63,6 +80,7 @@ func (c *C2Default) Start() {
 	defer listen.Close()
 	//fmt.Printf("Started listening...\n")
 	go c.CreateMessagesForEgressConnections()
+	go c.CheckForKillDate()
 	for {
 		conn, err := listen.Accept()
 		if err != nil {

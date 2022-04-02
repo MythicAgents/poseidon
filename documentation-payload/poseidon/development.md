@@ -7,7 +7,7 @@ pre = "<b>3. </b>"
 
 ## Development Environment
 
-For command development, please use golang v1.12+ .
+For command development, please use golang v1.17+
 
 ## Adding Commands
 
@@ -15,13 +15,27 @@ For command development, please use golang v1.12+ .
 - Inside the folder create a single go file called `command.go`. If the implementation of the command is compatible with both macOS and Linux, only a single go file should be necessary. If the implementation is different, create two additional files. All files that are for the darwin/macOS implementation should have the nomenclature `command_darwin.go` and `command_linux.go` for Linux. There are a minimum set of imports that are required for any command.
 ```
 import (
-	"pkg/utils/structs"
-	"pkg/profiles"
-	"encoding/json"
-	"sync"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 ```
-- The results/output for a command should be saved to a `Response` struct. The struct should be serialized to bytes with `json.Marshal` and then saved to the `profiles.TaskResponses` global variable. Please refer to the cat command in `Payload_Types/poseidon/agent_code/cat/cat.go` as an example.
+
+- The results/output for a command should be saved to a `Response` struct.  
+- The `Completed` status should be set
+- The `Status` should be set to `error` if you're erroring out of the task for some reason
+- Send the resulting message out to Mythic via `task.Job.SendResponses` channel
+
+```
+func Run(task structs.Task) {
+	msg := structs.Response{}
+	msg.TaskID = task.TaskID
+	msg.UserOutput = "test output"
+	msg.Completed = true
+	task.Job.SendResponses <- msg
+	return
+}
+```
+
+Please refer to the cat command in `Payload_Types/poseidon/agent_code/cat/cat.go` as an example.
 
 
 ## Adding C2 Profiles

