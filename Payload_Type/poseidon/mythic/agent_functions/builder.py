@@ -6,7 +6,7 @@ import shutil
 import json
 
 # Enable additional message details to the Mythic UI
-debug = True
+debug = False
 
 
 class Poseidon(PayloadType):
@@ -34,6 +34,15 @@ class Poseidon(PayloadType):
             parameter_type=BuildParameterType.Boolean,
             default_value=False,
             description="Ignore HTTP proxy environment settings configured on the target host?",
+        ),
+        BuildParameter(
+            name="garble",
+            description="Use Garble to obfuscate the output Go executable. "
+                        "\nLINUX ONLY. "
+                        "\nWARNING - This significantly slows the agent build time.",
+            parameter_type=BuildParameterType.Boolean,
+            default_value="false",
+            required=False,
         ),
     ]
     c2_profiles = ["websocket", "http", "poseidon_tcp"]
@@ -82,15 +91,25 @@ class Poseidon(PayloadType):
             # Set the Go -buildid argument to an empty string to remove the indicator
             ldflags += " -buildid="
             command = "rm -rf /build; rm -rf /deps;"
-            command += (
-                "xgo -tags={} --targets={}/{} -buildmode={} -ldflags=\"{}\" -out poseidon .".format(
-                    profile,
-                    target_os,
-                    "amd64",
-                    self.get_parameter("mode"),
-                    ldflags,
-                )
-            )
+
+            go_cmd = f'-tags {profile} -buildmode {self.get_parameter("mode")} -ldflags "{ldflags}"'
+
+            if target_os == "linux" and self.get_parameter("garble"):
+                command += "export GOGARBLE=golang.org,github.com,howett.net;"
+                # This shouldn't be necessary
+                # Don't include encoding
+                command += "export GOGARBLE=$GOGARBLE,vendor,net,internal,reflect,crypto,strings,math,compress,compress,syscall,os,unicode,context,regexp,sync,strconv,sort,fmt,bytes,path,bufio,log,mime,hash,container;"
+                command += f'export GOOS={target_os};'
+                command += f'export GOARCH=amd64;'
+                command += f'/go/src/bin/garble -tiny -literals -seed random build {go_cmd} -o /build/poseidon-{target_os}-amd64'
+                if self.get_parameter("mode") == "c-shared":
+                    command += ".so"
+                elif self.get_parameter("mode") == "c-archive":
+                    command += ".a"
+            else:
+                command += f'xgo {go_cmd} --targets {target_os}/amd64 -out poseidon .'
+                if self.get_parameter("garble"):
+                    resp.build_message += f'\nGarble can not be used with payloads for {target_os}\n'
 
             # Execute the constructed xgo command to build Poseidon
             proc = await asyncio.create_subprocess_shell(
@@ -197,7 +216,7 @@ class Poseidon(PayloadType):
             resp.build_message += f'\nCreated Poseidon payload!\n' \
                                   f'OS: {target_os}, ' \
                                   f'Build Mode: {self.get_parameter("mode")}, ' \
-                                  f'C2 Profile: {profile}\n'
+                                  f'C2 Profile: {profile}\n[BUILD]{command}\n'
             resp.status = BuildStatus.Success
             return resp
         except Exception as e:
