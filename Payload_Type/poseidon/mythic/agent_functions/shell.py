@@ -21,6 +21,9 @@ class ShellCommand(CommandBase):
     author = "@xorrior"
     argument_class = ShellArguments
     attackmapping = ["T1059.004"]
+    attributes = CommandAttributes(
+        supported_os=[SupportedOS.MacOS, SupportedOS.Linux]
+    )
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         resp = await MythicRPC().execute("create_artifact", task_id=task.id,

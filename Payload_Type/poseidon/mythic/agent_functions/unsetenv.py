@@ -21,6 +21,9 @@ class UnsetEnvCommand(CommandBase):
     author = "@xorrior"
     argument_class = UnsetEnvArguments
     attackmapping = []
+    attributes = CommandAttributes(
+        supported_os=[SupportedOS.MacOS, SupportedOS.Linux]
+    )
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         return task
