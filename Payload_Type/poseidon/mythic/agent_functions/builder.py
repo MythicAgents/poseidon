@@ -13,10 +13,10 @@ class Poseidon(PayloadType):
     name = "poseidon"
     file_extension = "bin"
     author = "@xorrior, @djhohnstein, @Ne0nd0g"
-    supported_os = [SupportedOS.Linux, SupportedOS.MacOS]
+    supported_os = [SupportedOS.Linux, SupportedOS.MacOS, SupportedOS.Windows]
     wrapper = False
     wrapped_payloads = []
-    note = "A fully featured macOS and Linux Golang agent"
+    note = "A fully featured macOS, Linux, and Windows Golang agent"
     supports_dynamic_loading = False
     mythic_encrypts = True
     build_parameters = [
@@ -45,6 +45,8 @@ class Poseidon(PayloadType):
         target_os = "linux"
         if self.selected_os == "macOS":
             target_os = "darwin"
+        elif self.selected_os == "Windows":
+            target_os = "windows"
         if len(self.c2info) != 1:
             resp.build_stderr = "Poseidon only accepts one c2 profile at a time"
             return resp
@@ -82,15 +84,24 @@ class Poseidon(PayloadType):
             # Set the Go -buildid argument to an empty string to remove the indicator
             ldflags += " -buildid="
             command = "rm -rf /build; rm -rf /deps;"
-            command += (
-                "xgo -tags={} --targets={}/{} -buildmode={} -ldflags=\"{}\" -out poseidon .".format(
-                    profile,
-                    target_os,
-                    "amd64",
-                    self.get_parameter("mode"),
-                    ldflags,
+            if target_os == "darwin" or target_os == "linux":
+                command += (
+                    "xgo -tags={} --targets={}/{} -buildmode={} -ldflags=\"{}\" -out poseidon .".format(
+                        profile,
+                        target_os,
+                        "amd64",
+                        self.get_parameter("mode"),
+                        ldflags,
+                    )
                 )
-            )
+            elif target_os == "windows":
+                command += "mkdir /build;"
+                command += (
+                    "GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc go build -ldflags=\"{}\" -tags {} -o /build/poseidon-windows-amd64".format(
+                        ldflags,
+                        profile,
+                    )
+                )
 
             # Execute the constructed xgo command to build Poseidon
             proc = await asyncio.create_subprocess_shell(
@@ -129,6 +140,14 @@ class Poseidon(PayloadType):
                         resp.build_stderr += f"/build/poseidon-{target_os}-{macOSVersion}-amd64 does not exist"
                         resp.status = BuildStatus.Error
                         return resp
+                # Windows
+                elif target_os == "windows":
+                    if os.path.exists(f"/build/poseidon-{target_os}-amd64"):
+                        resp.payload = open(f"/build/poseidon-{target_os}-amd64", "rb").read()
+                    else:
+                        resp.build_stderr += f"/build/poseidon-{target_os}-amd64 does not exist"
+                        resp.status = BuildStatus.Error
+                        return resp
                 else:
                     resp.build_stderr += f"Unhandled operating system: {target_os} for {self.get_parameter('mode')} build mode"
                     resp.status = BuildStatus.Error
@@ -156,7 +175,7 @@ class Poseidon(PayloadType):
                     resp.build_stderr += f"Unhandled operating system: {target_os} for {self.get_parameter('mode')} build mode"
                     resp.status = BuildStatus.Error
                     return resp
-            # C-shared (e.g., Dylib or SO)
+            # C-archive (e.g., Dylib or SO)
             elif self.get_parameter("mode") == "c-archive":
                 # Copy the C file into the build directory
                 file1 = open(

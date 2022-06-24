@@ -22,7 +22,9 @@ class PsCommand(CommandBase):
     argument_class = PsArguments
     attackmapping = ["T1057"]
     browser_script = BrowserScript(script_name="ps_new", author="@djhohnstein", for_new_ui=True)
-
+    attributes = CommandAttributes(
+        supported_os=[SupportedOS.MacOS, SupportedOS.Linux]
+    )
     async def create_tasking(self, task: MythicTask) -> MythicTask:
         task.display_params = task.args.command_line
         return task

@@ -5,11 +5,8 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
-	"os/user"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"syscall"
 
 	// 3rd Party
 	"github.com/djherbis/atime"
@@ -25,29 +22,6 @@ type FilePermission struct {
 	Permissions string `json:"permissions"`
 	User        string `json:"user,omitempty"`
 	Group       string `json:"group,omitempty"`
-}
-
-func GetPermission(finfo os.FileInfo) string {
-	perms := FilePermission{}
-	perms.Permissions = finfo.Mode().Perm().String()
-	systat := finfo.Sys().(*syscall.Stat_t)
-	if systat != nil {
-		perms.UID = int(systat.Uid)
-		perms.GID = int(systat.Gid)
-		tmpUser, err := user.LookupId(strconv.Itoa(perms.UID))
-		if err == nil {
-			perms.User = tmpUser.Username
-		}
-		tmpGroup, err := user.LookupGroupId(strconv.Itoa(perms.GID))
-		if err == nil {
-			perms.Group = tmpGroup.Name
-		}
-	}
-	data, err := json.Marshal(perms)
-	if err == nil {
-		return string(data)
-	}
-	return ""
 }
 
 func Run(task structs.Task) {
@@ -72,7 +46,15 @@ func Run(task structs.Task) {
 	}
 	e.IsFile = !dirInfo.IsDir()
 
-	e.Permissions.Permissions = GetPermission(dirInfo)
+	e.Permissions.Permissions, err = GetPermission(dirInfo)
+	if err != nil {
+		msg.UserOutput = err.Error()
+		msg.Completed = true
+		msg.Status = "error"
+		e.Success = false
+		msg.FileBrowser = &e
+		task.Job.SendResponses <- msg
+	}
 	e.Filename = dirInfo.Name()
 	e.ParentPath = filepath.Dir(abspath)
 	if strings.Compare(e.ParentPath, e.Filename) == 0 {
@@ -102,7 +84,7 @@ func Run(task structs.Task) {
 		fileEntries := make([]structs.FileData, len(files))
 		for i := 0; i < len(files); i++ {
 			fileEntries[i].IsFile = !files[i].IsDir()
-			fileEntries[i].Permissions.Permissions = GetPermission(files[i])
+			fileEntries[i].Permissions.Permissions, _ = GetPermission(files[i])
 			fileEntries[i].Name = files[i].Name()
 			fileEntries[i].FullName = filepath.Join(abspath, files[i].Name())
 			fileEntries[i].FileSize = files[i].Size()
