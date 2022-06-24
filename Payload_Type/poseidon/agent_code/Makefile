@@ -91,6 +91,46 @@ build_darwin_websocket:
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.USER_AGENT=${WEBSOCKET_USER_AGENT}' \
 " .
 
+build_windows_http:
+	GOOS=windows CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc go build -o ${BINARY_NAME}_${C2_HTTP}.bin -tags="${C2_HTTP} darwin" -ldflags=" \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.callback_host=${HTTP_CALLBACK_HOST}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.UUID=${HTTP_UUID}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.callback_port=${HTTP_CALLBACK_PORT}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.killdate=${HTTP_KILLDATE}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.callback_interval=${HTTP_CALLBACK_INTERVAL}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.callback_jitter=${HTTP_CALLBACK_JITTER}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.post_uri=${HTTP_POST_URI}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.encrypted_exchange_check=${HTTP_ENCRYPTED_EXCHANGE_CHECK}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.AESPSK=${HTTP_AESPSK}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.proxy_port=${HTTP_PROXY_PORT}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.proxy_user=${HTTP_PROXY_USER}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.proxy_host=${HTTP_PROXY_HOST}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.proxy_bypass=${HTTP_PROXY_BYPASS}' \
+" .
+
+build_windows_websocket:
+	GOOS=windows CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc go build -o ${BINARY_NAME}_${C2_WEBSOCKET}.bin -tags="${C2_WEBSOCKET}" -ldflags=" \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.callback_host=${WEBSOCKET_CALLBACK_HOST}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.UUID=${WEBSOCKET_UUID}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.callback_port=${WEBSOCKET_CALLBACK_PORT}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.callback_interval=${WEBSOCKET_CALLBACK_INTERVAL}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.callback_jitter=${WEBSOCKET_CALLBACK_JITTER}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.encrypted_exchange_check=${WEBSOCKET_ENCRYPTED_EXCHANGE_CHECK}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.AESPSK=${WEBSOCKET_AESPSK}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.domain_front=${WEBSOCKET_DOMAIN_FRONT}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.ENDPOINT_REPLACE=${WEBSOCKET_ENDPOINT_REPLACE}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.USER_AGENT=${WEBSOCKET_USER_AGENT}' \
+" .
+
+build_windows_tcp:
+	GOOS=windows CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc go build -o ${BINARY_NAME}_${C2_TCP}.bin -tags="${C2_TCP}" -ldflags=" \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.UUID=${TCP_UUID}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.port=${TCP_PORT}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.killdate=${TCP_KILLDATE}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.encrypted_exchange_check=${TCP_ENCRYPTED_EXCHANGE_CHECK}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.AESPSK=${TCP_AESPSK}' \
+" .
+
 run_darwin_http: 
 	./${BINARY_NAME}_${C2_HTTP}.bin
 
@@ -104,6 +144,8 @@ build_and_run_tcp: build_darwin_tcp run_darwin_tcp
 build_darwin: build_darwin_http build_darwin_tcp build_darwin_websocket
 
 build_linux: build_linux_http
+
+build_windows: build_windows_http build_windows_websocket build_windows_tcp
 
 clean_http:
 	go clean
