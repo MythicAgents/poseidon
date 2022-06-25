@@ -95,9 +95,10 @@ class Poseidon(PayloadType):
                     )
                 )
             elif target_os == "windows":
-                command += "mkdir /build;"
+                command += "export GOGARBLE=golang.org,github.com,howett.net;"
+                command += "export GOGARBLE=$GOGARBLE,vendor,net,internal,reflect,crypto,strings,math,compress,compress,syscall,os,unicode,context,regexp,sync,strconv,sort,fmt,bytes,path,bufio,log,mime,hash,container;"
                 command += (
-                    "GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc go build -ldflags=\"{}\" -tags {} -o /build/poseidon-windows-amd64".format(
+                    "GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc /go/src/bin/garble -tiny -literals -seed random build -ldflags=\"{}\" -tags {} -o /build/poseidon-windows-amd64".format(
                         ldflags,
                         profile,
                     )
