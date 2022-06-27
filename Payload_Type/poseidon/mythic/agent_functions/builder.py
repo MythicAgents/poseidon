@@ -6,7 +6,7 @@ import shutil
 import json
 
 # Enable additional message details to the Mythic UI
-debug = True
+debug = False
 
 
 class Poseidon(PayloadType):
@@ -34,6 +34,14 @@ class Poseidon(PayloadType):
             parameter_type=BuildParameterType.Boolean,
             default_value=False,
             description="Ignore HTTP proxy environment settings configured on the target host?",
+        ),
+        BuildParameter(
+            name="garble",
+            description="Use Garble to obfuscate the output Go executable. "
+                        "\nWARNING - This significantly slows the agent build time.",
+            parameter_type=BuildParameterType.Boolean,
+            default_value=True,
+            required=False,
         ),
     ]
     c2_profiles = ["websocket", "http", "poseidon_tcp"]
@@ -83,26 +91,35 @@ class Poseidon(PayloadType):
             ldflags += " -X '{}.proxy_bypass={}'".format(poseidon_repo_profile, self.get_parameter("proxy_bypass"))
             # Set the Go -buildid argument to an empty string to remove the indicator
             ldflags += " -buildid="
-            command = "rm -rf /build; rm -rf /deps;"
-            if target_os == "darwin" or target_os == "linux":
-                command += (
-                    "xgo -tags={} --targets={}/{} -buildmode={} -ldflags=\"{}\" -out poseidon .".format(
-                        profile,
-                        target_os,
-                        "amd64",
-                        self.get_parameter("mode"),
-                        ldflags,
-                    )
-                )
+            command = f"rm -rf /build; rm -rf /deps; export CGO_ENABLED=1; export GOOS={target_os}; export GOARCH=amd64;"
+
+            go_cmd = f'-tags {profile} -buildmode {self.get_parameter("mode")} -ldflags "{ldflags}"'
+            if target_os == "darwin":
+                command += "export CC=o64-clang; export CXX=o64-clang++;"
             elif target_os == "windows":
-                command += "export GOGARBLE=golang.org,github.com,howett.net;"
-                command += "export GOGARBLE=$GOGARBLE,vendor,net,internal,reflect,crypto,strings,math,compress,compress,syscall,os,unicode,context,regexp,sync,strconv,sort,fmt,bytes,path,bufio,log,mime,hash,container;"
-                command += (
-                    "GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc /go/src/bin/garble -tiny -literals -seed random build -ldflags=\"{}\" -tags {} -o /build/poseidon-windows-amd64".format(
-                        ldflags,
-                        profile,
-                    )
-                )
+                command += "export CC=x86_64-w64-mingw32-gcc;"
+            command += "export GOGARBLE=golang.org,github.com,howett.net;"
+            command += "export GOGARBLE=$GOGARBLE,vendor,net,internal,reflect,crypto,strings,math,compress,compress,syscall,os,unicode,context,regexp,sync,strconv,sort,fmt,bytes,path,bufio,log,mime,hash,container;"
+
+            if self.get_parameter("garble"):
+                command += '/go/src/bin/garble -tiny -literals -debug -seed random build '
+            else:
+                command += 'go build '
+                # This shouldn't be necessary
+                # Don't include encoding
+            command += f'{go_cmd} -o /build/poseidon-{target_os}'
+            if target_os == "darwin":
+                command += f"-{macOSVersion}"
+            command += "-amd64"
+            if self.get_parameter("mode") == "c-shared":
+                if target_os == "windows":
+                    command += ".dll"
+                elif target_os == "darwin":
+                    command += ".dylib"
+                else:
+                    command += ".so"
+            elif self.get_parameter("mode") == "c-archive":
+                command += ".a"
 
             # Execute the constructed xgo command to build Poseidon
             proc = await asyncio.create_subprocess_shell(
@@ -126,7 +143,7 @@ class Poseidon(PayloadType):
             # default build mode
             if self.get_parameter("mode") == "default":
                 # Linux
-                if target_os == "linux":
+                if target_os == "linux" or target_os == "windows":
                     if os.path.exists(f"/build/poseidon-{target_os}-amd64"):
                         resp.payload = open(f"/build/poseidon-{target_os}-amd64", "rb").read()
                     else:
@@ -170,6 +187,13 @@ class Poseidon(PayloadType):
                                             "rb").read()
                     else:
                         resp.build_stderr += f"/build/poseidon-{target_os}-{macOSVersion}-amd64.dylib does not exist"
+                        resp.status = BuildStatus.Error
+                        return resp
+                elif target_os == "windows":
+                    if os.path.exists(f"/build/poseidon-{target_os}-amd64.dll"):
+                        resp.payload = open(f"/build/poseidon-{target_os}-amd64.dll", "rb").read()
+                    else:
+                        resp.build_stderr += f"/build/poseidon-{target_os}-amd64.dll does not exist"
                         resp.status = BuildStatus.Error
                         return resp
                 else:
@@ -217,7 +241,7 @@ class Poseidon(PayloadType):
             resp.build_message += f'\nCreated Poseidon payload!\n' \
                                   f'OS: {target_os}, ' \
                                   f'Build Mode: {self.get_parameter("mode")}, ' \
-                                  f'C2 Profile: {profile}\n'
+                                  f'C2 Profile: {profile}\n[BUILD]{command}\n'
             resp.status = BuildStatus.Success
             return resp
         except Exception as e:
