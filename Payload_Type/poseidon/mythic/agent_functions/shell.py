@@ -22,7 +22,11 @@ class ShellCommand(CommandBase):
     argument_class = ShellArguments
     attackmapping = ["T1059.004"]
     attributes = CommandAttributes(
-        supported_os=[SupportedOS.MacOS, SupportedOS.Linux]
+        supported_os=[
+            SupportedOS.MacOS, 
+            SupportedOS.Linux,
+            SupportedOS.Windows,
+            ]
     )
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
