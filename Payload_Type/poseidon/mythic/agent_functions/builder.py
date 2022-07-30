@@ -91,16 +91,16 @@ class Poseidon(PayloadType):
             ldflags += " -X '{}.proxy_bypass={}'".format(poseidon_repo_profile, self.get_parameter("proxy_bypass"))
             # Set the Go -buildid argument to an empty string to remove the indicator
             ldflags += " -buildid="
-            command = f"rm -rf /build; rm -rf /deps; export CGO_ENABLED=1; export GOOS={target_os}; export GOARCH=amd64;"
+            command = f"rm -rf /build; rm -rf /deps; CGO_ENABLED=1 GOOS={target_os} GOARCH=amd64 "
 
             go_cmd = f'-tags {profile} -buildmode {self.get_parameter("mode")} -ldflags "{ldflags}"'
             if target_os == "darwin":
-                command += "export CC=o64-clang; export CXX=o64-clang++;"
+                command += "CC=o64-clang CXX=o64-clang++ "
             elif target_os == "windows":
-                command += "export CC=x86_64-w64-mingw32-gcc;"
-            command += "export GOGARBLE=golang.org,github.com,howett.net;"
-            command += "export GOGARBLE=$GOGARBLE,vendor,net,internal,reflect,crypto,strings,math,compress,compress,syscall,os,unicode,context,regexp,sync,strconv,sort,fmt,bytes,path,bufio,log,mime,hash,container;"
-
+                command += "CC=x86_64-w64-mingw32-gcc "
+            #command += "export GOGARBLE=golang.org,github.com,howett.net;"
+            #command += "export GOGARBLE=$GOGARBLE,vendor,net,internal,reflect,crypto,strings,math,compress,compress,syscall,os,unicode,context,regexp,sync,strconv,sort,fmt,bytes,path,bufio,log,mime,hash,container;"
+            command += "GOGARBLE=* "
             if self.get_parameter("garble"):
                 command += '/go/src/bin/garble -tiny -literals -debug -seed random build '
             else:
