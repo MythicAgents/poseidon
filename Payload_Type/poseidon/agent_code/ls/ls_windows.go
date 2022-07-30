@@ -3,10 +3,21 @@
 package ls
 
 import (
+	"encoding/json"
 	"os"
-	"errors"
 )
 
 func GetPermission(finfo os.FileInfo) (string, error) {
-	return "", errors.New("Not implemented")
+	perms := FilePermission{}
+	perms.UID = 0
+	perms.GID = 0
+	perms.Permissions = "rwxrwxrwx"
+	perms.User = "n/a"
+	perms.Group = "n/a"
+
+	data, err := json.Marshal(perms)
+	if err == nil {
+		return string(data), nil
+	}
+	return "", nil
 }
