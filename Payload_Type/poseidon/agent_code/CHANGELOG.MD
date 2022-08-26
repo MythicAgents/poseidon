@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 1.0.4 - 2022-8-25
+
+### Added
+
+- Added support for ARM compilations
+
+### Changed
+
+- Updated P2P to leverage the new `new_uuid` JSON key instead of the `mythic_uuid` key with Mythic version 2.3.12. This change is to help reduce the number of `mythic` strings in obfuscated payloads.
+
 ## 1.0.3 - 2022-07-08
 
 ### Added

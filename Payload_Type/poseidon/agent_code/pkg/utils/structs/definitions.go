@@ -220,7 +220,7 @@ type DelegateMessage struct {
 	Message       string `json:"message"`
 	UUID          string `json:"uuid"`
 	C2ProfileName string `json:"c2_profile"`
-	MythicUUID    string `json:"mythic_uuid,omitempty"`
+	MythicUUID    string `json:"new_uuid,omitempty"`
 }
 
 type FileUploadMessage struct {
