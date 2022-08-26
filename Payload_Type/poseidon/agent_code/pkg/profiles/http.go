@@ -1,3 +1,4 @@
+//go:build (linux || darwin) && http
 // +build linux darwin
 // +build http
 

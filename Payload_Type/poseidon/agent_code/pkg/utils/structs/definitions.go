@@ -176,7 +176,7 @@ type Response struct {
 	TrackingUUID string               `json:"tracking_uuid,omitempty"`
 	Upload       *FileUploadMessage   `json:"upload,omitempty"`
 	Download     *FileDownloadMessage `json:"download,omitempty"`
-	Keylogs      *[]Keylog            `json:"keystrokes,omitempty"`
+	Keylogs      *[]Keylog            `json:"keylogs,omitempty"`
 }
 
 func (r *Response) SetError(errString string) {

