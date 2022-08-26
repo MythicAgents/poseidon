@@ -29,7 +29,7 @@ class ClipboardMonitorCommand(CommandBase):
     version = 1
     author = "@its_a_feature_"
     argument_class = ClipboardMonitorArguments
-    attackmapping = []
+    attackmapping = ["T1115"]
     attributes = CommandAttributes(supported_os=[SupportedOS.MacOS])
 
     async def create_tasking(self, task: MythicTask) -> MythicTask:
