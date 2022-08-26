@@ -1,4 +1,4 @@
-#include "libinject_darwin.h"
+#include "libinject_darwin_amd64.h"
 
 #define STACK_SIZE 65536
 #define CODE_SIZE 128

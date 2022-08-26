@@ -1,11 +1,12 @@
-// +build darwin
+//go:build darwin && amd64
+// +build darwin,amd64
 
 package libinject
 
 /*
 #cgo LDFLAGS: -lm -framework Foundation
 #cgo CFLAGS: -Wno-error=implicit-function-declaration
-#include "libinject_darwin.h"
+#include "libinject_darwin_amd64.h"
 */
 import "C"
 
