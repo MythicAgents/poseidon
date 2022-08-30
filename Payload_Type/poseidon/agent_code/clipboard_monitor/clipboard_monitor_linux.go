@@ -4,25 +4,18 @@
 package clipboard_monitor
 
 import (
-	"fmt"
-	"io"
-	"io/ioutil"
-	"os"
-	"os/user"
-	"strconv"
-	"strings"
-	"syscall"
+	"errors"
 )
 
 func CheckClipboard(oldCount int) (string, error) {
-	return "", nil
+	return "", errors.New("Not supported on Linux")
 }
 
 func GetClipboardCount() (int, error) {
-	return int(0)
+	return int(0), errors.New("Not supported on Linux")
 }
 func GetFrontmostApp() (string, error) {
-	return "", nil
+	return "", errors.New("Not supported on Linux")
 }
 func WaitForTime() {
 
