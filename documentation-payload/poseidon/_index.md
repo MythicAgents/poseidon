@@ -46,10 +46,10 @@ The following Python3 code can be used to test execution of the returned file:
   The zip contains the golang `.a` archive file, the `.h` header file and the `sharedlib-darwin-linux.c` file.
 - Edit `sharedlib-darwin-linux.c` and change the `include` statement on line 7 to match the name of the golang archive 
   header file, if different.
-- Execute `ranlib poseidon-darwin-10.06-amd64.a` to "update the table of contents of archive libraries".
+- Execute `ranlib poseidon-darwin-10.12-amd64.a` to "update the table of contents of archive libraries".
 - Use `clang` to compile a dylib on macOS:
   `clang -shared -framework Foundation -framework CoreGraphics -framework Security -framework ApplicationServices 
-  -framework OSAKit -fpic sharedlib-darwin-linux.c poseidon-darwin-10.06-amd64.a -o poseidon.dylib`
+  -framework OSAKit -framework AppKit -fpic sharedlib-darwin-linux.c poseidon-darwin-10.12-amd64.a -o poseidon.dylib`
 
 The following Python3 code can be used to test execution of shared library:
 
@@ -61,3 +61,4 @@ The following Python3 code can be used to test execution of shared library:
 ## Authors
 - @xorrior
 - @djhohnstein
+- @its_a_feature_

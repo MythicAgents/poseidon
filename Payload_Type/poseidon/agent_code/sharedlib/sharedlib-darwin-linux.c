@@ -4,11 +4,11 @@
 #include <wchar.h>
 #include <assert.h>
 #include <pthread.h>
-#include "poseidon-darwin-10.06-amd64.h" //Change the header file if something different was used
+#include "poseidon-darwin-10.12-amd64.h" //Change the header file if something different was used
 // To build :
-// 1. Build a c-archive in golang: go build -buildmode=c-archive -o poseidon-darwin-10.06-amd64.a -tags=[profile] poseidon.go
-// 2. Execute: ranlib poseidon-darwin-10.06-amd64.a
-// 3. Build a shared lib (darwin): clang -shared -framework Foundation -framework CoreGraphics -framework Security -framework ApplicationServices -framework OSAKit -fpic sharedlib-darwin-linux.c poseidon-darwin-10.06-amd64.a -o poseidon.dylib
+// 1. Build a c-archive in golang: go build -buildmode=c-archive -o poseidon-darwin-10.12-amd64.a -tags=[profile] poseidon.go
+// 2. Execute: ranlib poseidon-darwin-10.12-amd64.a
+// 3. Build a shared lib (darwin): clang -shared -framework Foundation -framework CoreGraphics -framework Security -framework ApplicationServices -framework OSAKit -framework AppKit -fpic sharedlib-darwin-linux.c poseidon-darwin-10.12-amd64.a -o poseidon.dylib
 
 // Test Dylib execution with python3
 // python3
