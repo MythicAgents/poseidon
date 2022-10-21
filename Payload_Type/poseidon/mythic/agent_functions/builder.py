@@ -150,9 +150,12 @@ class Poseidon(PayloadType):
                 if debug:
                     resp.build_message += f"\n[BUILD]{command}\n"
             if stderr:
-                resp.build_stderr += f"\n[STDERR]\n{stderr.decode()}"
-                if debug:
-                    resp.build_stderr += f"\n[BUILD]{command}\n"
+                if self.get_parameter("garble"):
+                    resp.build_stderr += "\n[STDERR]\nGarble stderr is way too long. Skipping."
+                else:
+                    resp.build_stderr += f"\n[STDERR]\n{stderr.decode()}"
+                    if debug:
+                        resp.build_stderr += f"\n[BUILD]{command}\n"
 
             # default build mode
             if self.get_parameter("mode") == "default":
