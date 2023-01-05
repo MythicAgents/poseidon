@@ -8,7 +8,7 @@ from mythic_payloadtype_container.MythicCommandBase import *
 from mythic_payloadtype_container.MythicRPC import *
 
 
-class ExecuteAssemblyArguments(TaskArguments):
+class InjectAssemblyArguments(TaskArguments):
     def __init__(self, command_line, **kwargs):
         super().__init__(command_line, **kwargs)
         self.args = [
@@ -34,6 +34,18 @@ class ExecuteAssemblyArguments(TaskArguments):
                         ui_position=2
                     )
                 ]
+            ),
+            CommandParameter(
+                name="spawnas",
+                display_name="spawnas process",
+                default_value="rundll32.exe",
+                type=ParameterType.String,
+                description="sacrificial process to inject into",
+                parameter_group_info=[
+                    ParameterGroupInfo(
+                        ui_position=3
+                    )
+                ]
             )
         ]
 
@@ -44,14 +56,14 @@ class ExecuteAssemblyArguments(TaskArguments):
         self.load_args_from_dictionary(dictionary)
 
 
-class ExecuteAssemblyCommand(CommandBase):
-    cmd = "execute-assembly"
+class InjectAssemblyCommand(CommandBase):
+    cmd = "inject-assembly"
     needs_admin = False
-    help_cmd = "execute-assembly"
-    description = "Execute a .NET assembly or PE file in the current running poseidon process"
+    help_cmd = "inject-assembly"
+    description = "Inject a .NET assembly into a sacrificial process"
     version = 1
     author = "@scottctaylor12"
-    argument_class = ExecuteAssemblyArguments
+    argument_class = InjectAssemblyArguments
     attributes = CommandAttributes(
         supported_os=[SupportedOS.Windows]
     )

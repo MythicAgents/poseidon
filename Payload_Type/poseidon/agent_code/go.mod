@@ -3,6 +3,7 @@ module github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code
 go 1.15
 
 require (
+	github.com/C-Sto/BananaPhone v0.0.0-20220220002628-6585e5913761
 	github.com/djherbis/atime v1.0.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.4.2

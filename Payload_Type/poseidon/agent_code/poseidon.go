@@ -22,6 +22,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/execute_memory"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/getenv"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/getuser"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/inject_assembly"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/jsimport"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/jsimport_call"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/jxa"
@@ -124,7 +125,8 @@ var tasktypes = map[string]int{
 	"dyld_inject":       44,
 	"link_tcp":          45,
 	"unlink_tcp":        46,
-	"execute-assembly":  47,
+	"inject-assembly":   47,
+	"execute-assembly":  48,
 	"none":              NONE_CODE,
 }
 
@@ -474,8 +476,10 @@ func handleNewTask() {
 				go unlink_tcp.Run(task)
 				break
 			case 47:
-				go execute_assembly.Run(task)
+				go inject_assembly.Run(task)
 				break
+			case 48:
+				go execute_assembly.Run(task)
 			case NONE_CODE:
 				// No tasks, do nothing
 				break
