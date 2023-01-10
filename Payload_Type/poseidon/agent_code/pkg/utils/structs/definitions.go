@@ -297,7 +297,7 @@ func (t *Task) ShouldStop() bool {
 		msg.TaskID = t.TaskID
 		msg.UserOutput = "\nTask Cancelled"
 		msg.Completed = true
-		msg.Status = "error"
+		msg.Status = "Err: User Cancelled"
 		t.Job.SendResponses <- msg
 		return true
 	} else {
