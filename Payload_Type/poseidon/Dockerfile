@@ -1,1 +1,9 @@
-FROM itsafeaturemythic/xgolang_payload:0.1.4
+FROM itsafeaturemythic/mythic_base_image:0.0.1
+
+WORKDIR /Mythic/
+
+COPY [".", "."]
+
+RUN make build
+
+CMD make run
