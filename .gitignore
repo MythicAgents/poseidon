@@ -6,6 +6,7 @@ docs/_build/
 # Environments
 .env
 .venv
+main
 .DS_Store
 env/
 venv/
