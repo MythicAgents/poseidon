@@ -122,11 +122,11 @@ func closeAllChannels() {
 }
 func addMutexMap(channelId int32) {
 	in := make(chan structs.SocksMsg, 200)
-	//channelMap.Lock()
+	channelMap.Lock()
 	channelMap.m[channelId] = in
 	//fmt.Printf("Added new channel to map: %d\n", channelId)
 	//fmt.Printf("now size: %d\n", len(channelMap.m))
-	//channelMap.Unlock()
+	channelMap.Unlock()
 }
 func removeMutexMap(connection int32, conn net.Conn) {
 	//channelMap.Lock()

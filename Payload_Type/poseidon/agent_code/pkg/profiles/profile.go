@@ -232,7 +232,7 @@ func printInternalTCPConnectionMap() {
 	fmt.Printf("---- done -----\n")
 }
 
-//SendFileChunks - Helper function to deal with sending files from agent to Mythic
+// SendFileChunks - Helper function to deal with sending files from agent to Mythic
 func SendFile(sendFileToMythic structs.SendFileToMythicStruct) {
 	var size int64
 	if sendFileToMythic.Data == nil {

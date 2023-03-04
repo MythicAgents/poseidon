@@ -164,19 +164,25 @@ type Keylog struct {
 	WindowTitle string `json:"window_title"`
 	Keystrokes  string `json:"keystrokes"`
 }
+type Artifact struct {
+	BaseArtifact string `json:"base_artifact"`
+	Artifact     string `json:"artifact"`
+}
 
 type Response struct {
-	TaskID       string               `json:"task_id"`
-	UserOutput   string               `json:"user_output,omitempty"`
-	Completed    bool                 `json:"completed,omitempty"`
-	Status       string               `json:"status,omitempty"`
-	FileBrowser  *FileBrowser         `json:"file_browser,omitempty"`
-	RemovedFiles *[]RmFiles           `json:"removed_files,omitempty"`
-	Processes    *[]ProcessDetails    `json:"processes,omitempty"`
-	TrackingUUID string               `json:"tracking_uuid,omitempty"`
-	Upload       *FileUploadMessage   `json:"upload,omitempty"`
-	Download     *FileDownloadMessage `json:"download,omitempty"`
-	Keylogs      *[]Keylog            `json:"keylogs,omitempty"`
+	TaskID          string               `json:"task_id"`
+	UserOutput      string               `json:"user_output,omitempty"`
+	Completed       bool                 `json:"completed,omitempty"`
+	Status          string               `json:"status,omitempty"`
+	FileBrowser     *FileBrowser         `json:"file_browser,omitempty"`
+	RemovedFiles    *[]RmFiles           `json:"removed_files,omitempty"`
+	Processes       *[]ProcessDetails    `json:"processes,omitempty"`
+	TrackingUUID    string               `json:"tracking_uuid,omitempty"`
+	Upload          *FileUploadMessage   `json:"upload,omitempty"`
+	Download        *FileDownloadMessage `json:"download,omitempty"`
+	Keylogs         *[]Keylog            `json:"keylogs,omitempty"`
+	Artifacts       *[]Artifact          `json:"artifacts,omitempty"`
+	ProcessResponse *string              `json:"process_response,omitempty"`
 }
 
 func (r *Response) SetError(errString string) {

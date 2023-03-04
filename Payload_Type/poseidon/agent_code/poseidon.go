@@ -55,6 +55,7 @@ import (
 )
 import (
 	"encoding/binary"
+	//_ "net/http/pprof"
 	"os"
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/link_tcp"
@@ -269,6 +270,7 @@ func handleMythicMessageResponse(mythicMessage structs.MythicMessageResponse) {
 	if len(mythicMessage.Delegates) > 0 {
 		profiles.HandleDelegateMessageForInternalTCPConnections(mythicMessage.Delegates)
 	}
+	//fmt.Printf("returning from handleMythicMessageResponse\n")
 	return
 }
 
@@ -625,5 +627,11 @@ func main() {
 	go handleAddNewInternalTCPConnections()
 	go handleRemoveInternalTCPConnections()
 	go handleInboundMythicMessageFromEgressP2PChannel()
+	/*
+		go func() {
+			log.Println(http.ListenAndServe("192.168.0.127:8080", nil))
+		}()
+	*/
 	profile.Start()
+
 }

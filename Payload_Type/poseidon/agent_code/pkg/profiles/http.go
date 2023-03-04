@@ -230,7 +230,7 @@ func (c *C2Default) ProfileType() string {
 	return "http"
 }
 
-//CheckIn a new agent
+// CheckIn a new agent
 func (c *C2Default) CheckIn() interface{} {
 
 	// Start Encrypted Key Exchange (EKE)
@@ -269,7 +269,7 @@ func (c *C2Default) CheckIn() interface{} {
 
 }
 
-//NegotiateKey - EKE key negotiation
+// NegotiateKey - EKE key negotiation
 func (c *C2Default) NegotiateKey() bool {
 	sessionID := GenerateSessionID()
 	pub, priv := crypto.GenerateRSAKeyPair()
@@ -312,7 +312,7 @@ func (c *C2Default) NegotiateKey() bool {
 	return true
 }
 
-//PostResponse - Post task responses
+// PostResponse - Post task responses
 func (c *C2Default) SendMessage(output []byte) interface{} {
 	endpoint := c.PostURI
 	return c.htmlPostData(endpoint, output)
@@ -326,11 +326,11 @@ var tr = &http.Transport{
 	//IdleConnTimeout: 1 * time.Nanosecond,
 }
 var client = &http.Client{
-	//Timeout:   1 * time.Second,
+	Timeout:   5 * time.Second,
 	Transport: tr,
 }
 
-//htmlPostData HTTP POST function
+// htmlPostData HTTP POST function
 func (c *C2Default) htmlPostData(urlEnding string, sendData []byte) []byte {
 	targeturl := fmt.Sprintf("%s%s", c.BaseURL, c.PostURI)
 	//log.Println("Sending POST request to url: ", url)
@@ -423,6 +423,7 @@ func (c *C2Default) htmlPostData(urlEnding string, sendData []byte) []byte {
 		//log.Printf("shouldn't be here\n")
 		return make([]byte, 0)
 	}
+	//log.Printf("shouldn't be here either\n")
 	return make([]byte, 0) //shouldn't get here
 }
 

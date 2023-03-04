@@ -98,6 +98,13 @@ func Run(task structs.Task) {
 	} else {
 		msg.Completed = true
 		msg.UserOutput = fmt.Sprintf("Uploaded %d bytes to %s", totalBytesWritten, r.FullPath)
+		artifacts := []structs.Artifact{
+			{
+				BaseArtifact: "FileCreate",
+				Artifact:     r.FullPath,
+			},
+		}
+		msg.Artifacts = &artifacts
 		task.Job.SendResponses <- msg
 	}
 	return

@@ -38,6 +38,7 @@ func Run(task structs.Task) {
 	}
 	resp := structs.Response{}
 	resp.UserOutput = output
+	resp.ProcessResponse = &output
 	resp.Completed = true
 	resp.TaskID = task.TaskID
 	task.Job.SendResponses <- resp

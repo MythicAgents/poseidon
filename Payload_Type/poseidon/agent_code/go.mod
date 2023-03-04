@@ -1,6 +1,6 @@
 module github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code
 
-go 1.15
+go 1.19
 
 require (
 	github.com/djherbis/atime v1.0.0
