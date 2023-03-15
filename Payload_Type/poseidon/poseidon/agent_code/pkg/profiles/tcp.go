@@ -55,7 +55,7 @@ func New() structs.Profile {
 	profile := C2Default{
 		Key:                  AESPSK,
 		Port:                 port,
-		ExchangingKeys:       encrypted_exchange_check == "T",
+		ExchangingKeys:       encrypted_exchange_check == "true",
 		EgressTCPConnections: make(map[string]net.Conn),
 		FinishedStaging:      false,
 		Killdate:             killDateTime,
