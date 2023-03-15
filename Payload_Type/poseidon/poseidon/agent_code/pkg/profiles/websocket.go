@@ -1,3 +1,4 @@
+//go:build (linux || darwin) && websocket
 // +build linux darwin
 // +build websocket
 
@@ -116,7 +117,7 @@ func New() structs.Profile {
 		profile.Jitter = 23
 	}
 
-	if encrypted_exchange_check == "T" {
+	if encrypted_exchange_check == "true" {
 		profile.ExchangingKeys = true
 	}
 

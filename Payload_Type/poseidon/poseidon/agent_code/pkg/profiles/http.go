@@ -151,7 +151,7 @@ func New() structs.Profile {
 	// Convert ignore_proxy from string to bool
 	profile.ProxyBypass, _ = strconv.ParseBool(proxy_bypass)
 
-	if encrypted_exchange_check == "T" {
+	if encrypted_exchange_check == "true" {
 		profile.ExchangingKeys = true
 	}
 	return &profile
