@@ -21,7 +21,7 @@ func init() {
 	agentstructs.AllPayloadData.Get("poseidon").AddCommand(shell)
 }
 
-func shellCreateTasking(taskData agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+func shellCreateTasking(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 	response := agentstructs.PTTaskCreateTaskingMessageResponse{
 		Success: true,
 		TaskID:  taskData.Task.ID,

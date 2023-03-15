@@ -21,7 +21,7 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 			SupportedOS: []string{},
 		},
 		AssociatedBrowserScript: &agentstructs.BrowserScript{
-			ScriptPath: filepath.Join(".","poseidon", "browserscripts", "sshauth_new.js"),
+			ScriptPath: filepath.Join(".", "poseidon", "browserscripts", "sshauth_new.js"),
 			Author:     "@djhohnstein",
 		},
 		CommandParameters: []agentstructs.CommandParameter{
@@ -202,7 +202,7 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 				},
 			},
 		},
-		TaskFunctionCreateTasking: func(taskData agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,
 				TaskID:  taskData.Task.ID,

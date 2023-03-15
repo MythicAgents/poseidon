@@ -57,17 +57,17 @@ var payloadDefinition = agentstructs.PayloadType{
 	},
 	BuildSteps: []agentstructs.BuildStep{
 		{
-			StepName:        "Configuring",
-			StepDescription: "Cleaning up configuration values and generating the golang build command",
+			Name:        "Configuring",
+			Description: "Cleaning up configuration values and generating the golang build command",
 		},
 
 		{
-			StepName:        "Compiling",
-			StepDescription: "Compiling the golang agent (maybe with obfuscation via garble)",
+			Name:        "Compiling",
+			Description: "Compiling the golang agent (maybe with obfuscation via garble)",
 		},
 		{
-			StepName:        "Reporting back",
-			StepDescription: "Sending the payload back to Mythic",
+			Name:        "Reporting back",
+			Description: "Sending the payload back to Mythic",
 		},
 	},
 }
@@ -85,11 +85,11 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		return payloadBuildResponse
 	}
 	macOSVersion := "10.12"
-	target_os := "linux"
+	targetOs := "linux"
 	if payloadBuildMsg.SelectedOS == "macOS" {
-		target_os = "darwin"
+		targetOs = "darwin"
 	} else if payloadBuildMsg.SelectedOS == "Windows" {
-		target_os = "windows"
+		targetOs = "windows"
 	}
 	// This package path is used with Go's "-X" link flag to set the value string variables in code at compile
 	// time. This is how each profile's configurable options are passed in.
@@ -123,11 +123,11 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	if payloadBuildMsg.BuildParameters["architecture"].(string) == "ARM_x64" {
 		goarch = "arm64"
 	}
-	command := fmt.Sprintf("rm -rf /deps; CGO_ENABLED=1 GOOS=%s GOARCH=%s ", target_os, goarch)
+	command := fmt.Sprintf("rm -rf /deps; CGO_ENABLED=1 GOOS=%s GOARCH=%s ", targetOs, goarch)
 	goCmd := fmt.Sprintf("-tags %s -buildmode %s -ldflags \"%s\"", payloadBuildMsg.C2Profiles[0].Name, payloadBuildMsg.BuildParameters["mode"], ldflags)
-	if target_os == "darwin" {
+	if targetOs == "darwin" {
 		command += "CC=o64-clang CXX=o64-clang++ "
-	} else if target_os == "windows" {
+	} else if targetOs == "windows" {
 		command += "CC=x86_64-w64-mingw32-gcc "
 	}
 	command += "GOGARBLE=* "
@@ -136,19 +136,19 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	} else {
 		command += "go build "
 	}
-	payloadName := fmt.Sprintf("%s-%s", payloadBuildMsg.PayloadUUID, target_os)
+	payloadName := fmt.Sprintf("%s-%s", payloadBuildMsg.PayloadUUID, targetOs)
 	command += fmt.Sprintf("%s -o /build/%s", goCmd, payloadName)
-	if target_os == "darwin" {
+	if targetOs == "darwin" {
 		command += fmt.Sprintf("-%s", macOSVersion)
 		payloadName += fmt.Sprintf("-%s", macOSVersion)
 	}
 	command += fmt.Sprintf("-%s", goarch)
 	payloadName += fmt.Sprintf("-%s", goarch)
 	if payloadBuildMsg.BuildParameters["mode"].(string) == "c-shared" {
-		if target_os == "windows" {
+		if targetOs == "windows" {
 			command += ".dll"
 			payloadName += ".dll"
-		} else if target_os == "darwin" {
+		} else if targetOs == "darwin" {
 			command += ".dylib"
 			payloadName += ".dylib"
 		} else {

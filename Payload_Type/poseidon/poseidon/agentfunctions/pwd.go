@@ -2,7 +2,6 @@ package agentfunctions
 
 import (
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
-	
 )
 
 var pwd = agentstructs.Command{
@@ -10,7 +9,7 @@ var pwd = agentstructs.Command{
 	Description:         "Print the current working directory",
 	Version:             1,
 	MitreAttackMappings: []string{"T1083"},
-	
+
 	TaskFunctionOPSECPre:           pwdOpsecPreCheck,
 	TaskFunctionCreateTasking:      pwdCreateTasking,
 	TaskFunctionOPSECPost:          pwdOpsecPostCheck,
@@ -34,7 +33,7 @@ func pwdParseDictArgs(args *agentstructs.PTTaskMessageArgsData, input map[string
 	return nil
 }
 
-func pwdOpsecPreCheck(task agentstructs.PTTaskMessageAllData) agentstructs.PTTTaskOPSECPreTaskMessageResponse {
+func pwdOpsecPreCheck(task *agentstructs.PTTaskMessageAllData) agentstructs.PTTTaskOPSECPreTaskMessageResponse {
 	response := agentstructs.PTTTaskOPSECPreTaskMessageResponse{
 		Success:         true,
 		OpsecPreBlocked: false,
@@ -45,7 +44,7 @@ func pwdOpsecPreCheck(task agentstructs.PTTaskMessageAllData) agentstructs.PTTTa
 
 }
 
-func pwdCreateTasking(task agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+func pwdCreateTasking(task *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 	response := agentstructs.PTTaskCreateTaskingMessageResponse{
 		Success: true,
 		TaskID:  task.Task.ID,
@@ -53,7 +52,7 @@ func pwdCreateTasking(task agentstructs.PTTaskMessageAllData) agentstructs.PTTas
 	return response
 }
 
-func pwdOpsecPostCheck(task agentstructs.PTTaskMessageAllData) agentstructs.PTTaskOPSECPostTaskMessageResponse {
+func pwdOpsecPostCheck(task *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskOPSECPostTaskMessageResponse {
 	response := agentstructs.PTTaskOPSECPostTaskMessageResponse{
 		Success: true,
 		TaskID:  task.Task.ID,
