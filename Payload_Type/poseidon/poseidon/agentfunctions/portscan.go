@@ -20,7 +20,7 @@ func init() {
 			SupportedOS: []string{},
 		},
 		AssociatedBrowserScript: &agentstructs.BrowserScript{
-			ScriptPath: filepath.Join(".", "poseidon","browserscripts", "portscan_new.js"),
+			ScriptPath: filepath.Join(".", "poseidon", "browserscripts", "portscan_new.js"),
 			Author:     "@djhohnstein",
 		},
 		CommandParameters: []agentstructs.CommandParameter{
@@ -50,7 +50,7 @@ func init() {
 				Description: "List of ports to scan. Can use the dash separator to specify a range.",
 			},
 		},
-		TaskFunctionCreateTasking: func(taskData agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,
 				TaskID:  taskData.Task.ID,

@@ -18,10 +18,10 @@ func init() {
 			SupportedOS: []string{},
 		},
 		AssociatedBrowserScript: &agentstructs.BrowserScript{
-			ScriptPath: filepath.Join(".","poseidon", "browserscripts", "ps_new.js"),
+			ScriptPath: filepath.Join(".", "poseidon", "browserscripts", "ps_new.js"),
 			Author:     "@djhohnstein",
 		},
-		TaskFunctionCreateTasking: func(taskData agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,
 				TaskID:  taskData.Task.ID,

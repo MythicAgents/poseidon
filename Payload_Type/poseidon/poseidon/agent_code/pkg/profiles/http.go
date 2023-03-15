@@ -344,7 +344,7 @@ func (c *C2Default) htmlPostData(urlEnding string, sendData []byte) []byte {
 	} else {
 		sendData = append([]byte(UUID), sendData...) // Prepend the UUID
 	}
-
+	//fmt.Printf("Sending: %v\n", string(sendData))
 	sendDataBase64 := []byte(base64.StdEncoding.EncodeToString(sendData)) // Base64 encode and convert to raw bytes
 
 	if len(c.ProxyURL) > 0 {
@@ -415,11 +415,11 @@ func (c *C2Default) htmlPostData(urlEnding string, sendData []byte) []byte {
 						time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
 						continue
 					} else {
-						//fmt.Printf("response: %v\n", enc_raw)
+						//fmt.Printf("response: %v\n%v\n", string(raw[:36]), string(enc_raw))
 						return enc_raw
 					}
 				} else {
-					//fmt.Printf("response: %v\n", raw[36:])
+					//fmt.Printf("response: %v\n", string(raw))
 					return raw[36:]
 				}
 			}

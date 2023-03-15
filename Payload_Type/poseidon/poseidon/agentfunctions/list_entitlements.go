@@ -22,7 +22,7 @@ func init() {
 			SupportedOS: []string{agentstructs.SUPPORTED_OS_MACOS},
 		},
 		AssociatedBrowserScript: &agentstructs.BrowserScript{
-			ScriptPath: filepath.Join(".", "poseidon","browserscripts", "list_entitlements_new.js"), // the name of the script in agent_browser_scripts
+			ScriptPath: filepath.Join(".", "poseidon", "browserscripts", "list_entitlements_new.js"), // the name of the script in agent_browser_scripts
 			Author:     "@its_a_feature_",
 		},
 		CommandParameters: []agentstructs.CommandParameter{
@@ -39,7 +39,7 @@ func init() {
 				Description: "PID of process to query (-1 for all)",
 			},
 		},
-		TaskFunctionCreateTasking: func(taskData agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,
 				TaskID:  taskData.Task.ID,

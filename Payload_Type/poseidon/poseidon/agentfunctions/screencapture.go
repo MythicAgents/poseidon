@@ -16,7 +16,7 @@ func init() {
 			SupportedOS: []string{agentstructs.SUPPORTED_OS_MACOS},
 		},
 		AssociatedBrowserScript: &agentstructs.BrowserScript{
-			ScriptPath: filepath.Join(".","poseidon", "browserscripts", "screencapture_new.js"),
+			ScriptPath: filepath.Join(".", "poseidon", "browserscripts", "screencapture_new.js"),
 			Author:     "@djhohnstein",
 		},
 		TaskFunctionParseArgString: func(args *agentstructs.PTTaskMessageArgsData, input string) error {
@@ -25,7 +25,7 @@ func init() {
 		TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
 			return nil
 		},
-		TaskFunctionCreateTasking: func(task agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+		TaskFunctionCreateTasking: func(task *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,
 				TaskID:  task.Task.ID,

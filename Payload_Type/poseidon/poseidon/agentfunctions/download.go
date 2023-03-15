@@ -18,7 +18,7 @@ var download = agentstructs.Command{
 		ScriptPath: filepath.Join(".", "poseidon", "browserscripts", "download_new.js"), // the name of the script in agent_browser_scripts
 		Author:     "@its_a_feature_",
 	},
-	TaskFunctionCreateTasking: func(taskData agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+	TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 		response := agentstructs.PTTaskCreateTaskingMessageResponse{
 			Success: true,
 			TaskID:  taskData.Task.ID,
