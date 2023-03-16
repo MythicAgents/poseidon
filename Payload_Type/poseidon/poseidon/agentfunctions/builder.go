@@ -199,7 +199,9 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 			StepStdout:  fmt.Sprintf("Successfully executed\n%s", outputString),
 		})
 	}
-	payloadBuildResponse.BuildStdErr = stderr.String()
+	if !payloadBuildMsg.BuildParameters["garble"].(bool) {
+		payloadBuildResponse.BuildStdErr = stderr.String()
+	}
 	payloadBuildResponse.BuildStdOut = stdout.String()
 	if payloadBytes, err := os.ReadFile(fmt.Sprintf("/build/%s", payloadName)); err != nil {
 		payloadBuildResponse.Success = false
