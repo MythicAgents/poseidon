@@ -186,7 +186,12 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		})
 		return payloadBuildResponse
 	} else {
-		outputString := stderr.String() + "\n" + stdout.String()
+		outputString := stdout.String()
+		if !payloadBuildMsg.BuildParameters["garble"].(bool) {
+			// only adding stderr if garble is false, otherwise it's too much data
+			outputString += "\n" + stderr.String()
+		}
+
 		mythicrpc.SendMythicRPCPayloadUpdateBuildStep(mythicrpc.MythicRPCPayloadUpdateBuildStepMessage{
 			PayloadUUID: payloadBuildMsg.PayloadUUID,
 			StepName:    "Compiling",
