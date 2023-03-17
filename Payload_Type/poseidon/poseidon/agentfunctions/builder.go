@@ -209,6 +209,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	} else {
 		payloadBuildResponse.Payload = &payloadBytes
 		payloadBuildResponse.Success = true
+		payloadBuildResponse.BuildMessage = "Successfully built payload!"
 	}
 
 	//payloadBuildResponse.Status = agentstructs.PAYLOAD_BUILD_STATUS_ERROR

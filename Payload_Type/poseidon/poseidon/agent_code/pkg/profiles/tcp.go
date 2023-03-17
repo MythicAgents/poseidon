@@ -98,13 +98,13 @@ func (c *C2Default) handleClientConnection(conn net.Conn) {
 	c.EgressTCPConnections[connectionUUID] = conn
 	go c.handleEgressConnectionIncomingMessage(conn)
 	if c.FinishedStaging {
-		fmt.Printf("FinishedStaging, Got a new connection, sending checkin\n")
+		//fmt.Printf("FinishedStaging, Got a new connection, sending checkin\n")
 		go c.CheckIn()
 	} else if c.ExchangingKeys {
-		fmt.Printf("ExchangingKeys, starting EKE\n")
+		//fmt.Printf("ExchangingKeys, starting EKE\n")
 		go c.NegotiateKey()
 	} else {
-		fmt.Printf("Not finished staging, not exchaing keys, sending checkin\n")
+		//fmt.Printf("Not finished staging, not exchaing keys, sending checkin\n")
 		go c.CheckIn()
 	}
 }
@@ -117,7 +117,7 @@ func (c *C2Default) handleEgressConnectionIncomingMessage(conn net.Conn) {
 	for {
 		err := binary.Read(conn, binary.BigEndian, &sizeBuffer)
 		if err != nil {
-			fmt.Println("Failed to read size from tcp connection:", err)
+			//fmt.Println("Failed to read size from tcp connection:", err)
 			if err == io.EOF {
 				// the connection is broken, we should remove this entry from our egress map
 				c.RemoveEgressTCPConnectionByConnection(conn)
@@ -129,7 +129,7 @@ func (c *C2Default) handleEgressConnectionIncomingMessage(conn net.Conn) {
 
 			readSoFar, err := conn.Read(readBuffer)
 			if err != nil {
-				fmt.Println("Failed to read bytes from tcp connection:", err)
+				//fmt.Println("Failed to read bytes from tcp connection:", err)
 				if err == io.EOF {
 					// the connection is broken, we should remove this entry from our egress map
 					c.RemoveEgressTCPConnectionByConnection(conn)
@@ -142,7 +142,7 @@ func (c *C2Default) handleEgressConnectionIncomingMessage(conn net.Conn) {
 				nextBuffer := make([]byte, sizeBuffer-totalRead)
 				readSoFar, err = conn.Read(nextBuffer)
 				if err != nil {
-					fmt.Println("Failed to read bytes from tcp connection:", err)
+					//fmt.Println("Failed to read bytes from tcp connection:", err)
 					if err == io.EOF {
 						// the connection is broken, we should remove this entry from our egress map
 						c.RemoveEgressTCPConnectionByConnection(conn)

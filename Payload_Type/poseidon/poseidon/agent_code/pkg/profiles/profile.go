@@ -155,12 +155,12 @@ func CreateCheckinMessage() interface{} {
 func SendTCPData(sendData []byte, conn net.Conn) error {
 	err := binary.Write(conn, binary.BigEndian, int32(len(sendData)))
 	if err != nil {
-		fmt.Printf("Failed to send down pipe with error: %v\n", err)
+		//fmt.Printf("Failed to send down pipe with error: %v\n", err)
 		return err
 	}
 	_, err = conn.Write(sendData)
 	if err != nil {
-		fmt.Printf("Failed to send with error: %v\n", err)
+		//fmt.Printf("Failed to send with error: %v\n", err)
 		return err
 	}
 	//fmt.Printf("Sent %d bytes to connection\n", totalWritten)
@@ -192,11 +192,11 @@ func AddNewInternalTCPConnection(newInternalChannel net.Conn) string {
 func RemoveInternalTCPConnection(connectionUUID string) bool {
 	if conn, ok := InternalTCPConnections[connectionUUID]; ok {
 		//fmt.Printf("about to remove a connection, %s\n", connectionUUID)
-		printInternalTCPConnectionMap()
+		//printInternalTCPConnectionMap()
 		conn.Close()
 		delete(InternalTCPConnections, connectionUUID)
 		//fmt.Printf("connection removed, %s\n", connectionUUID)
-		printInternalTCPConnectionMap()
+		//printInternalTCPConnectionMap()
 		return true
 	} else {
 		// we don't know about this connection we're asked to close
