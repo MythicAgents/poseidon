@@ -14,7 +14,7 @@ type Arguments struct {
 	RemoteUUID string `json:"connection"`
 }
 
-//Run - package function to run unlink_tcp
+// Run - package function to run unlink_tcp
 func Run(task structs.Task) {
 	msg := structs.Response{}
 	msg.TaskID = task.TaskID
@@ -29,7 +29,6 @@ func Run(task structs.Task) {
 	}
 
 	task.Job.RemoveInternalTCPConnectionChannel <- args.RemoteUUID
-
 	msg.UserOutput = "Tasked to disconnect"
 	msg.Completed = true
 	msg.Status = "completed"
