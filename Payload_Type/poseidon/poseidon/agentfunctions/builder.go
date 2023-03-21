@@ -176,13 +176,13 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	if err := cmd.Run(); err != nil {
 		payloadBuildResponse.Success = false
 		payloadBuildResponse.BuildMessage = "Compilation failed with errors"
-		payloadBuildResponse.BuildStdErr = stderr.String()
+		payloadBuildResponse.BuildStdErr = stderr.String() + "\n" + err.Error()
 		payloadBuildResponse.BuildStdOut = stdout.String()
 		mythicrpc.SendMythicRPCPayloadUpdateBuildStep(mythicrpc.MythicRPCPayloadUpdateBuildStepMessage{
 			PayloadUUID: payloadBuildMsg.PayloadUUID,
 			StepName:    "Compiling",
-			StepSuccess: true,
-			StepStdout:  fmt.Sprintf("failed to compile\n%s", stderr.String()),
+			StepSuccess: false,
+			StepStdout:  fmt.Sprintf("failed to compile\n%s\n%s\n%s", stderr.String(), stdout.String(), err.Error()),
 		})
 		return payloadBuildResponse
 	} else {
