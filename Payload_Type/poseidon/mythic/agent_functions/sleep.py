@@ -1,6 +1,6 @@
 from mythic_payloadtype_container.MythicCommandBase import *
 import json
-
+from mythic_payloadtype_container.MythicRPC import *
 
 class SleepArguments(TaskArguments):
     def __init__(self, command_line, **kwargs):
