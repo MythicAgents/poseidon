@@ -133,7 +133,7 @@ func CreateCheckinMessage() interface{} {
 	domain := functions.GetDomain()
 	checkin := structs.CheckInMessage{
 		Action:       "checkin",
-		IP:           currIP,
+		IPs:          currIP,
 		OS:           OperatingSystem,
 		User:         currentUser,
 		Host:         hostname,

@@ -2,30 +2,33 @@ package functions
 
 import (
 	"net"
+	"sort"
 )
 
-//GetCurrentIPAddress - the current IP address of the system
-func GetCurrentIPAddress() string {
-	addrs, err := net.InterfaceAddrs()
-	currIP := "127.0.0.1"
-	if err != nil {
-		return currIP
-	}
-	for _, address := range addrs {
-
-		// return the first IPv4 address that's not localhost
-		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				//fmt.Println("Current IP address : ", ipnet.IP.String())
-				if ipnet.IP.String() == currIP {
-					continue
-				}
-				return ipnet.IP.String()
+// GetCurrentIPAddress - the current IP address of the system
+func GetCurrentIPAddress() []string {
+	if addrs, err := net.InterfaceAddrs(); err != nil {
+		return []string{"127.0.0.1"}
+	} else {
+		ipAddresses := []string{}
+		for _, address := range addrs {
+			addrString := address.(*net.IPNet).IP.String()
+			if !SliceContains([]string{"127.0.0.1", "::1", "fe80::1"}, addrString) {
+				ipAddresses = append(ipAddresses, addrString)
 			}
 		}
+		sort.Sort(sort.StringSlice(ipAddresses))
+		return ipAddresses
 	}
+}
 
-	return currIP
+func SliceContains[V string | int](source []V, check V) bool {
+	for _, v := range source {
+		if check == v {
+			return true
+		}
+	}
+	return false
 }
 
 func IsElevated() bool {

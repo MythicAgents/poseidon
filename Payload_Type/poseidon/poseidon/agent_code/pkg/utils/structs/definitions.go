@@ -35,18 +35,18 @@ type HeaderStruct struct {
 
 // Struct definition for CheckIn messages
 type CheckInMessage struct {
-	Action         string `json:"action"`
-	IP             string `json:"ip"`
-	OS             string `json:"os"`
-	User           string `json:"user"`
-	Host           string `json:"host"`
-	Pid            int    `json:"pid"`
-	UUID           string `json:"uuid"`
-	Architecture   string `json:"architecture"`
-	Domain         string `json:"domain"`
-	IntegrityLevel int    `json:"integrity_level"`
-	ExternalIP     string `json:"external_ip"`
-	ProcessName    string `json:"process_name"`
+	Action         string   `json:"action"`
+	IPs            []string `json:"ips"`
+	OS             string   `json:"os"`
+	User           string   `json:"user"`
+	Host           string   `json:"host"`
+	Pid            int      `json:"pid"`
+	UUID           string   `json:"uuid"`
+	Architecture   string   `json:"architecture"`
+	Domain         string   `json:"domain"`
+	IntegrityLevel int      `json:"integrity_level"`
+	ExternalIP     string   `json:"external_ip"`
+	ProcessName    string   `json:"process_name"`
 }
 
 type CheckInMessageResponse struct {
@@ -280,7 +280,7 @@ type SocksMsg struct {
 	Exit     bool   `json:"exit"`
 }
 
-//Message - struct definition for external C2 messages
+// Message - struct definition for external C2 messages
 type Message struct {
 	Tag    string `json:"tag"`
 	Client bool   `json:"client"`
