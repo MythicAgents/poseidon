@@ -68,5 +68,4 @@ class SleepCommand(CommandBase):
         return task
 
     async def process_response(self, response: AgentResponse):
-        pass
-        #resp = await MythicRPC().execute("update_callback", task_id=response.task.id, sleep_info=response.response)
+        resp = await MythicRPC().execute("update_callback", task_id=response.task.id, sleep_info=response.response)
