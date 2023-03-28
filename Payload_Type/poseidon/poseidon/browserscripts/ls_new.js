@@ -1,14 +1,14 @@
 function(task, response){
 	var rows = [];
 	let headers = [
-            {"plaintext": "name", "type": "string", "fillWidth": true},
-            {"plaintext": "size", "type": "size", "width": 150},
-            {"plaintext": "user", "type": "string", "width": 200},
-            {"plaintext": "group", "type": "string", "width": 200},
-            {"plaintext": "permissions", "type": "string", "width": 150},
-			{"plaintext": "modified", "type": "date", "width": 300},
-            {"plaintext": "ls", "type": "button", "width": 100},
-        ];
+		{"plaintext": "name", "type": "string", "fillWidth": true},
+		{"plaintext": "size", "type": "size", "width": 150},
+		{"plaintext": "user", "type": "string", "width": 200},
+		{"plaintext": "group", "type": "string", "width": 200},
+		{"plaintext": "permissions", "type": "string", "width": 150},
+		{"plaintext": "modified", "type": "date", "width": 300},
+		{"plaintext": "ls", "type": "button", "width": 100},
+	];
 
 	for(let i = 0; i < response.length; i++){
 		let data = JSON.parse(response[i]);
@@ -44,6 +44,11 @@ function(task, response){
 		for (let j = 0; j < files.length; j++)
 		{
 			let perms = JSON.parse(files[j]['permissions']['permissions']);
+			if(data["parent_path"] === "/"){
+				ls_path = data["parent_path"] + data["name"] + "/" + files[j]['name'];
+			}else{
+				ls_path = data["parent_path"] + "/" + data["name"] + "/" + files[j]['name'];
+			}
 			rows.push({
 				"name": {"plaintext": files[j]['name'], "startIcon": files[j]["is_file"] ? "file":"openFolder",
 					"copyIcon": true,
@@ -67,8 +72,8 @@ function(task, response){
 			});
 		}
 		return {"table":[{
-            "headers": headers,
-            "rows": rows,
-        }]};
+				"headers": headers,
+				"rows": rows,
+			}]};
 	}
 }
