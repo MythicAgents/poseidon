@@ -1,6 +1,7 @@
 package agentfunctions
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 
@@ -85,7 +86,17 @@ func init() {
 				logging.LogError(err, "Failed to get method string")
 				response.Success = false
 				response.Error = err.Error()
+			} else if headerString, err := taskData.Args.GetStringArg("headers"); err != nil {
+				logging.LogError(err, "Failed to get headers string")
+				response.Success = false
+				response.Error = err.Error()
+			} else if bodyString, err := taskData.Args.GetStringArg("body"); err != nil {
+				logging.LogError(err, "Failed to get body string")
+				response.Success = false
+				response.Error = err.Error()
 			} else {
+				taskData.Args.SetArgValue("headers", base64.StdEncoding.EncodeToString([]byte(headerString)))
+				taskData.Args.SetArgValue("body", base64.StdEncoding.EncodeToString([]byte(bodyString)))
 				displayParams := fmt.Sprintf("%s via HTTP %s", url, method)
 				response.DisplayParams = &displayParams
 			}
