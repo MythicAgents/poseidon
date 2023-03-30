@@ -19,7 +19,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/download"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/drives"
 	dyldinject "github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/dyld_inject"
-	"github.com/tsanozm/poseidon/Payload_Type/poseidon/agent_code/execute_macho"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/execute_macho"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/execute_memory"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/getenv"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/getuser"
