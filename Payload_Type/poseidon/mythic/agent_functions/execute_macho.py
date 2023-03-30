@@ -44,7 +44,7 @@ class ExecuteMachoCommand(CommandBase):
     cmd = "execute_macho"
     needs_admin = False
     help_cmd = "execute_macho"
-    description = "Upload a Mach-o binary into memory and execute a function in-proc"
+    description = "Upload a thin x64_Mach-o binary into memory and execute a function in-proc"
     version = 1
     author = ""
     argument_class = ExecuteMachoArguments

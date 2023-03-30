@@ -42,8 +42,6 @@ func executeMacho(memory []byte, argString string) (DarwinexecuteMacho, error) {
     defer C.free(cBytes)
     cLenBytes := C.int(len(memory))
 
-    // Redirect STD handles to pipes...
-    fmt.Println("[Go Code] Redirecting STDOUT...");
     // Clone Stdout to origStdout.
     origStdout, err := syscall.Dup(syscall.Stdout)
     if err != nil {
@@ -99,10 +97,7 @@ func executeMacho(memory []byte, argString string) (DarwinexecuteMacho, error) {
     syscall.Dup2(origStderr, syscall.Stderr)
     syscall.Close(origStdout)
     syscall.Close(origStderr)
-    fmt.Println("[Go Code] Successfully recovered from bin exit(), captured the following output:\n\n", string(b))
     // END redirect
-    C._Exit(0)
-
     res.Message = string(b)
 	return res, nil
 }
