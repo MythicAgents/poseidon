@@ -1,6 +1,6 @@
 from mythic_payloadtype_container.MythicCommandBase import *
 import json
-
+from mythic_payloadtype_container.MythicRPC import *
 
 class SleepArguments(TaskArguments):
     def __init__(self, command_line, **kwargs):
@@ -68,4 +68,4 @@ class SleepCommand(CommandBase):
         return task
 
     async def process_response(self, response: AgentResponse):
-        resp = await MythicRPC().execute("update_callback", sleep_info=response.response)
+        resp = await MythicRPC().execute("update_callback", task_id=response.task.id, sleep_info=response.response)
