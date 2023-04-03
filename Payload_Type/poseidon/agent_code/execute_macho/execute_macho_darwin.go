@@ -1,4 +1,5 @@
 // +build darwin
+// +build amd64
 
 package execute_macho
 
@@ -12,7 +13,6 @@ import "os"
 import "unsafe"
 import "io"
 import "bytes"
-import "fmt"
 import "strings"
 import "syscall"
 import "log"
