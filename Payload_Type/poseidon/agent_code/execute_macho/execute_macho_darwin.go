@@ -7,7 +7,7 @@ package execute_macho
 //#cgo CFLAGS: -Wno-error=implicit-function-declaration -Wno-deprecated-declarations -Wno-format -Wno-int-conversion
 //#include <stdio.h>
 //#include <stdlib.h>
-//#include "shell_memory.h"
+//#include "execute_macho_darwin.h"
 import "C"
 import "os"
 import "unsafe"
