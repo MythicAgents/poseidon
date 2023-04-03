@@ -1,4 +1,3 @@
-// +build darwin
 // +build arm64
 
 package execute_macho
