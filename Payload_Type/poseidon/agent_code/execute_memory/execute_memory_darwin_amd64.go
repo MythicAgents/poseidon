@@ -1,6 +1,5 @@
 // +build darwin
 // +build amd64
-
 package execute_memory
 
 /*
