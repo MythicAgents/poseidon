@@ -368,13 +368,17 @@ func (c *C2Default) htmlPostData(urlEnding string, sendData []byte) []byte {
 		} else {
 			req.ContentLength = int64(contentLength)
 			// set headers
-			for _, val := range c.HeaderList {
-				if val.Key == "Host" {
-					req.Host = val.Value
-				} else {
-					req.Header.Set(val.Key, val.Value)
-				}
-			}
+                        for _, val := range c.HeaderList {
+                                if val.Key == "Host" {
+                                        req.Host = val.Value
+                                } else if val.Key == "User-Agent" {
+                                        req.Header.Set(val.Key, val.Value)
+                                        tr.ProxyConnectHeader = http.Header{}
+                                        tr.ProxyConnectHeader.Add("User-Agent",val.Value)
+                                } else {
+                                        req.Header.Set(val.Key, val.Value)
+                                }
+                        }
 			if len(c.ProxyPass) > 0 && len(c.ProxyUser) > 0 {
 				auth := fmt.Sprintf("%s:%s", c.ProxyUser, c.ProxyPass)
 				basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(auth))
