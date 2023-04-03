@@ -16,7 +16,7 @@
 #include <mach-o/nlist.h>
 #include <mach-o/dyld.h>
 
-#include "shell_memory.h"
+#include "execute_macho_darwin.h"
 
 #define SIGTERM_MSG "SIGTERM received.\n"
 
