@@ -240,7 +240,9 @@ func handleMythicMessageResponse(mythicMessage structs.MythicMessageResponse) {
 	}
 	// loop through each socks message and send it off
 	for j := 0; j < len(mythicMessage.Socks); j++ {
+		//fmt.Printf("got socks message from Mythic %v\n", mythicMessage.Socks[j].ServerId)
 		profiles.FromMythicSocksChannel <- mythicMessage.Socks[j]
+		//fmt.Printf("sent socks message to profiles.FromMythicSocksChannel %v\n", mythicMessage.Socks[j].ServerId)
 	}
 	// sort the Tasks
 	sort.Slice(mythicMessage.Tasks, func(i, j int) bool {

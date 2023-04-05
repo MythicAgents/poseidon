@@ -12,9 +12,9 @@ func GetCurrentIPAddress() []string {
 	} else {
 		ipAddresses := []string{}
 		for _, address := range addrs {
-			addrString := address.(*net.IPNet).IP.String()
-			if !SliceContains([]string{"127.0.0.1", "::1", "fe80::1"}, addrString) {
-				ipAddresses = append(ipAddresses, addrString)
+			addrString := address.(*net.IPNet).IP
+			if !addrString.IsLoopback() {
+				ipAddresses = append(ipAddresses, addrString.String())
 			}
 		}
 		sort.Sort(sort.StringSlice(ipAddresses))

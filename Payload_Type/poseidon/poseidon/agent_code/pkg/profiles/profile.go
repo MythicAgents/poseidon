@@ -118,6 +118,7 @@ func CreateMythicMessage() *structs.MythicMessage {
 	}
 	if len(SocksArray) > 0 {
 		responseMsg.Socks = &SocksArray
+		//fmt.Printf("sending socks data back to Mythic\n")
 	}
 	return &responseMsg
 }

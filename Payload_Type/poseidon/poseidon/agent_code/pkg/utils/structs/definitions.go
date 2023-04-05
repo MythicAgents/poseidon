@@ -275,7 +275,7 @@ type FileBrowserArguments struct {
 
 // Struct for dealing with Socks messages
 type SocksMsg struct {
-	ServerId int32  `json:"server_id"`
+	ServerId uint32 `json:"server_id"`
 	Data     string `json:"data"`
 	Exit     bool   `json:"exit"`
 }

