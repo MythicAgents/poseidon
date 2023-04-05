@@ -1,4 +1,4 @@
-#include "execute_memory_darwin.h"
+#include "execute_memory_darwin_amd64.h"
 #import <Foundation/Foundation.h>
 #include "stdio.h"
 

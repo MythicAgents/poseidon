@@ -143,7 +143,7 @@ func closeAllChannels() {
 	}
 	channelMap.RUnlock()
 	for _, id := range ids {
-		removeMutexMap(id)
+		removeFromMapChan <- id
 	}
 	/*
 		for k, v := range channelMap.m {
@@ -153,32 +153,6 @@ func closeAllChannels() {
 		channelMap.RUnlock()
 
 	*/
-}
-func addMutexMap(channelId uint32, conn net.Conn, newChannel chan structs.SocksMsg) {
-	//fmt.Printf("getting Lock to addMutexMap\n")
-	channelMap.Lock()
-	defer channelMap.Unlock()
-	channelMap.m[channelId] = socksTracker{
-		Channel:    newChannel,
-		Connection: conn,
-	}
-	//channelMap.Unlock()
-	//fmt.Printf("Added new channel to map: %d\n", channelId)
-	//fmt.Printf("now size: %d\n", len(channelMap.m))
-	//fmt.Printf("released Lock in addMutexMap\n")
-}
-func removeMutexMap(connection uint32) {
-	//fmt.Printf("getting Lock in removeMutexMap\n")
-	channelMap.Lock()
-	defer channelMap.Unlock()
-	if _, ok := channelMap.m[connection]; ok {
-		close(channelMap.m[connection].Channel)
-		channelMap.m[connection].Connection.Close()
-		delete(channelMap.m, connection)
-		//fmt.Printf("Removed channel (%d) from map, now length %d\n", connection, len(channelMap.m))
-	}
-	//channelMap.Unlock()
-	//fmt.Printf("released Lock in removeMutexMap\n")
 }
 func handleMutexMapModifications() {
 	for {
