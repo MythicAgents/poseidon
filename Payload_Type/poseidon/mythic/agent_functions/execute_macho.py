@@ -23,6 +23,7 @@ class ExecuteMachoArguments(TaskArguments):
             CommandParameter(
                 name="args",
                 display_name="Argument String",
+                default_value="",
                 type=ParameterType.String,
                 description="Arguments to pass to binary",
                 parameter_group_info=[

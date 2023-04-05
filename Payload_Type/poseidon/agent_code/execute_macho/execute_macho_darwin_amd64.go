@@ -24,22 +24,17 @@ type DarwinexecuteMacho struct {
 func executeMacho(memory []byte, argString string) (DarwinexecuteMacho, error) {
 
     res := DarwinexecuteMacho{}
-
-    args := strings.Split(argString, " ")
-
-    // Create our C-esque arguments
-    c_argc := C.int(len(args))
-    c_argv := C.allocArgv(c_argc)
-    defer C.free(c_argv)
-
-    // Convert each argv to a char*
-    for i, arg := range args {
-        tmp := C.CString(arg)
-        defer C.free(unsafe.Pointer(tmp))
-        C.addArg(c_argv, tmp, C.int(i))
-    }
+    args := strings.Fields(argString)
+    var c_argc C.int = 0
+    var c_argv **C.char = nil
+    
     cBytes := C.CBytes(memory)
-    defer C.free(cBytes)
+    defer func() {
+        if cBytes != nil {
+            C.free(unsafe.Pointer(cBytes))
+        }
+    }()
+
     cLenBytes := C.int(len(memory))
 
     // Clone Stdout to origStdout.
@@ -82,7 +77,27 @@ func executeMacho(memory []byte, argString string) (DarwinexecuteMacho, error) {
     }()
     // END redirect
 
-    C.execMachO((*C.char)(cBytes), cLenBytes, c_argc, c_argv)
+    if argString == "" {
+        // Run default macho without args
+        c_argc = C.int(1)
+        c_argv = (**C.char)(unsafe.Pointer(&[]*C.char{C.CString(os.Args[0]), nil}[0]))
+        C.execMachO((*C.char)(cBytes), cLenBytes, c_argc, c_argv)
+    } else {
+        // Run macho with argv
+        c_argc = C.int(len(args) + 1)
+        cArgs := make([](*C.char), len(args)+2)
+        for i := range cArgs {
+            cArgs[i] = nil
+        }
+        cArgs[0] = C.CString(os.Args[0])
+        for i, arg := range args {
+            cArgs[i+1] = C.CString(arg)
+        }
+        c_argv = (**C.char)(unsafe.Pointer(&cArgs[0]))
+        C.execMachO((*C.char)(cBytes), cLenBytes, c_argc, c_argv)
+        defer C.free(unsafe.Pointer(cArgs[0]))
+        defer C.free(unsafe.Pointer(cArgs[1]))
+    }
 
     // BEGIN redirect
     C.fflush(nil)
@@ -98,6 +113,7 @@ func executeMacho(memory []byte, argString string) (DarwinexecuteMacho, error) {
     syscall.Close(origStdout)
     syscall.Close(origStderr)
     // END redirect
+
     res.Message = string(b)
 	return res, nil
 }

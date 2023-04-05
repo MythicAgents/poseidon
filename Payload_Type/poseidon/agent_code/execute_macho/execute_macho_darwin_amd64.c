@@ -34,19 +34,6 @@ void my_exit() {
 	}
 }
 
-// Allocate a new char** pointer to hold new arguments
-void* allocArgv(int argc) {
-    char** argv = malloc(sizeof(char *) * argc + 1);
-    argv[argc] = NULL;
-    return (void*)argv;
-}
-
-// Stuff arguments into the char** pointer as doing this
-// strictly in Go sucks.
-void addArg(void* argv, char* arg, int i) {
-    ((char**)argv)[i] = arg;
-}
-
 // Find the entry point command by searching through base's load commands.
 // This will give us the offset required to execute the MachO
 int find_epc(unsigned long base, struct entry_point_command **entry) {
@@ -72,15 +59,13 @@ int find_epc(unsigned long base, struct entry_point_command **entry) {
 }
 
 // Executes a MachO (given by fileBytes) with requisite arguments.
-int execMachO(char* fileBytes, int szFile, int argc, void* argv) {
+int execMachO(char* fileBytes, int szFile, int argc, char** argv) {
     NSObjectFileImage fileImage = NULL;
 	NSModule module = NULL;
 	NSSymbol symbol = NULL;
     void* pSymbolAddress = NULL;
     RETVAL = 0;
 	int(*main)(int, char**, char**, char**);
-
-
 
     int type = ((int *)fileBytes)[3];
 	if(type != 0x8) ((int *)fileBytes)[3] = 0x8; //change to mh_bundle type
@@ -126,7 +111,11 @@ int execMachO(char* fileBytes, int szFile, int argc, void* argv) {
 
 			// Invoking a MachO's main() function will induce an uncatchable SIGKILL
 			// which means any code after this line will not be executed.
-    		main(argc, (char**)argv, NULL, NULL);
+			printf("argc = %d\n", argc);
+			for(int i=0; i<argc; i++) {
+				printf("argv = %s\n", argv[i]);
+			}
+    		main(argc, argv, NULL, NULL);
         }
 		// cleanup
         NSUnLinkModule(module, NSLINKMODULE_OPTION_PRIVATE | NSLINKMODULE_OPTION_BINDNOW);
