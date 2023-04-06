@@ -22,15 +22,13 @@ class ExecuteMachoArguments(TaskArguments):
             ),
             CommandParameter(
                 name="args",
-                display_name="Argument String",
-                default_value="",
-                type=ParameterType.String,
-                description="Arguments to pass to binary",
+                cli_name="args",
+                display_name="Arguments to pass to binary",
+                type=ParameterType.Array,
+                description="Array of arguments to pass to the program",
                 parameter_group_info=[
-                    ParameterGroupInfo(
-                        ui_position=2
-                    )
-                ]
+                    ParameterGroupInfo(ui_position=2, required=False)
+                ],
             ),
         ]
 
@@ -45,7 +43,7 @@ class ExecuteMachoCommand(CommandBase):
     cmd = "execute_macho"
     needs_admin = False
     help_cmd = "execute_macho"
-    description = "Upload a thin x64_Mach-o binary into memory and execute a function in-proc"
+    description = "Upload a thin x64_Mach-o binary into memory and execute a function in-proc. Requires argc/argv compatible binary"
     version = 1
     author = ""
     argument_class = ExecuteMachoArguments

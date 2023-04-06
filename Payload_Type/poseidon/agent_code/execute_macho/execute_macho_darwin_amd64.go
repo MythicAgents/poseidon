@@ -13,7 +13,6 @@ import "os"
 import "unsafe"
 import "io"
 import "bytes"
-import "strings"
 import "syscall"
 import "log"
 
@@ -21,10 +20,9 @@ type DarwinexecuteMacho struct {
 	Message string
 }
 
-func executeMacho(memory []byte, argString string) (DarwinexecuteMacho, error) {
+func executeMacho(memory []byte, args []string) (DarwinexecuteMacho, error) {
 
     res := DarwinexecuteMacho{}
-    args := strings.Fields(argString)
     var c_argc C.int = 0
     var c_argv **C.char = nil
     
@@ -77,7 +75,7 @@ func executeMacho(memory []byte, argString string) (DarwinexecuteMacho, error) {
     }()
     // END redirect
 
-    if argString == "" {
+    if len(args) == 0 {
         // Run default macho without args
         c_argc = C.int(1)
         c_argv = (**C.char)(unsafe.Pointer(&[]*C.char{C.CString(os.Args[0]), nil}[0]))
@@ -95,8 +93,11 @@ func executeMacho(memory []byte, argString string) (DarwinexecuteMacho, error) {
         }
         c_argv = (**C.char)(unsafe.Pointer(&cArgs[0]))
         C.execMachO((*C.char)(cBytes), cLenBytes, c_argc, c_argv)
-        defer C.free(unsafe.Pointer(cArgs[0]))
-        defer C.free(unsafe.Pointer(cArgs[1]))
+        for i := range cArgs {
+            if cArgs[i] != nil {
+                defer C.free(unsafe.Pointer(cArgs[i]))
+            }
+        }
     }
 
     // BEGIN redirect

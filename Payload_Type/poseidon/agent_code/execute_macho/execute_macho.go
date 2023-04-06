@@ -14,7 +14,7 @@ import (
 
 type executeMachoArgs struct {
 	FileID       string `json:"file_id"`
-	ArgString    string `json:"args"`
+	Args 		 []string `json:"args"`
 }
 
 //Run - interface method that retrieves a process list
@@ -54,7 +54,7 @@ func Run(task structs.Task) {
 		return
 	}
 	var final string
-	resp, _ := executeMacho(fileBytes, args.ArgString)
+	resp, _ := executeMacho(fileBytes, args.Args)
 	final = resp.Message
 	if len(final) == 0 {
 		final = "Macho did not return data"
