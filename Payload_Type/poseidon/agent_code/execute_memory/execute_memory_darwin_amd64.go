@@ -5,7 +5,7 @@ package execute_memory
 /*
 #cgo LDFLAGS: -lm -framework Foundation
 #cgo CFLAGS: -Wno-error=implicit-function-declaration
-#include "execute_memory_darwin.h"
+#include "execute_memory_darwin_amd64.h"
 */
 import "C"
 
