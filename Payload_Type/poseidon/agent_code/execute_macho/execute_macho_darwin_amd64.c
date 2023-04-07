@@ -1,5 +1,4 @@
 // initial .c code pulled from https://github.com/djhohnstein/macos_shell_memory
-
 #include <fcntl.h>
 #include <stdio.h>
 #include <errno.h>
@@ -69,7 +68,7 @@ int execMachO(char* fileBytes, int szFile, int argc, char** argv) {
     RETVAL = 0;
 	int(*main)(int, char**, char**, char**);
 
-    int type = ((int *)fileBytes)[3];
+  int type = ((int *)fileBytes)[3];
 	if(type != 0x8) ((int *)fileBytes)[3] = 0x8; //change to mh_bundle type
 
 	// Mapping the image into memory

@@ -32,7 +32,6 @@ func executeMacho(memory []byte, args []string) (DarwinexecuteMacho, error) {
             C.free(unsafe.Pointer(cBytes))
         }
     }()
-
     cLenBytes := C.int(len(memory))
 
     // Clone Stdout to origStdout.
@@ -114,7 +113,6 @@ func executeMacho(memory []byte, args []string) (DarwinexecuteMacho, error) {
     syscall.Close(origStdout)
     syscall.Close(origStderr)
     // END redirect
-
     res.Message = string(b)
-	return res, nil
+	  return res, nil
 }
