@@ -1,3 +1,2 @@
-void* allocArgv(int);
-void addArg(void*, char*, int);
-int execMachO(char*, int, int, void*);
+// initial .c code pulled from https://github.com/djhohnstein/macos_shell_memory
+int execMachO(char*, int, int, char**);

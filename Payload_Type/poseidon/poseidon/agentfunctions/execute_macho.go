@@ -18,7 +18,7 @@ func init() {
 		CommandParameters: []agentstructs.CommandParameter{
 			{
 				Name:          "args",
-				ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_STRING,
+				ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_ARRAY,
 				Description:   "Arguments to pass to binary",
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{

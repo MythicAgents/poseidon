@@ -7,7 +7,7 @@ type DarwinexecuteMacho struct {
 	Message string
 }
 
-func executeMacho(memory []byte, argString string) (DarwinexecuteMacho, error) {
+func executeMacho(memory []byte, args []string) (DarwinexecuteMacho, error) {
 	res := DarwinexecuteMacho{}
 	res.Message = "Not Supported"
 	return res, nil

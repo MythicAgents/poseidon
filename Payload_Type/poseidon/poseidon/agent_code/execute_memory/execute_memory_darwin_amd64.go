@@ -1,6 +1,5 @@
-//go:build darwin && amd64
-// +build darwin,amd64
-
+// +build darwin
+// +build amd64
 package execute_memory
 
 /*

@@ -40,6 +40,8 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/MythicMeta/MythicContainer v1.0.0-rc10 h1:6rvkom3XZshelY8l90GDmsqoAWts9+q8b8xWo+IYDGw=
 github.com/MythicMeta/MythicContainer v1.0.0-rc10/go.mod h1:rEBQYe+FYL9cSQi+M24bb0yJ+asHH7WPtSgoq5ftqDk=
+github.com/MythicMeta/MythicContainer v1.0.0-rc11 h1:oKXk176sGpwT2mHOWXmxd5iu6VcPez1CIjALhSQWSH0=
+github.com/MythicMeta/MythicContainer v1.0.0-rc11/go.mod h1:rEBQYe+FYL9cSQi+M24bb0yJ+asHH7WPtSgoq5ftqDk=
 github.com/MythicMeta/MythicContainer v1.0.0-rc9 h1:3B8haHwjfCME5/7srkBFmuO558/ZjCr5wcBlaTsooes=
 github.com/MythicMeta/MythicContainer v1.0.0-rc9/go.mod h1:rEBQYe+FYL9cSQi+M24bb0yJ+asHH7WPtSgoq5ftqDk=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=

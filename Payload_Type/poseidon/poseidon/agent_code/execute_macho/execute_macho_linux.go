@@ -6,7 +6,7 @@ type LinuxexecuteMacho struct {
 	Message string
 }
 
-func executeMacho(memory []byte, argString string) (LinuxexecuteMacho, error) {
+func executeMacho(memory []byte, args []string) (LinuxexecuteMacho, error) {
 	res := LinuxexecuteMacho{}
 	res.Message = "Not Supported"
 	return res, nil
