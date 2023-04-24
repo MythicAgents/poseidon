@@ -72,7 +72,7 @@ type C2Default struct {
 	ProxyBypass    bool
 	Interval       int
 	Jitter         int
-	HeaderList     []structs.HeaderStruct
+	HeaderList     map[string]string
 	ExchangingKeys bool
 	Key            string
 	RsaPrivateKey  *rsa.PrivateKey
@@ -136,7 +136,9 @@ func New() structs.Profile {
 
 	// Add HTTP Headers
 	//json.Unmarshal([]byte("[{\"name\": \"User-Agent\",\"key\": \"User-Agent\",\"value\": \"Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko\"}]"), &profile.HeaderList)
-	json.Unmarshal([]byte(headers), &profile.HeaderList)
+	if err := json.Unmarshal([]byte(headers), &profile.HeaderList); err != nil {
+		fmt.Printf("error trying to unmarshal headers: %v\n", err)
+	}
 
 	// Add proxy info if set
 	if len(proxy_host) > 3 {
@@ -368,15 +370,15 @@ func (c *C2Default) htmlPostData(urlEnding string, sendData []byte) []byte {
 		} else {
 			req.ContentLength = int64(contentLength)
 			// set headers
-			for _, val := range c.HeaderList {
-				if val.Key == "Host" {
-					req.Host = val.Value
-				} else if val.Key == "User-Agent" {
-					req.Header.Set(val.Key, val.Value)
+			for key, val := range c.HeaderList {
+				if key == "Host" {
+					req.Host = val
+				} else if key == "User-Agent" {
+					req.Header.Set(key, val)
 					tr.ProxyConnectHeader = http.Header{}
-					tr.ProxyConnectHeader.Add("User-Agent", val.Value)
+					tr.ProxyConnectHeader.Add("User-Agent", val)
 				} else {
-					req.Header.Set(val.Key, val.Value)
+					req.Header.Set(key, val)
 				}
 			}
 			if len(c.ProxyPass) > 0 && len(c.ProxyUser) > 0 {

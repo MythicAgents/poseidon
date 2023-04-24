@@ -26,13 +26,6 @@ type Profile interface {
 	GetSleepTime() int
 }
 
-type HeaderStruct struct {
-	Name   string `json:"name"`
-	Key    string `json:"key"`
-	Value  string `json:"value"`
-	Custom bool   `json:"custom"`
-}
-
 // Struct definition for CheckIn messages
 type CheckInMessage struct {
 	Action         string   `json:"action"`
