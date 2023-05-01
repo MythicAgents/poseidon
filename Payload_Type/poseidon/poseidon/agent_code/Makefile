@@ -1,4 +1,4 @@
-HTTP_UUID=4269eb1f-a781-4d15-b87e-a4ebcfdf4f4f
+HTTP_UUID=e7a96942-82aa-4d42-b2d9-2ed40aa81dd8
 HTTP_CALLBACK_HOST=http://127.0.0.1/mydata
 HTTP_CALLBACK_PORT=80
 HTTP_KILLDATE=2023-12-31
@@ -6,7 +6,8 @@ HTTP_CALLBACK_INTERVAL=5
 HTTP_CALLBACK_JITTER=0
 HTTP_POST_URI=data
 HTTP_ENCRYPTED_EXCHANGE_CHECK=true
-HTTP_AESPSK=ZAjPtikxFQUC18p5Zak4T/v2ENzpjZLNbXDNEb4nTc8=
+HTTP_HEADERS="{}"
+HTTP_AESPSK=lUj/INWW9B0Bh0fcInhv765H2/Neonh9VQPCoxIhCGc=
 HTTP_PROXY_PORT=
 HTTP_PROXY_USER=
 HTTP_PROXY_HOST=
@@ -49,6 +50,7 @@ build_darwin_http:
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.proxy_user=${HTTP_PROXY_USER}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.proxy_host=${HTTP_PROXY_HOST}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.proxy_bypass=${HTTP_PROXY_BYPASS}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.headers=${HTTP_HEADERS}' \
 " .
 
 build_linux_http:
@@ -66,6 +68,7 @@ build_linux_http:
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.proxy_user=${HTTP_PROXY_USER}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.proxy_host=${HTTP_PROXY_HOST}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.proxy_bypass=${HTTP_PROXY_BYPASS}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.headers=${HTTP_HEADERS}' \
 " .
 
 build_darwin_tcp:

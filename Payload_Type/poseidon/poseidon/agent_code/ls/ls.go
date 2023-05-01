@@ -87,6 +87,7 @@ func Run(task structs.Task) {
 		e.LastAccess = at.Unix() * 1000
 	}
 	e.Success = true
+	e.UpdateDeleted = true
 	if dirInfo.IsDir() {
 		files, err := ioutil.ReadDir(abspath)
 		if err != nil {

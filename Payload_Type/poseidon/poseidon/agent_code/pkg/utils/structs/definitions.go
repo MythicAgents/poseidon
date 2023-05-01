@@ -194,15 +194,16 @@ type RmFiles struct {
 }
 
 type FileBrowser struct {
-	Files        []FileData     `json:"files"`
-	IsFile       bool           `json:"is_file"`
-	Permissions  PermissionJSON `json:"permissions"`
-	Filename     string         `json:"name"`
-	ParentPath   string         `json:"parent_path"`
-	Success      bool           `json:"success"`
-	FileSize     int64          `json:"size"`
-	LastModified int64          `json:"modify_time"`
-	LastAccess   int64          `json:"access_time"`
+	Files         []FileData     `json:"files"`
+	IsFile        bool           `json:"is_file"`
+	Permissions   PermissionJSON `json:"permissions"`
+	Filename      string         `json:"name"`
+	ParentPath    string         `json:"parent_path"`
+	Success       bool           `json:"success"`
+	FileSize      int64          `json:"size"`
+	LastModified  int64          `json:"modify_time"`
+	LastAccess    int64          `json:"access_time"`
+	UpdateDeleted bool           `json:"update_deleted"`
 }
 
 type FileData struct {
