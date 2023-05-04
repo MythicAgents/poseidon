@@ -16,7 +16,7 @@ type Arguments struct {
 
 // Taken directly from Sliver's PS command. License file included in the folder
 
-//Process - platform agnostic Process interface
+// Process - platform agnostic Process interface
 type Process interface {
 	// Pid is the process ID for this process.
 	Pid() int
@@ -52,12 +52,12 @@ type Process interface {
 	BundleID() string
 }
 
-//ProcessArray - struct that will hold all of the Process results
+// ProcessArray - struct that will hold all of the Process results
 type ProcessArray struct {
 	Results []structs.ProcessDetails `json:"processes"`
 }
 
-//Run - interface method that retrieves a process list
+// Run - interface method that retrieves a process list
 func Run(task structs.Task) {
 	procs, err := Processes()
 	msg := structs.Response{}
@@ -85,6 +85,7 @@ func Run(task structs.Task) {
 				ScriptingProperties: procs[i].ScriptingProperties(),
 				Name:                procs[i].Name(),
 				BundleID:            procs[i].BundleID(),
+				UpdateDeleted:       true,
 			})
 		}
 	} else {
@@ -102,6 +103,7 @@ func Run(task structs.Task) {
 					ScriptingProperties: procs[i].ScriptingProperties(),
 					Name:                procs[i].Name(),
 					BundleID:            procs[i].BundleID(),
+					UpdateDeleted:       false,
 				})
 			}
 		}

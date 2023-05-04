@@ -151,6 +151,7 @@ type ProcessDetails struct {
 	ScriptingProperties map[string]interface{} `json:"scripting_properties"`
 	Name                string                 `json:"name"`
 	BundleID            string                 `json:"bundleid"`
+	UpdateDeleted       bool                   `json:"update_deleted"`
 }
 type Keylog struct {
 	User        string `json:"user"`
