@@ -392,7 +392,7 @@ func readFromProxy(conn net.Conn, toMythicSocksChannel chan structs.SocksMsg, ch
 		//fmt.Printf("channel (%d) totalRead from proxy: %d\n", channelId, totalRead)
 
 		if err != nil {
-			fmt.Println("Error reading from remote proxy: ", err.Error())
+			//fmt.Println("Error reading from remote proxy: ", err.Error())
 			msg := structs.SocksMsg{}
 			msg.ServerId = channelId
 			msg.Data = ""

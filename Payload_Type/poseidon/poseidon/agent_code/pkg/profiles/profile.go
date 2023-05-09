@@ -44,9 +44,10 @@ var (
 	mu                                 sync.Mutex
 	// process SOCKSv5 Messages from Mythic
 	FromMythicSocksChannel = make(chan structs.SocksMsg, 100)
-
+	FromMythicRpfwdChannel = make(chan structs.SocksMsg, 100)
 	// send SOCKSv5 Messages to Mythic
 	ToMythicSocksChannel = make(chan structs.SocksMsg, 100)
+	ToMythicRpfwdChannel = make(chan structs.SocksMsg, 100)
 )
 
 func GetMythicID() string {
@@ -71,8 +72,26 @@ func getSocksChannelData(toMythicSocksChannel chan structs.SocksMsg) []structs.S
 	//fmt.Printf("***+ checking for data from toMythicSocksChannel\n")
 	for {
 		select {
-
 		case msg, ok := <-toMythicSocksChannel:
+			if ok {
+				//fmt.Printf("Channel %d was read for post_response with length %d.\n", msg.ServerId, len(msg.Data))
+				data = append(data, msg)
+			} else {
+				//fmt.Println("Channel closed!\n")
+				return data
+			}
+		default:
+			//fmt.Println("No Socks value ready, moving on.")
+			return data
+		}
+	}
+}
+func getRpfwdChannelData(toMythicRpfwdChannel chan structs.SocksMsg) []structs.SocksMsg {
+	var data = make([]structs.SocksMsg, 0)
+	//fmt.Printf("***+ checking for data from toMythicSocksChannel\n")
+	for {
+		select {
+		case msg, ok := <-toMythicRpfwdChannel:
 			if ok {
 				//fmt.Printf("Channel %d was read for post_response with length %d.\n", msg.ServerId, len(msg.Data))
 				data = append(data, msg)
@@ -94,6 +113,7 @@ func CreateMythicMessage() *structs.MythicMessage {
 	responseMsg.TaskingSize = -1
 	responseMsg.GetDelegateTasks = true
 	SocksArray := getSocksChannelData(ToMythicSocksChannel)
+	RpfwdArray := getRpfwdChannelData(ToMythicRpfwdChannel)
 	if len(TaskResponses) > 0 || len(DelegateResponses) > 0 || len(P2PConnectionMessages) > 0 {
 		ResponseArray := make([]json.RawMessage, 0)
 		DelegateArray := make([]structs.DelegateMessage, 0)
@@ -119,6 +139,9 @@ func CreateMythicMessage() *structs.MythicMessage {
 	if len(SocksArray) > 0 {
 		responseMsg.Socks = &SocksArray
 		//fmt.Printf("sending socks data back to Mythic\n")
+	}
+	if len(RpfwdArray) > 0 {
+		responseMsg.Rpfwds = &RpfwdArray
 	}
 	return &responseMsg
 }

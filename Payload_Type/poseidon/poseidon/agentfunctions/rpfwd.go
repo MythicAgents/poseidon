@@ -10,12 +10,12 @@ import (
 
 func init() {
 	agentstructs.AllPayloadData.Get("poseidon").AddCommand(agentstructs.Command{
-		Name:                "socks",
-		Description:         "Start or Stop SOCKS5.",
-		HelpString:          "socks",
+		Name:                "rpfwd",
+		Description:         "Start or Stop a Reverse Port Forward.",
+		HelpString:          "rpfwd",
 		Version:             1,
-		Author:              "@xorrior",
-		MitreAttackMappings: []string{"T1572"},
+		Author:              "@its_a_feature_",
+		MitreAttackMappings: []string{},
 		SupportedUIFeatures: []string{},
 		CommandAttributes: agentstructs.CommandAttribute{
 			SupportedOS: []string{},
@@ -31,22 +31,62 @@ func init() {
 					{
 						ParameterIsRequired: true,
 						UIModalPosition:     1,
+						GroupName:           "start",
+					},
+					{
+						ParameterIsRequired: true,
+						UIModalPosition:     1,
+						GroupName:           "stop",
 					},
 				},
-				Description: "Start or Stop socks through this callback",
+				Description: "Start or Stop rpfwd through this callback",
 			},
 			{
 				Name:             "port",
-				ModalDisplayName: "Local Mythic Port for SOCKS5",
+				ModalDisplayName: "Local Port",
 				DefaultValue:     7000,
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_NUMBER,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: true,
 						UIModalPosition:     2,
+						GroupName:           "start",
+					},
+					{
+						ParameterIsRequired: true,
+						UIModalPosition:     2,
+						GroupName:           "stop",
 					},
 				},
-				Description: "Port number on Mythic server to open for SOCKS5",
+				Description: "Local port to open on host where agent is running",
+			},
+			{
+				Name:             "remote_port",
+				ModalDisplayName: "Remote Port",
+				DefaultValue:     7000,
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_NUMBER,
+				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+					{
+						ParameterIsRequired: true,
+						UIModalPosition:     4,
+						GroupName:           "start",
+					},
+				},
+				Description: "Remote port to connect to when a new connection comes in",
+			},
+			{
+				Name:             "remote_ip",
+				ModalDisplayName: "Remote IP",
+				DefaultValue:     "",
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
+				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+					{
+						ParameterIsRequired: true,
+						UIModalPosition:     3,
+						GroupName:           "start",
+					},
+				},
+				Description: "Remote IP to connect to when a new connection comes in",
 			},
 		},
 		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
@@ -62,14 +102,25 @@ func init() {
 				response.Success = false
 				response.Error = err.Error()
 				return response
+			} else if remotePort, err := taskData.Args.GetNumberArg("remote_port"); err != nil {
+				response.Success = false
+				response.Error = err.Error()
+				return response
+			} else if remoteIP, err := taskData.Args.GetStringArg("remote_ip"); err != nil {
+				response.Success = false
+				response.Error = err.Error()
+				return response
 			} else {
-				displayString := fmt.Sprintf("%s on port %.0f", action, port)
-				response.DisplayParams = &displayString
 				if action == "start" {
+					displayString := fmt.Sprintf("%s on port %.0f with reverse connection to %s:%.0f", action, port,
+						remoteIP, remotePort)
+					response.DisplayParams = &displayString
 					if socksResponse, err := mythicrpc.SendMythicRPCProxyStart(mythicrpc.MythicRPCProxyStartMessage{
-						PortType:  rabbitmq.CALLBACK_PORT_TYPE_SOCKS,
-						LocalPort: int(port),
-						TaskID:    taskData.Task.ID,
+						PortType:   rabbitmq.CALLBACK_PORT_TYPE_RPORTFWD,
+						LocalPort:  int(port),
+						RemotePort: int(remotePort),
+						RemoteIP:   remoteIP,
+						TaskID:     taskData.Task.ID,
 					}); err != nil {
 						logging.LogError(err, "Failed to start socks")
 						response.Error = err.Error()
@@ -80,11 +131,17 @@ func init() {
 						response.Success = false
 						return response
 					} else {
+
+						taskData.Args.RemoveArg("remote_port")
+						taskData.Args.RemoveArg("remote_ip")
+						taskData.Args.SetManualParameterGroup("start")
 						return response
 					}
 				} else {
+					displayString := fmt.Sprintf("%s on port %.0f", action, port)
+					response.DisplayParams = &displayString
 					if socksResponse, err := mythicrpc.SendMythicRPCProxyStop(mythicrpc.MythicRPCProxyStopMessage{
-						PortType: rabbitmq.CALLBACK_PORT_TYPE_SOCKS,
+						PortType: rabbitmq.CALLBACK_PORT_TYPE_RPORTFWD,
 						Port:     int(port),
 						TaskID:   taskData.Task.ID,
 					}); err != nil {
@@ -100,7 +157,6 @@ func init() {
 						return response
 					}
 				}
-
 			}
 		},
 		TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {

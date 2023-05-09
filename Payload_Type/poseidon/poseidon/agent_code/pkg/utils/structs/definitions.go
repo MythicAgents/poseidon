@@ -72,6 +72,7 @@ type MythicMessage struct {
 	Delegates        *[]DelegateMessage      `json:"delegates,omitempty"`
 	Responses        *[]json.RawMessage      `json:"responses,omitempty"`
 	Socks            *[]SocksMsg             `json:"socks,omitempty"`
+	Rpfwds           *[]SocksMsg             `json:"rpfwd,omitempty"`
 	Edges            *[]P2PConnectionMessage `json:"edges,omitempty"`
 }
 
@@ -80,6 +81,7 @@ type MythicMessageResponse struct {
 	Tasks     []Task            `json:"tasks"`
 	Delegates []DelegateMessage `json:"delegates"`
 	Socks     []SocksMsg        `json:"socks"`
+	Rpfwds    []SocksMsg        `json:"rpfwd"`
 	Responses []json.RawMessage `json:"responses"`
 }
 

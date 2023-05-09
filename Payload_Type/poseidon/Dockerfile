@@ -1,4 +1,4 @@
-FROM itsafeaturemythic/mythic_macos:latest
+FROM itsafeaturemythic/mythic_go_macos:latest
 
 WORKDIR /Mythic/
 
