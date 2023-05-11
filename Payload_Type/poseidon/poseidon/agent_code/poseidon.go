@@ -3,7 +3,6 @@ package main
 import (
 	"C"
 
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/execute_macho"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/rpfwd"
 
 	// Standard
