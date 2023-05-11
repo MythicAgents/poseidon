@@ -123,12 +123,17 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	if payloadBuildMsg.BuildParameters["architecture"].(string) == "ARM_x64" {
 		goarch = "arm64"
 	}
+	tags := payloadBuildMsg.C2Profiles[0].Name
 	command := fmt.Sprintf("rm -rf /deps; CGO_ENABLED=1 GOOS=%s GOARCH=%s ", targetOs, goarch)
-	goCmd := fmt.Sprintf("-tags %s -buildmode %s -ldflags \"%s\"", payloadBuildMsg.C2Profiles[0].Name, payloadBuildMsg.BuildParameters["mode"], ldflags)
+	goCmd := fmt.Sprintf("-tags %s -buildmode %s -ldflags \"%s\"", tags, payloadBuildMsg.BuildParameters["mode"], ldflags)
 	if targetOs == "darwin" {
 		command += "CC=o64-clang CXX=o64-clang++ "
 	} else if targetOs == "windows" {
 		command += "CC=x86_64-w64-mingw32-gcc "
+	} else {
+		if goarch == "arm64" {
+			command += "CC=aarch64-linux-gnu-gcc "
+		}
 	}
 	command += "GOGARBLE=* "
 	if payloadBuildMsg.BuildParameters["garble"].(bool) {

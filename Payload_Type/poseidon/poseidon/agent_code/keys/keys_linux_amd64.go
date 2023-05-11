@@ -1,4 +1,5 @@
-// +build linux
+//go:build linux && amd64
+// +build linux,amd64
 
 package keys
 
@@ -10,12 +11,12 @@ import (
 	"github.com/xorrior/keyctl"
 )
 
-//Keyresults - struct to hold array of keys
+// Keyresults - struct to hold array of keys
 type Keyresults struct {
 	Results []Keydetails `json:"results"`
 }
 
-//Keydetails - struct that holds information about a key
+// Keydetails - struct that holds information about a key
 type Keydetails struct {
 	Name        string            `json:"name"`
 	ID          int32             `json:"id"`
@@ -26,7 +27,7 @@ type Keydetails struct {
 	Data        string            `json:"string"`
 }
 
-//Permissiondetails - struct that holds permission details for a given key
+// Permissiondetails - struct that holds permission details for a given key
 type Permissiondetails struct {
 	User    string `json:"user"`
 	Process string `json:"process"`
@@ -34,18 +35,18 @@ type Permissiondetails struct {
 	Group   string `json:"group"`
 }
 
-//KeyContents - struct that represent raw key contents
+// KeyContents - struct that represent raw key contents
 type LinuxKeyInformation struct {
 	KeyType string
 	KeyData []byte
 }
 
-//Type - The type of key information. Keyring or keychain
+// Type - The type of key information. Keyring or keychain
 func (l *LinuxKeyInformation) Type() string {
 	return l.KeyType
 }
 
-//KeyData - Retrieve the keydata as a raw json string
+// KeyData - Retrieve the keydata as a raw json string
 func (l *LinuxKeyInformation) Data() []byte {
 	return l.KeyData
 }
@@ -162,7 +163,7 @@ func getkeydata(opts Options) (LinuxKeyInformation, error) {
 	return d, nil
 }
 
-//ListKeysForSession - List all of the keys for the current session
+// ListKeysForSession - List all of the keys for the current session
 func ListKeysForSession() ([]Keydetails, error) {
 	keyring, err := keyctl.SessionKeyring()
 
@@ -299,7 +300,7 @@ func ListKeysForProcess() ([]Keydetails, error) {
 	return res, nil
 }
 
-//ListKeysForUserSession - List all of the keys private to the current user
+// ListKeysForUserSession - List all of the keys private to the current user
 func ListKeysForUserSession() ([]Keydetails, error) {
 	keyring, err := keyctl.UserSessionKeyring()
 	if err != nil {
