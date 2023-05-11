@@ -1,5 +1,5 @@
-// +build darwin
-// +build arm64
+//go:build darwin && arm64
+// +build darwin,arm64
 
 package execute_macho
 

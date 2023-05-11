@@ -13,11 +13,11 @@ import (
 // initial .c code pulled from https://github.com/djhohnstein/macos_shell_memory
 
 type executeMachoArgs struct {
-	FileID       string `json:"file_id"`
-	Args 		 []string `json:"args"`
+	FileID string   `json:"file_id"`
+	Args   []string `json:"args"`
 }
 
-//Run - interface method that retrieves a process list
+// Run - interface method that retrieves a process list
 func Run(task structs.Task) {
 	msg := structs.Response{}
 	msg.TaskID = task.TaskID
