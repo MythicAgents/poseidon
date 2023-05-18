@@ -35,20 +35,20 @@ func init() {
 				Success: true,
 				TaskID:  taskData.Task.ID,
 			}
-			if connectionInfo, err := taskData.Args.GetDictionaryArg("connection"); err != nil {
+			if connectionInfo, err := taskData.Args.GetLinkInfoArg("connection"); err != nil {
 				response.Success = false
 				response.Error = err.Error()
-			} else if callbackUUID, ok := connectionInfo["callback_uuid"]; !ok {
+			} else if connectionInfo.CallbackUUID == "" {
 				response.Success = false
 				response.Error = "Failed to find callback UUID in connection information"
 			} else {
 				taskData.Args.RemoveArg("connection")
 				taskData.Args.AddArg(agentstructs.CommandParameter{
 					Name:          "connection",
-					DefaultValue:  callbackUUID,
+					DefaultValue:  connectionInfo.CallbackUUID,
 					ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_STRING,
 				})
-				displayString := fmt.Sprintf("from %s", callbackUUID)
+				displayString := fmt.Sprintf("from %s", connectionInfo.CallbackUUID)
 				response.DisplayParams = &displayString
 			}
 			return response

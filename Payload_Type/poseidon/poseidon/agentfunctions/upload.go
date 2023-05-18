@@ -70,7 +70,7 @@ func init() {
 				Success: true,
 				TaskID:  taskData.Task.ID,
 			}
-			if fileID, err := taskData.Args.GetStringArg("file_id"); err != nil {
+			if fileID, err := taskData.Args.GetFileArg("file_id"); err != nil {
 				logging.LogError(err, "Failed to get file_id")
 				response.Success = false
 				response.Error = err.Error()
