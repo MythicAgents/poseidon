@@ -1,6 +1,7 @@
 package c2functions
 
 import (
+	"fmt"
 	c2structs "github.com/MythicMeta/MythicContainer/c2_structs"
 )
 
@@ -10,6 +11,40 @@ var poseidonTCPC2definition = c2structs.C2Profile{
 	Description:    "TCP-based P2P protocol that uses a bind connection",
 	IsP2p:          true,
 	IsServerRouted: true,
+	GetIOCFunction: func(message c2structs.C2GetIOCMessage) c2structs.C2GetIOCMessageResponse {
+		response := c2structs.C2GetIOCMessageResponse{
+			Success: true,
+		}
+		return response
+	},
+	OPSECCheckFunction: func(message c2structs.C2OPSECMessage) c2structs.C2OPSECMessageResponse {
+		response := c2structs.C2OPSECMessageResponse{
+			Success: true,
+			Message: "",
+		}
+		port, err := message.GetNumberArg("port")
+		if err != nil {
+			response.Error = err.Error()
+			return response
+		}
+		if port == 4444 {
+			response.Success = false
+			response.Error = "Port 4444 is a bad choice"
+			return response
+		}
+		response.Message = "Port OPSEC check passed"
+		return response
+	},
+	SampleMessageFunction: func(message c2structs.C2SampleMessageMessage) c2structs.C2SampleMessageResponse {
+		response := c2structs.C2SampleMessageResponse{
+			Success: true,
+		}
+		response.Message = fmt.Sprintf("poseidon_tcp messages are formatted as follows:\n")
+		response.Message += "uint32 in BigEndian format to represent the size of the message about to go on the wire.\n"
+		response.Message += "base64 normal Mythic message.\n"
+		response.Message += "\twhere the normal Mythic message is a 36 char UUIDv4 followed by an encrypted message."
+		return response
+	},
 }
 var poseidonTCPC2parameters = []c2structs.C2Parameter{
 	{

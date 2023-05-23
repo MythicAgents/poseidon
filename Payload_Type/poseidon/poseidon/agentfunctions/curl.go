@@ -42,7 +42,7 @@ func init() {
 				Choices:          []string{"GET", "POST"},
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
-						ParameterIsRequired: false,
+						ParameterIsRequired: true,
 						UIModalPosition:     2,
 					},
 				},

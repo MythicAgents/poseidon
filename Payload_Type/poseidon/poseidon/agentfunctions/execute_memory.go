@@ -44,6 +44,7 @@ func init() {
 				ModalDisplayName: "Argument String",
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
 				Description:      "Arguments to pass to function",
+				DefaultValue:     "",
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: false,
