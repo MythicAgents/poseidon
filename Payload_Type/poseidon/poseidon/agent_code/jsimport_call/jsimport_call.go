@@ -4,7 +4,6 @@ import (
 	// Standard
 	"encoding/base64"
 	"encoding/json"
-
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"

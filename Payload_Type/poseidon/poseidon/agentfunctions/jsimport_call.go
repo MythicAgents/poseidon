@@ -1,6 +1,7 @@
 package agentfunctions
 
 import (
+	"encoding/base64"
 	"fmt"
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"github.com/MythicMeta/MythicContainer/logging"
@@ -75,13 +76,23 @@ func init() {
 				response.Success = false
 				response.Error = search.Error
 				return response
+			} else if len(search.Files) == 0 {
+				response.Success = false
+				response.Error = "Failed to find specified file"
+				return response
+			} else if code, err := taskData.Args.GetStringArg("code"); err != nil {
+				response.Success = false
+				response.Error = "Failed to find code parameter"
+				return response
 			} else {
 				taskData.Args.RemoveArg("filename")
 				taskData.Args.AddArg(agentstructs.CommandParameter{
-					Name:          "file-id",
+					Name:          "file_id",
 					ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_STRING,
 					DefaultValue:  search.Files[0].AgentFileId,
 				})
+				base64Code := base64.StdEncoding.EncodeToString([]byte(code))
+				taskData.Args.SetArgValue("code", base64Code)
 				displayString := fmt.Sprintf("code within %s ",
 					search.Files[0].Filename)
 				response.DisplayParams = &displayString
