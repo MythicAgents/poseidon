@@ -5,7 +5,7 @@ go 1.19
 //replace github.com/MythicMeta/MythicContainer => ../../../../MythicMeta/MythicContainer
 
 require (
-	github.com/MythicMeta/MythicContainer v1.0.9-rc02
+	github.com/MythicMeta/MythicContainer v1.0.9-rc05
 	github.com/mitchellh/mapstructure v1.5.0
 )
 
