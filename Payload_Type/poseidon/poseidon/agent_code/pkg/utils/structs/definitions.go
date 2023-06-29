@@ -235,9 +235,11 @@ type FileUploadMessage struct {
 	ChunkData   string `json:"chunk_data"`
 }
 type FileDownloadMessage struct {
-	TotalChunks  int    `json:"total_chunks"`
-	ChunkNum     int    `json:"chunk_num"`
-	FullPath     string `json:"full_path"`
+	TotalChunks int    `json:"total_chunks"`
+	ChunkNum    int    `json:"chunk_num"`
+	FullPath    string `json:"full_path"`
+	// optionally identify a filename for the file within Mythic separate from full_path
+	FileName     string `json:"filename"`
 	ChunkData    string `json:"chunk_data"`
 	FileID       string `json:"file_id,omitempty"`
 	IsScreenshot bool   `json:"is_screenshot,omitempty"`

@@ -289,18 +289,22 @@ func SendFile(sendFileToMythic structs.SendFileToMythicStruct) {
 	chunks := uint64(math.Ceil(float64(size) / FILE_CHUNK_SIZE))
 	fileDownloadData := structs.FileDownloadMessage{}
 	fileDownloadData.TotalChunks = int(chunks)
-	abspath, err := filepath.Abs(sendFileToMythic.FullPath)
-	if err != nil {
-		errResponse := structs.Response{}
-		errResponse.Completed = true
-		errResponse.TaskID = sendFileToMythic.Task.TaskID
-		errResponse.UserOutput = fmt.Sprintf("Error getting full path to file: %s", err.Error())
-		sendFileToMythic.Task.Job.SendResponses <- errResponse
-		sendFileToMythic.FinishedTransfer <- 1
-		return
+	fileDownloadData.FullPath = sendFileToMythic.FullPath
+	if sendFileToMythic.FullPath != "" {
+		abspath, err := filepath.Abs(sendFileToMythic.FullPath)
+		if err != nil {
+			errResponse := structs.Response{}
+			errResponse.Completed = true
+			errResponse.TaskID = sendFileToMythic.Task.TaskID
+			errResponse.UserOutput = fmt.Sprintf("Error getting full path to file: %s", err.Error())
+			sendFileToMythic.Task.Job.SendResponses <- errResponse
+			sendFileToMythic.FinishedTransfer <- 1
+			return
+		}
+		fileDownloadData.FullPath = abspath
 	}
-	fileDownloadData.FullPath = abspath
 	fileDownloadData.IsScreenshot = sendFileToMythic.IsScreenshot
+	fileDownloadData.FileName = sendFileToMythic.FileName
 	// create our normal response message and add our Download part to it
 	fileDownloadMsg := structs.Response{}
 	fileDownloadMsg.TaskID = sendFileToMythic.Task.TaskID
@@ -358,7 +362,7 @@ func SendFile(sendFileToMythic structs.SendFileToMythicStruct) {
 		partBuffer := make([]byte, partSize)
 		// Create a temporary buffer and read a chunk into that buffer from the file
 		if sendFileToMythic.Data != nil {
-			_, err = r.Read(partBuffer)
+			_, err := r.Read(partBuffer)
 			if err != io.EOF && err != nil {
 				errResponse := structs.Response{}
 				errResponse.Completed = true
@@ -370,7 +374,7 @@ func SendFile(sendFileToMythic structs.SendFileToMythicStruct) {
 			}
 		} else {
 			sendFileToMythic.File.Seek(int64(i*FILE_CHUNK_SIZE), 1)
-			_, err = sendFileToMythic.File.Read(partBuffer)
+			_, err := sendFileToMythic.File.Read(partBuffer)
 			if err != io.EOF && err != nil {
 				errResponse := structs.Response{}
 				errResponse.Completed = true
