@@ -62,10 +62,12 @@ func init() {
 			} else if search, err := mythicrpc.SendMythicRPCFileSearch(mythicrpc.MythicRPCFileSearchMessage{
 				AgentFileID: fileID,
 			}); err != nil {
+				logging.LogError(err, "Failed to search for file")
 				response.Success = false
 				response.Error = err.Error()
 				return response
 			} else if !search.Success {
+				logging.LogError(err, "Failed to get file_id from mythic")
 				response.Success = false
 				response.Error = search.Error
 				return response
@@ -73,15 +75,17 @@ func init() {
 				AgentFileID: fileID,
 				Comment:     "Uploaded into memory for execute_macho",
 			}); err != nil {
+				logging.LogError(err, "Failed to update file comment")
 				response.Success = false
 				response.Error = err.Error()
 				return response
-			} else if binaryArgs, err := taskData.Args.GetStringArg("args"); err != nil {
+			} else if binaryArgs, err := taskData.Args.GetArrayArg("args"); err != nil {
+				logging.LogError(err, "Failed to get arguments")
 				response.Success = false
 				response.Error = err.Error()
 				return response
 			} else {
-				displayString := fmt.Sprintf("%s with args %s",
+				displayString := fmt.Sprintf("%s with args %v",
 					search.Files[0].Filename, binaryArgs)
 				response.DisplayParams = &displayString
 				return response
