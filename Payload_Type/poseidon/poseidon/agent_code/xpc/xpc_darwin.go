@@ -1,3 +1,4 @@
+//go:build darwin
 // +build darwin
 
 package xpc
@@ -19,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 	"io/ioutil"
 	"log"
 	"os"
@@ -323,9 +325,13 @@ func runCommand(command string) ([]byte, error) {
 		}
 		break
 	case "procinfo":
-		response := XpcLaunchProcInfo(args.Pid)
+		if functions.IsElevated() {
+			response := XpcLaunchProcInfo(args.Pid)
+			return []byte(response), nil
+		} else {
+			return []byte("This subcommand requires root privileges"), nil
+		}
 
-		return []byte(response), nil
 	case "submit":
 		if len(args.ServiceName) == 0 {
 			empty := make([]byte, 0)
@@ -444,7 +450,7 @@ func XpcLaunchProcInfo(pid int) string {
 	dat, _ := ioutil.ReadFile(file)
 	err := os.Remove(file)
 	if err != nil {
-		//log.Printf("Unable to remove file: %s", err.Error())
+		//fmt.Printf("Unable to remove file: %s", err.Error())
 	}
 	return string(dat)
 
