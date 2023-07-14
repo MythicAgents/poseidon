@@ -1,3 +1,4 @@
+//go:build darwin
 // +build darwin
 
 package functions
@@ -21,7 +22,10 @@ import (
 func cstring(s *C.NSString) *C.char { return C.nsstring2cstring(s) }
 func gostring(s *C.NSString) string { return C.GoString(cstring(s)) }
 func isElevated() bool {
-	currentUser, _ := user.Current()
+	currentUser, err := user.Current()
+	if err != nil {
+		return false
+	}
 	return currentUser.Uid == "0"
 }
 func getArchitecture() string {
@@ -94,7 +98,8 @@ func UINT32ByteCountDecimal(b uint32) string {
 }
 
 // Helper function to convert LARGE_INTEGER byte
-//  counts to human readable sizes.
+//
+//	counts to human readable sizes.
 func UINT64ByteCountDecimal(b uint64) string {
 	const unit = 1024
 	if b < unit {
