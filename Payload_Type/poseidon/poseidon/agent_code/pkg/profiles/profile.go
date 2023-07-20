@@ -373,7 +373,8 @@ func SendFile(sendFileToMythic structs.SendFileToMythicStruct) {
 				return
 			}
 		} else {
-			sendFileToMythic.File.Seek(int64(i*FILE_CHUNK_SIZE), 1)
+			// Skipping i*FILE_CHUNK_SIZE bytes from the begging of the file, os.SeekStart, 0
+			sendFileToMythic.File.Seek(int64(i*FILE_CHUNK_SIZE), 0)
 			_, err := sendFileToMythic.File.Read(partBuffer)
 			if err != io.EOF && err != nil {
 				errResponse := structs.Response{}
