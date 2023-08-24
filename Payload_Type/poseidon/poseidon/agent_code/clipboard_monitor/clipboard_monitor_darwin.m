@@ -67,7 +67,6 @@ char* getFrontmostApp(){
 	}
 }
 void waitForTime(){
-    NSLog(@"called waitForTime");
 	NSDate *now = [NSDate date];
 	NSCalendar *currentCalendar = [NSCalendar currentCalendar];
 	NSDate *nowPlusOneSecond = [currentCalendar dateByAddingUnit:NSCalendarUnitSecond
