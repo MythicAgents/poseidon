@@ -9,6 +9,7 @@ package clipboard_monitor
 #include "clipboard_monitor_darwin.h"
 */
 import "C"
+import "time"
 
 func CheckClipboard(oldCount int) (string, error) {
 	contents := C.monitorClipboard(C.long(oldCount))
@@ -23,5 +24,6 @@ func GetFrontmostApp() (string, error) {
 	return C.GoString(C.getFrontmostApp()), nil
 }
 func WaitForTime() {
+	time.Sleep(2 * time.Second)
 	C.waitForTime()
 }

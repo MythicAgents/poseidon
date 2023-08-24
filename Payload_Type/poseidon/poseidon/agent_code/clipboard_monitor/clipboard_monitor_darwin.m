@@ -70,7 +70,7 @@ void waitForTime(){
 	NSDate *now = [NSDate date];
 	NSCalendar *currentCalendar = [NSCalendar currentCalendar];
 	NSDate *nowPlusOneSecond = [currentCalendar dateByAddingUnit:NSCalendarUnitSecond
-															value:5
+															value:1
 															toDate:now
 															options:NSCalendarMatchNextTime];
 	[[NSRunLoop mainRunLoop] runUntilDate:nowPlusOneSecond];
