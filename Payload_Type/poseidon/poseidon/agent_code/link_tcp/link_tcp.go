@@ -9,7 +9,6 @@ import (
 
 	// Poseidon
 
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
@@ -18,7 +17,7 @@ type Arguments struct {
 	Address string `json:"address"`
 }
 
-//Run - package function to run link_tcp
+// Run - package function to run link_tcp
 func Run(task structs.Task) {
 	msg := structs.Response{}
 	msg.TaskID = task.TaskID
@@ -32,26 +31,22 @@ func Run(task structs.Task) {
 		return
 	}
 	connectionString := fmt.Sprintf("%s:%d", args.Address, args.Port)
-	if profiles.CheckIfNewInternalTCPConnection(connectionString) {
-		conn, err := net.Dial("tcp", connectionString)
-		if err != nil {
-			msg.UserOutput = err.Error()
-			msg.Completed = true
-			msg.Status = "error"
-			task.Job.SendResponses <- msg
-			return
-		}
-		task.Job.AddNewInternalTCPConnectionChannel <- conn
-		msg.UserOutput = "Successfully Connected"
+	conn, err := net.Dial("tcp", connectionString)
+	if err != nil {
+		msg.UserOutput = err.Error()
 		msg.Completed = true
-		msg.Status = "completed"
+		msg.Status = "error"
 		task.Job.SendResponses <- msg
-	} else {
-		msg.UserOutput = "Connection already exists within the agent"
-		msg.Completed = true
-		msg.Status = "completed"
-		task.Job.SendResponses <- msg
+		return
 	}
+	task.Job.AddInternalConnectionChannel <- structs.AddInternalConnectionMessage{
+		C2ProfileName: "poseidon_tcp",
+		Connection:    &conn,
+	}
+	msg.UserOutput = "Successfully Connected"
+	msg.Completed = true
+	msg.Status = "completed"
+	task.Job.SendResponses <- msg
 
 	return
 }

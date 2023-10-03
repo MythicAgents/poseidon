@@ -28,7 +28,10 @@ func Run(task structs.Task) {
 		return
 	}
 
-	task.Job.RemoveInternalTCPConnectionChannel <- args.RemoteUUID
+	task.Job.RemoveInternalConnectionChannel <- structs.RemoveInternalConnectionMessage{
+		ConnectionUUID: args.RemoteUUID,
+		C2ProfileName:  "poseidon_tcp",
+	}
 	msg.UserOutput = "Tasked to disconnect"
 	msg.Completed = true
 	msg.Status = "completed"

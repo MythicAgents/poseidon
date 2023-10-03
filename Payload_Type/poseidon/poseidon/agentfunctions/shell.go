@@ -8,7 +8,7 @@ import (
 
 var shell = agentstructs.Command{
 	Name:                      "shell",
-	Description:               "shell yo",
+	Description:               "execute a single shell command via /bin/sh",
 	MitreAttackMappings:       []string{"T1059"},
 	TaskFunctionCreateTasking: shellCreateTasking,
 	TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {

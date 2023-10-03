@@ -35,6 +35,7 @@ char* executeMemory(void* memory, int memory_size, char* functionName, char* fun
 	        return "Failed to find function name in module";
 	    }
 	}
+	// cast the function back to the right type based on the input
 	function = (void*(*)()) NSAddressOfSymbol(symbol);
 	//printf("got function\n");
 	if(function == NULL){

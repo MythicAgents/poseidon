@@ -49,7 +49,7 @@ func Run(task structs.Task) {
 	args := Args{}
 	err := json.Unmarshal([]byte(task.Params), &args)
 	if !startedGoRoutines {
-		//go readFromMythic(profiles.FromMythicSocksChannel, profiles.ToMythicSocksChannel)
+		//go readFromMythic(profiles.FromMythicSocksChannel, profiles.InterceptToMythicSocksChannel)
 		go handleMutexMapModifications()
 		startedGoRoutines = true
 	}
@@ -177,8 +177,8 @@ func handleConnections(task structs.Task) {
 				Connection: conn,
 				NewChannel: recvChan,
 			}
-			go readFromProxy(conn, profiles.ToMythicRpfwdChannel, newChannelID)
-			go writeToProxy(recvChan, conn, newChannelID, profiles.ToMythicRpfwdChannel)
+			go readFromProxy(conn, profiles.InterceptToMythicRpfwdChannel, newChannelID)
+			go writeToProxy(recvChan, conn, newChannelID, profiles.InterceptToMythicRpfwdChannel)
 		}
 	}
 

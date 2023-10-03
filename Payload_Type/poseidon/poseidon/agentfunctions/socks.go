@@ -25,7 +25,7 @@ func init() {
 				Name:             "action",
 				ModalDisplayName: "Action",
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_CHOOSE_ONE,
-				Choices:          []string{"start", "stop"},
+				Choices:          []string{"start", "stop", "flush"},
 				DefaultValue:     "start",
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
@@ -82,7 +82,7 @@ func init() {
 					} else {
 						return response
 					}
-				} else {
+				} else if action == "stop" {
 					if socksResponse, err := mythicrpc.SendMythicRPCProxyStop(mythicrpc.MythicRPCProxyStopMessage{
 						PortType: rabbitmq.CALLBACK_PORT_TYPE_SOCKS,
 						Port:     int(port),
@@ -99,6 +99,11 @@ func init() {
 					} else {
 						return response
 					}
+				} else {
+					response.Success = true
+					output := "reset all connections and flush data"
+					response.DisplayParams = &output
+					return response
 				}
 
 			}

