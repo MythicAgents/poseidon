@@ -157,7 +157,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	// Build Go link flags that are passed in at compile time through the "-ldflags=" argument
 	// https://golang.org/cmd/link/
 	ldflags := fmt.Sprintf("-s -w -X '%s.UUID=%s'", poseidon_repo_profile, payloadBuildMsg.PayloadUUID)
-	ldflags += fmt.Sprintf(" -X '%s.debug=%v'", poseidon_repo_profile, debug)
+	ldflags += fmt.Sprintf(" -X '%s.debugString=%v'", poseidon_repo_profile, debug)
 	ldflags += fmt.Sprintf(" -X '%s.egress_failover=%s'", poseidon_repo_profile, egress_failover)
 	ldflags += fmt.Sprintf(" -X '%s.failedConnectionCountThresholdString=%v'", poseidon_repo_profile, failedConnectionCountThresholdString)
 	if egressBytes, err := json.Marshal(egress_order); err != nil {
