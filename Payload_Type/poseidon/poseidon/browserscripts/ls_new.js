@@ -8,6 +8,7 @@ function(task, response){
 		{"plaintext": "permissions", "type": "string", "width": 150},
 		{"plaintext": "modified", "type": "date", "width": 300},
 		{"plaintext": "ls", "type": "button", "width": 100},
+		{"plaintext": "download", "type": "button", "width": 100},
 	];
 
 	for(let i = 0; i < response.length; i++){
@@ -18,7 +19,7 @@ function(task, response){
 		}else{
 			ls_path = data["parent_path"] + "/" + data["name"];
 		}
-		let perms = JSON.parse(data['permissions']['permissions']);
+		let perms = data['permissions'];
 		rows.push({
 			"name": {"plaintext": data['name'],
 				"startIcon": data["is_file"] ? "file":"openFolder",
@@ -38,12 +39,22 @@ function(task, response){
 					"hoverText": "Issue ls for this entry",
 					"startIcon": "list",
 				}
+			},
+			"download": {"button": {
+					"name": "",
+					"type": "task",
+					"ui_feature": "file_browser:download",
+					"parameters": ls_path,
+					"hoverText": "Download this file",
+					"startIcon": "download",
+					"disabled": !data["is_file"],
+				}
 			}
 		});
 		let files = data['files'];
 		for (let j = 0; j < files.length; j++)
 		{
-			let perms = JSON.parse(files[j]['permissions']['permissions']);
+			let perms = files[j]['permissions'];
 			if(data["parent_path"] === "/"){
 				ls_path = data["parent_path"] + data["name"] + "/" + files[j]['name'];
 			}else{
@@ -67,6 +78,16 @@ function(task, response){
 						"parameters": ls_path,
 						"hoverText": "Issue ls for this entry",
 						"startIcon": "list",
+					}
+				},
+				"download": {"button": {
+						"name": "",
+						"type": "task",
+						"ui_feature": "file_browser:download",
+						"parameters": ls_path,
+						"hoverText": "Download this file",
+						"startIcon": "download",
+						"disabled": !files[j]["is_file"],
 					}
 				}
 			});
