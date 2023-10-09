@@ -3,6 +3,14 @@
 
 package pty
 
+import (
+	"errors"
+	"os"
+	"os/exec"
+	"syscall"
+	"unsafe"
+)
+
 // ioctl, open, _IOC_PARAM_LEN, ptsname, grantpt, unlockpt all taken from https://github.com/creack/pty/blob/master/pty_darwin.go
 
 const (
