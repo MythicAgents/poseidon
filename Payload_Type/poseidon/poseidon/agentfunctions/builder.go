@@ -20,7 +20,7 @@ var payloadDefinition = agentstructs.PayloadType{
 	Wrapper:                                false,
 	CanBeWrappedByTheFollowingPayloadTypes: []string{},
 	SupportsDynamicLoading:                 false,
-	Description:                            "A fully featured macOS and Linux Golang agent.\nVersion 2.0.1\nNeeds Mythic 3.1.0+",
+	Description:                            "A fully featured macOS and Linux Golang agent.\nVersion 2.0.2\nNeeds Mythic 3.1.0+",
 	SupportedC2Profiles:                    []string{"http", "websocket", "poseidon_tcp"},
 	MythicEncryptsData:                     true,
 	BuildParameters: []agentstructs.BuildParameter{
@@ -65,15 +65,8 @@ var payloadDefinition = agentstructs.PayloadType{
 			Name:          "egress_order",
 			Description:   "Prioritize the order in which egress connections are made (if including multiple egress c2 profiles)",
 			Required:      false,
-			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_DICTIONARY,
-			DictionaryChoices: []agentstructs.BuildParameterDictionary{
-				{
-					Name: "http", DefaultValue: "0", DefaultShow: true,
-				},
-				{
-					Name: "websocket", DefaultValue: "1", DefaultShow: true,
-				},
-			},
+			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_ARRAY,
+			DefaultValue:  []string{"http", "websocket"},
 		},
 		{
 			Name:          "egress_failover",
@@ -126,7 +119,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	} else if payloadBuildMsg.SelectedOS == "Windows" {
 		targetOs = "windows"
 	}
-	egress_order, err := payloadBuildMsg.BuildParameters.GetDictionaryArg("egress_order")
+	egress_order, err := payloadBuildMsg.BuildParameters.GetArrayArg("egress_order")
 	if err != nil {
 		payloadBuildResponse.Success = false
 		payloadBuildResponse.BuildStdErr = err.Error()

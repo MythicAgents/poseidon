@@ -35,7 +35,7 @@ var (
 	// failedConnectionCountThreshold is how many failed attempts before rotating c2 profiles
 	failedConnectionCountThreshold = 10
 	// egressOrder the priority for starting and running egress profiles
-	egressOrder map[string]int
+	egressOrder []string
 	// MythicID is the callback UUID once this payload finishes staging
 	MythicID = ""
 
@@ -50,18 +50,12 @@ func RegisterAvailableC2Profile(newProfile structs.Profile) {
 
 // Initialize parses the connection order information and threshold counts from compilation
 func Initialize() {
-	parsedConnectionOrder := make(map[string]string)
-	egressOrder = make(map[string]int)
-	err := json.Unmarshal([]byte(egress_order), &parsedConnectionOrder)
+	err := json.Unmarshal([]byte(egress_order), &egressOrder)
 	if err != nil {
 		log.Fatalf("Failed to parse connection orders: %v", err)
 	}
 	failedConnectionCounts = make(map[string]int)
-	for key, _ := range parsedConnectionOrder {
-		egressOrder[key], err = strconv.Atoi(parsedConnectionOrder[key])
-		if err != nil {
-			log.Fatalf("Failed to parse connection order value: %v", err)
-		}
+	for _, key := range egressOrder {
 		failedConnectionCounts[key] = 0
 	}
 	failedConnectionCountThreshold, err = strconv.Atoi(failedConnectionCountThresholdString)
@@ -69,13 +63,13 @@ func Initialize() {
 		utils.PrintDebug(fmt.Sprintf("Setting failedConnectionCountThreshold to 10: %v", err))
 		failedConnectionCountThreshold = 10
 	}
+	utils.PrintDebug(fmt.Sprintf("Egress order: %v", egressOrder))
 }
 
 // Start kicks off one egress and the p2p profiles
 func Start() {
-
 	// start one egress
-	for egressC2, val := range egressOrder {
+	for val, egressC2 := range egressOrder {
 		if val == currentConnectionID {
 			foundCurrentConnection := false
 			for availableC2, _ := range availableC2Profiles {
@@ -91,7 +85,7 @@ func Start() {
 			} else {
 				currentConnectionID = currentConnectionID + 1
 				if currentConnectionID > len(availableC2Profiles) {
-					//log.Fatal("Failed to find available c2, exiting")
+					utils.PrintDebug(fmt.Sprintf("currnetConnectionID > available profiles\n"))
 					break
 				}
 			}
@@ -123,7 +117,7 @@ func IncrementFailedConnection(c2Name string) {
 func StartNextEgress(failedConnectionC2Profile string) {
 	// first stop the current egress
 	utils.PrintDebug("Looping to start next egress protocol")
-	for key, _ := range egressOrder {
+	for _, key := range egressOrder {
 		if key == failedConnectionC2Profile {
 			for c2, _ := range availableC2Profiles {
 				if !availableC2Profiles[c2].IsP2P() && c2 == key {
@@ -149,7 +143,7 @@ func StartNextEgress(failedConnectionC2Profile string) {
 			currentConnectionID = (currentConnectionID + 1) % len(egressOrder)
 		}
 		// start the next egress
-		for key, val := range egressOrder {
+		for val, key := range egressOrder {
 			if val == currentConnectionID {
 				for c2, _ := range availableC2Profiles {
 					if !availableC2Profiles[c2].IsP2P() && c2 == key {
