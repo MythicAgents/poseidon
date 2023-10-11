@@ -9,24 +9,23 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
-//KeyInformation - interface for key data
+// KeyInformation - interface for key data
 type KeyInformation interface {
 	KeyType() string
 	Data() []byte
 }
 
-//Options - options for key data command
+// Options - options for key data command
 type Options struct {
 	Command  string `json:"command"`
 	Keyword  string `json:"keyword"`
 	Typename string `json:"typename"`
 }
 
-//Run - extract key data
+// Run - extract key data
 func Run(task structs.Task) {
 	//Check if the types are available
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 	opts := Options{}
 	err := json.Unmarshal([]byte(task.Params), &opts)
 

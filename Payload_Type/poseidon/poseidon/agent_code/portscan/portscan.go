@@ -5,17 +5,11 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
-)
-
-var (
-	mu                sync.Mutex
-	scanResultChannel = make(chan host)
 )
 
 type PortScanParams struct {
@@ -84,8 +78,7 @@ func doScan(hostList []string, portListStrs []string, job *structs.Job) []CIDR {
 }
 
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 	params := PortScanParams{}
 
 	err := json.Unmarshal([]byte(task.Params), &params)

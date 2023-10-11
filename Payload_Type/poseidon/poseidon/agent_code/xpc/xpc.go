@@ -9,7 +9,6 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
-var results json.RawMessage
 var args Arguments
 
 type Arguments struct {
@@ -23,8 +22,7 @@ type Arguments struct {
 }
 
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 	args = Arguments{}
 	err := json.Unmarshal([]byte(task.Params), &args)
 

@@ -33,7 +33,7 @@ function(task, response){
 								"scripting properties": data[j]["scripting_properties"],
 								"bundle ID": data[j]["bundleid"]
 							},
-							"hoverText": "Issue ls for this entry",
+							"hoverText": "view data for this entry",
 							"startIcon": "list",
 						}
 					}

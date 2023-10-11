@@ -14,8 +14,6 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
-var mu sync.Mutex
-
 type OSFile struct {
 	Path             string `json:"path"`
 	Name             string `json:"name"`
@@ -55,8 +53,7 @@ func NewDirectoryTriageResult() *DirectoryTriageResult {
 }
 
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 
 	// log.Println("Parsed task params!")
 	if len(task.Params) == 0 {

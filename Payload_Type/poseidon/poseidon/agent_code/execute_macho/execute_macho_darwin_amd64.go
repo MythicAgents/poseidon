@@ -14,7 +14,6 @@ import "unsafe"
 import "io"
 import "bytes"
 import "syscall"
-import "log"
 
 type DarwinexecuteMacho struct {
 	Message string
@@ -37,32 +36,32 @@ func executeMacho(memory []byte, args []string) (DarwinexecuteMacho, error) {
 	// Clone Stdout to origStdout.
 	origStdout, err := syscall.Dup(syscall.Stdout)
 	if err != nil {
-		log.Fatal(err)
+		return res, err
 	}
 	// Clone Stdout to origStdout.
 	origStderr, err := syscall.Dup(syscall.Stderr)
 	if err != nil {
-		log.Fatal(err)
+		return res, err
 	}
 	rStdout, wStdout, err := os.Pipe()
 	if err != nil {
-		log.Fatal(err)
+		return res, err
 	}
 	rStderr, wStderr, err := os.Pipe()
 	if err != nil {
-		log.Fatal(err)
+		return res, err
 	}
 	reader := io.MultiReader(rStdout, rStderr)
 
 	// Clone the pipe's writer to the actual Stdout descriptor; from this point
 	// on, writes to Stdout will go to w.
 	if err = syscall.Dup2(int(wStderr.Fd()), syscall.Stdout); err != nil {
-		log.Fatal(err)
+		return res, err
 	}
 	// Clone the pipe's writer to the actual Stderr descriptor; from this point
 	// on, writes to Stderr will go to w.
 	if err = syscall.Dup2(int(wStderr.Fd()), syscall.Stderr); err != nil {
-		log.Fatal(err)
+		return res, err
 	}
 
 	// Background goroutine that drains the reading end of the pipe.

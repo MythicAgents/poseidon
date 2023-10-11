@@ -14,12 +14,10 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
-//Run - interface method that retrieves a process list
+// Run - interface method that retrieves a process list
 func Run(task structs.Task) {
 	args := structs.FileBrowserArguments{}
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
-
+	msg := task.NewResponse()
 	files := make([]string, 0)
 	err := json.Unmarshal([]byte(task.Params), &args)
 	if err != nil {
@@ -55,13 +53,13 @@ func Run(task structs.Task) {
 			outputMsg = outputMsg + fmt.Sprintf("Error - File '%s' does not exist.\n", s)
 			continue
 		}
+		abspath, _ := filepath.Abs(s)
 		err := os.RemoveAll(s)
 		if err != nil {
 			outputMsg = outputMsg + fmt.Sprintf("Error - Failed to remove %s: %s", s, err.Error())
 			continue
 		}
 		outputMsg = outputMsg + fmt.Sprintf("Deleted %s\n", s)
-		abspath, _ := filepath.Abs(s)
 		removedFiles[i].Path = abspath
 		removedFiles[i].Host = ""
 	}

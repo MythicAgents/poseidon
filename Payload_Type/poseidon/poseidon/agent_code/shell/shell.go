@@ -15,8 +15,7 @@ import (
 
 // Run - Function that executes the shell command
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 	shellBin := "/bin/bash"
 	if _, err := os.Stat(shellBin); err != nil {
 		if _, err = os.Stat("/bin/sh"); err != nil {
@@ -58,8 +57,7 @@ func Run(task structs.Task) {
 			case <-doneChannel:
 				doneCount += 1
 				if doneCount == 2 {
-					outputMsg := structs.Response{}
-					outputMsg.TaskID = task.TaskID
+					outputMsg := task.NewResponse()
 					outputMsg.Completed = true
 					if bufferedOutput != "" {
 						outputMsg.UserOutput = bufferedOutput
@@ -74,8 +72,7 @@ func Run(task structs.Task) {
 				bufferedOutput += newBufferedOutput
 			case <-sendTimeDelayChannel:
 				if bufferedOutput != "" {
-					outputMsg := structs.Response{}
-					outputMsg.TaskID = task.TaskID
+					outputMsg := task.NewResponse()
 					outputMsg.UserOutput = bufferedOutput
 					task.Job.SendResponses <- outputMsg
 					bufferedOutput = ""

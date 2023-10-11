@@ -4,25 +4,27 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var GetFromMythicChannel = make(chan structs.GetFileFromMythicStruct, 10)
 
-func processGetFromMythicChannel() {
+// listenForGetFromMythicMessages reads from GetFromMythicChannel to get a file from Mythic to the agent
+func listenForGetFromMythicMessages() {
 	for {
 		select {
 		case getFile := <-GetFromMythicChannel:
-			getFile.TrackingUUID = profiles.GenerateSessionID()
+			getFile.TrackingUUID = utils.GenerateSessionID()
 			getFile.FileTransferResponse = make(chan json.RawMessage)
 			getFile.Task.Job.FileTransfers[getFile.TrackingUUID] = getFile.FileTransferResponse
-			getFromMythic(getFile)
+			sendUploadFileMessagesToMythic(getFile)
 		}
 	}
 }
 
-func getFromMythic(getFileFromMythic structs.GetFileFromMythicStruct) {
+// sendUploadFileMessagesToMythic sends messages to Mythic to transfer a file from Mythic to Agent
+func sendUploadFileMessagesToMythic(getFileFromMythic structs.GetFileFromMythicStruct) {
 	// when we're done fetching the file, send a 0 byte length byte array to the getFileFromMythic.ReceivedChunkChannel
 	fileUploadData := structs.FileUploadMessage{}
 	fileUploadData.FileID = getFileFromMythic.FileID

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 	"io"
 	"math"
@@ -17,25 +18,25 @@ import (
 
 var SendToMythicChannel = make(chan structs.SendFileToMythicStruct, 10)
 
-func processSendToMythicChannel() {
+// listenForSendFileToMythicMessages reads from SendToMythicChannel to send file transfer messages to Mythic
+func listenForSendFileToMythicMessages() {
 	for {
 		select {
 		case fileToMythic := <-SendToMythicChannel:
-			fileToMythic.TrackingUUID = profiles.GenerateSessionID()
+			fileToMythic.TrackingUUID = utils.GenerateSessionID()
 			fileToMythic.FileTransferResponse = make(chan json.RawMessage)
 			fileToMythic.Task.Job.FileTransfers[fileToMythic.TrackingUUID] = fileToMythic.FileTransferResponse
-			sendToMythic(fileToMythic)
+			go sendFileMessagesToMythic(fileToMythic)
 		}
 	}
 }
 
-func sendToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
+// sendFileToMythic constructs a file transfer message to send to Mythic
+func sendFileMessagesToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 	var size int64
 	if sendFileToMythic.Data == nil {
 		if sendFileToMythic.File == nil {
-			errResponse := structs.Response{}
-			errResponse.Completed = true
-			errResponse.TaskID = sendFileToMythic.Task.TaskID
+			errResponse := sendFileToMythic.Task.NewResponse()
 			errResponse.UserOutput = fmt.Sprintf("No data and no file specified when trying to send a file to Mythic")
 			sendFileToMythic.Task.Job.SendResponses <- errResponse
 			sendFileToMythic.FinishedTransfer <- 1
@@ -57,7 +58,6 @@ func sendToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 		size = int64(len(*sendFileToMythic.Data))
 	}
 
-	const FILE_CHUNK_SIZE = 512000 //Normal mythic chunk size
 	chunks := uint64(math.Ceil(float64(size) / FILE_CHUNK_SIZE))
 	fileDownloadData := structs.FileDownloadMessage{}
 	fileDownloadData.TotalChunks = int(chunks)
@@ -65,10 +65,8 @@ func sendToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 	if sendFileToMythic.FullPath != "" {
 		abspath, err := filepath.Abs(sendFileToMythic.FullPath)
 		if err != nil {
-			errResponse := structs.Response{}
-			errResponse.Completed = true
-			errResponse.TaskID = sendFileToMythic.Task.TaskID
-			errResponse.UserOutput = fmt.Sprintf("Error getting full path to file: %s", err.Error())
+			errResponse := sendFileToMythic.Task.NewResponse()
+			errResponse.SetError(fmt.Sprintf("Error getting full path to file: %s", err.Error()))
 			sendFileToMythic.Task.Job.SendResponses <- errResponse
 			sendFileToMythic.FinishedTransfer <- 1
 			return
@@ -93,10 +91,8 @@ func sendToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 		err := json.Unmarshal(resp, &fileDetails)
 		//fmt.Printf("Got %v back from file download first response", fileDetails)
 		if err != nil {
-			errResponse := structs.Response{}
-			errResponse.Completed = true
-			errResponse.TaskID = sendFileToMythic.Task.TaskID
-			errResponse.UserOutput = fmt.Sprintf("Error unmarshaling task response: %s", err.Error())
+			errResponse := sendFileToMythic.Task.NewResponse()
+			errResponse.SetError(fmt.Sprintf("Error unmarshaling task response: %s", err.Error()))
 			sendFileToMythic.Task.Job.SendResponses <- errResponse
 			sendFileToMythic.FinishedTransfer <- 1
 			return
@@ -136,10 +132,8 @@ func sendToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 		if sendFileToMythic.Data != nil {
 			_, err := r.Read(partBuffer)
 			if err != io.EOF && err != nil {
-				errResponse := structs.Response{}
-				errResponse.Completed = true
-				errResponse.TaskID = sendFileToMythic.Task.TaskID
-				errResponse.UserOutput = fmt.Sprintf("\nError reading from file: %s\n", err.Error())
+				errResponse := sendFileToMythic.Task.NewResponse()
+				errResponse.SetError(fmt.Sprintf("\nError reading from file: %s\n", err.Error()))
 				sendFileToMythic.Task.Job.SendResponses <- errResponse
 				sendFileToMythic.FinishedTransfer <- 1
 				return
@@ -149,17 +143,15 @@ func sendToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 			sendFileToMythic.File.Seek(int64(i*FILE_CHUNK_SIZE), 0)
 			_, err := sendFileToMythic.File.Read(partBuffer)
 			if err != io.EOF && err != nil {
-				errResponse := structs.Response{}
-				errResponse.Completed = true
-				errResponse.TaskID = sendFileToMythic.Task.TaskID
-				errResponse.UserOutput = fmt.Sprintf("\nError reading from file: %s\n", err.Error())
+				errResponse := sendFileToMythic.Task.NewResponse()
+				errResponse.SetError(fmt.Sprintf("\nError reading from file: %s\n", err.Error()))
 				sendFileToMythic.Task.Job.SendResponses <- errResponse
 				sendFileToMythic.FinishedTransfer <- 1
 				return
 			}
 		}
 
-		fileDownloadData := structs.FileDownloadMessage{}
+		fileDownloadData = structs.FileDownloadMessage{}
 		fileDownloadData.ChunkNum = int(i) + 1
 		//fileDownloadData.TotalChunks = -1
 		fileDownloadData.FileID = fileDetails["file_id"].(string)
@@ -168,9 +160,8 @@ func sendToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 		sendFileToMythic.Task.Job.SendResponses <- fileDownloadMsg
 		newPercentComplete := ((fileDownloadData.ChunkNum * 100) / int(chunks))
 		if newPercentComplete/10 > lastPercentCompleteNotified && sendFileToMythic.SendUserStatusUpdates {
-			response := structs.Response{}
+			response := sendFileToMythic.Task.NewResponse()
 			response.Completed = false
-			response.TaskID = sendFileToMythic.Task.TaskID
 			response.UserOutput = fmt.Sprintf("File Transfer Update: %d%% complete\n", newPercentComplete)
 			sendFileToMythic.Task.Job.SendResponses <- response
 			lastPercentCompleteNotified = newPercentComplete / 10
@@ -182,9 +173,8 @@ func sendToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 			err := json.Unmarshal(decResp, &postResp) // Wait for a response for our file chunk
 
 			if err != nil {
-				errResponse := structs.Response{}
+				errResponse := sendFileToMythic.Task.NewResponse()
 				errResponse.Completed = true
-				errResponse.TaskID = sendFileToMythic.Task.TaskID
 				errResponse.UserOutput = fmt.Sprintf("Error unmarshaling task response: %s", err.Error())
 				sendFileToMythic.Task.Job.SendResponses <- errResponse
 				sendFileToMythic.FinishedTransfer <- 1
@@ -197,7 +187,6 @@ func sendToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 			// only go to the next chunk if this one was successful
 			i++
 		}
-
 	}
 	sendFileToMythic.FinishedTransfer <- 1
 	return

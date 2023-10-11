@@ -16,8 +16,7 @@ type Arguments struct {
 
 // Run - package function to run unlink_tcp
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 	args := &Arguments{}
 	err := json.Unmarshal([]byte(task.Params), args)
 	if err != nil {

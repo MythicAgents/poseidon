@@ -14,18 +14,13 @@ type Listtasks interface {
 }
 
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
-
+	msg := task.NewResponse()
 	r, err := getAvailableTasks()
 	if err != nil {
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}
-
 	byteResult, err := json.MarshalIndent(r.Result(), "", "	")
 	msg.UserOutput = string(byteResult)
 	msg.Completed = true

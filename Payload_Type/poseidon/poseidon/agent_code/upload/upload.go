@@ -18,10 +18,9 @@ type uploadArgs struct {
 	Overwrite  bool   `json:"overwrite"`
 }
 
-//Run - interface method that retrieves a process list
+// Run - interface method that retrieves a process list
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 
 	// File upload
 	args := uploadArgs{}

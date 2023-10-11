@@ -34,10 +34,9 @@ type SerializableUser struct {
 	HomeDir string `json:"homedir"`
 }
 
-//Run - Function that executes the shell command
+// Run - Function that executes the shell command
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 
 	curUser, err := user.Current()
 

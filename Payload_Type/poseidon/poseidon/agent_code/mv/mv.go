@@ -19,15 +19,11 @@ type Arguments struct {
 }
 
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
-
+	msg := task.NewResponse()
 	var args Arguments
 	err := json.Unmarshal([]byte(task.Params), &args)
 	if err != nil {
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}
@@ -45,9 +41,7 @@ func Run(task structs.Task) {
 	args.DestinationFile, _ = filepath.Abs(fixedDestinationPath)
 
 	if _, err = os.Stat(args.SourceFile); os.IsNotExist(err) {
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}
@@ -55,9 +49,7 @@ func Run(task structs.Task) {
 	err = os.Rename(args.SourceFile, args.DestinationFile)
 
 	if err != nil {
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}

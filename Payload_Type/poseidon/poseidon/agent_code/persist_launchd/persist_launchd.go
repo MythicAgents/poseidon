@@ -33,8 +33,7 @@ type launchPlist struct {
 }
 
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 
 	args := Arguments{}
 	err := json.Unmarshal([]byte(task.Params), &args)

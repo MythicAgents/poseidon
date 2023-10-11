@@ -39,8 +39,7 @@ func GetPermission(finfo os.FileInfo) structs.FilePermission {
 }
 
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 	args := structs.FileBrowserArguments{}
 	json.Unmarshal([]byte(task.Params), &args)
 	var e structs.FileBrowser

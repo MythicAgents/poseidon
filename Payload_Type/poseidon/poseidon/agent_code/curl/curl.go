@@ -6,9 +6,8 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	// Poseidon
@@ -23,33 +22,34 @@ type Arguments struct {
 	Headers string `json:"headers"`
 }
 
-//Run - Function that executes a curl command with Golang APIs
+// Run - Function that executes a curl command with Golang APIs
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 	args := &Arguments{}
 	err := json.Unmarshal([]byte(task.Params), args)
-
 	if err != nil {
-
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}
-
 	var body []byte
 	var rawHeaders []byte
-
 	if len(args.Body) > 0 {
-		body, _ = base64.StdEncoding.DecodeString(args.Body)
+		body, err = base64.StdEncoding.DecodeString(args.Body)
+		if err != nil {
+			msg.SetError(err.Error())
+			task.Job.SendResponses <- msg
+			return
+		}
 	}
-
 	if len(args.Headers) > 0 {
-		rawHeaders, _ = base64.StdEncoding.DecodeString(args.Headers)
+		rawHeaders, err = base64.StdEncoding.DecodeString(args.Headers)
+		if err != nil {
+			msg.SetError(err.Error())
+			task.Job.SendResponses <- msg
+			return
+		}
 	}
-
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
@@ -61,46 +61,49 @@ func Run(task structs.Task) {
 	var respBody []byte
 	var req *http.Request
 	if len(body) > 0 {
-		req, _ = http.NewRequest(args.Method, args.Url, bytes.NewBuffer(body))
+		req, err = http.NewRequest(args.Method, args.Url, bytes.NewBuffer(body))
+		if err != nil {
+			msg.SetError(err.Error())
+			task.Job.SendResponses <- msg
+			return
+		}
 	} else {
-		req, _ = http.NewRequest(args.Method, args.Url, nil)
+		req, err = http.NewRequest(args.Method, args.Url, nil)
+		if err != nil {
+			msg.SetError(err.Error())
+			task.Job.SendResponses <- msg
+			return
+		}
 	}
-
 	if len(rawHeaders) > 0 {
-		var headers map[string]interface{}
-		_ = json.Unmarshal(rawHeaders, &headers)
-
+		var headers map[string]string
+		err = json.Unmarshal(rawHeaders, &headers)
+		if err != nil {
+			msg.SetError(err.Error())
+			task.Job.SendResponses <- msg
+			return
+		}
 		for k, v := range headers {
-			if strings.Contains(k, "Host") {
-				req.Host = v.(string)
+			if k == "Host" {
+				req.Host = v
 			} else {
-				req.Header.Set(k, v.(string))
+				req.Header.Set(k, v)
 			}
 		}
 	}
-
 	resp, err := client.Do(req)
 	if err != nil {
-
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}
-
 	defer resp.Body.Close()
-	respBody, err = ioutil.ReadAll(resp.Body)
-
+	respBody, err = io.ReadAll(resp.Body)
 	if err != nil {
-
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}
-
 	msg.Completed = true
 	msg.UserOutput = string(respBody)
 	task.Job.SendResponses <- msg

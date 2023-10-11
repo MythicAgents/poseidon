@@ -12,18 +12,13 @@ import (
 )
 
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
-
+	msg := task.NewResponse()
 	err := os.Mkdir(task.Params, 0777)
 	if err != nil {
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}
-
 	msg.Completed = true
 	msg.UserOutput = fmt.Sprintf("Created directory: %s", task.Params)
 	task.Job.SendResponses <- msg

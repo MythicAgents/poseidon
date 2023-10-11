@@ -20,10 +20,8 @@ type runArgs struct {
 
 // Run - Function that executes the run command
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 	args := runArgs{}
-	msg.TaskID = task.TaskID
 
 	err := json.Unmarshal([]byte(task.Params), &args)
 	if err != nil {
@@ -61,15 +59,14 @@ func Run(task structs.Task) {
 			case <-doneChannel:
 				doneCount += 1
 				if doneCount == 2 {
-					outputMsg := structs.Response{}
-					outputMsg.TaskID = task.TaskID
-					outputMsg.Completed = true
+					msg = task.NewResponse()
+					msg.Completed = true
 					if bufferedOutput != "" {
-						outputMsg.UserOutput = bufferedOutput
+						msg.UserOutput = bufferedOutput
 					} else {
 						msg.UserOutput = fmt.Sprintf("No Output From Command")
 					}
-					task.Job.SendResponses <- outputMsg
+					task.Job.SendResponses <- msg
 					doneTimeDelayChannel <- true
 					return
 				}
@@ -77,10 +74,9 @@ func Run(task structs.Task) {
 				bufferedOutput += newBufferedOutput
 			case <-sendTimeDelayChannel:
 				if bufferedOutput != "" {
-					outputMsg := structs.Response{}
-					outputMsg.TaskID = task.TaskID
-					outputMsg.UserOutput = bufferedOutput
-					task.Job.SendResponses <- outputMsg
+					msg = task.NewResponse()
+					msg.UserOutput = bufferedOutput
+					task.Job.SendResponses <- msg
 					bufferedOutput = ""
 				}
 			}

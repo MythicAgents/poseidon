@@ -23,7 +23,6 @@ import (
 
 var (
 	sshResultChan = make(chan SSHResult)
-	mu            sync.Mutex
 )
 
 // SSHAuthenticator Governs the lock of ssh authentication attempts
@@ -200,8 +199,7 @@ func SSHBruteForce(hosts []string, port int, creds []Credential, debug bool, com
 func Run(task structs.Task) {
 
 	params := SSHTestParams{}
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 
 	// log.Println("Task params:", string(task.Params))
 	err := json.Unmarshal([]byte(task.Params), &params)

@@ -20,12 +20,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 	"io/ioutil"
 	"log"
 	"os"
 	r "reflect"
-	"strings"
 	"unsafe"
 )
 
@@ -56,8 +56,8 @@ func (x *XpcMan) HandleEvent(event Dict, err error) {
 	if err != nil {
 		return
 	}
-
-	results = raw
+	utils.PrintDebug(fmt.Sprintf("%v\n", raw))
+	//results = raw
 	return
 }
 
@@ -144,33 +144,6 @@ func (a Array) GetUUID(k int) UUID {
 // a UUID
 type UUID [16]byte
 
-func MakeUUID(s string) UUID {
-	var sl []byte
-
-	s = strings.Replace(s, "-", "", -1)
-	fmt.Sscanf(s, "%32x", &sl)
-
-	var uuid [16]byte
-	copy(uuid[:], sl)
-	return UUID(uuid)
-}
-
-func MustUUID(s string) UUID {
-	var sl []byte
-
-	s = strings.Replace(s, "-", "", -1)
-	if len(s) != 32 {
-		log.Fatal("invalid UUID")
-	}
-	if n, err := fmt.Sscanf(s, "%32x", &sl); err != nil || n != 1 {
-		log.Fatal("invalid UUID ", s, " len ", n, " error ", err)
-	}
-
-	var uuid [16]byte
-	copy(uuid[:], sl)
-	return UUID(uuid)
-}
-
 func (uuid UUID) String() string {
 	return fmt.Sprintf("%x", [16]byte(uuid))
 }
@@ -243,7 +216,6 @@ func runCommand(command string) ([]byte, error) {
 
 			return raw, err
 		}
-		break
 	case "start":
 		if len(args.ServiceName) == 0 {
 			empty := make([]byte, 0)
@@ -259,7 +231,6 @@ func runCommand(command string) ([]byte, error) {
 
 			return raw, err
 		}
-		break
 	case "stop":
 		if len(args.ServiceName) == 0 {
 			empty := make([]byte, 0)
@@ -275,7 +246,6 @@ func runCommand(command string) ([]byte, error) {
 
 			return raw, err
 		}
-		break
 	case "load":
 		if len(args.File) == 0 {
 			empty := make([]byte, 0)
@@ -291,7 +261,6 @@ func runCommand(command string) ([]byte, error) {
 
 			return raw, err
 		}
-		break
 	case "unload":
 		if len(args.File) == 0 {
 			empty := make([]byte, 0)
@@ -307,7 +276,6 @@ func runCommand(command string) ([]byte, error) {
 
 			return raw, err
 		}
-		break
 	case "status":
 		if len(args.ServiceName) == 0 {
 			empty := make([]byte, 0)
@@ -323,7 +291,6 @@ func runCommand(command string) ([]byte, error) {
 
 			return raw, err
 		}
-		break
 	case "procinfo":
 		if functions.IsElevated() {
 			response := XpcLaunchProcInfo(args.Pid)
@@ -350,7 +317,6 @@ func runCommand(command string) ([]byte, error) {
 
 			return raw, err
 		}
-		break
 	case "send":
 		if len(args.Data) == 0 || len(args.ServiceName) == 0 {
 			empty := make([]byte, 0)
@@ -379,7 +345,6 @@ func runCommand(command string) ([]byte, error) {
 	default:
 		return []byte("Command not supported"), nil
 	}
-	return []byte("Command not supported"), nil
 }
 
 func XpcLaunchList(service string) interface{} {

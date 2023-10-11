@@ -50,6 +50,8 @@ type Process interface {
 	Name() string
 
 	BundleID() string
+
+	AdditionalInfo() map[string]interface{}
 }
 
 // ProcessArray - struct that will hold all of the Process results
@@ -60,8 +62,7 @@ type ProcessArray struct {
 // Run - interface method that retrieves a process list
 func Run(task structs.Task) {
 	procs, err := Processes()
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 	params := Arguments{}
 	if err != nil {
 		msg.SetError(err.Error())
@@ -74,36 +75,38 @@ func Run(task structs.Task) {
 		// Loop over the process results and add them to the json object array
 		for i := 0; i < len(procs); i++ {
 			slice = append(slice, structs.ProcessDetails{
-				ProcessID:           procs[i].Pid(),
-				ParentProcessID:     procs[i].PPid(),
-				Arch:                procs[i].Arch(),
-				User:                procs[i].Owner(),
-				BinPath:             procs[i].BinPath(),
-				Arguments:           procs[i].ProcessArguments(),
-				Environment:         procs[i].ProcessEnvironment(),
-				SandboxPath:         procs[i].SandboxPath(),
-				ScriptingProperties: procs[i].ScriptingProperties(),
-				Name:                procs[i].Name(),
-				BundleID:            procs[i].BundleID(),
-				UpdateDeleted:       true,
+				ProcessID:             procs[i].Pid(),
+				ParentProcessID:       procs[i].PPid(),
+				Arch:                  procs[i].Arch(),
+				User:                  procs[i].Owner(),
+				BinPath:               procs[i].BinPath(),
+				Arguments:             procs[i].ProcessArguments(),
+				Environment:           procs[i].ProcessEnvironment(),
+				SandboxPath:           procs[i].SandboxPath(),
+				ScriptingProperties:   procs[i].ScriptingProperties(),
+				Name:                  procs[i].Name(),
+				BundleID:              procs[i].BundleID(),
+				AdditionalInformation: procs[i].AdditionalInfo(),
+				UpdateDeleted:         true,
 			})
 		}
 	} else {
 		for i := 0; i < len(procs); i++ {
 			if exists, _ := regexp.Match(params.RegexFilter, []byte(procs[i].Name())); exists {
 				slice = append(slice, structs.ProcessDetails{
-					ProcessID:           procs[i].Pid(),
-					ParentProcessID:     procs[i].PPid(),
-					Arch:                procs[i].Arch(),
-					User:                procs[i].Owner(),
-					BinPath:             procs[i].BinPath(),
-					Arguments:           procs[i].ProcessArguments(),
-					Environment:         procs[i].ProcessEnvironment(),
-					SandboxPath:         procs[i].SandboxPath(),
-					ScriptingProperties: procs[i].ScriptingProperties(),
-					Name:                procs[i].Name(),
-					BundleID:            procs[i].BundleID(),
-					UpdateDeleted:       false,
+					ProcessID:             procs[i].Pid(),
+					ParentProcessID:       procs[i].PPid(),
+					Arch:                  procs[i].Arch(),
+					User:                  procs[i].Owner(),
+					BinPath:               procs[i].BinPath(),
+					Arguments:             procs[i].ProcessArguments(),
+					Environment:           procs[i].ProcessEnvironment(),
+					SandboxPath:           procs[i].SandboxPath(),
+					ScriptingProperties:   procs[i].ScriptingProperties(),
+					Name:                  procs[i].Name(),
+					BundleID:              procs[i].BundleID(),
+					AdditionalInformation: procs[i].AdditionalInfo(),
+					UpdateDeleted:         false,
 				})
 			}
 		}
@@ -111,9 +114,7 @@ func Run(task structs.Task) {
 	jsonProcs, er := json.MarshalIndent(slice, "", "	")
 
 	if er != nil {
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}

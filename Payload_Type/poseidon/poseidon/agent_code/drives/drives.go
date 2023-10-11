@@ -18,22 +18,21 @@ type Drive struct {
 	TotalBytesPretty string `json:"total_bytes_pretty"`
 }
 
-//Run - Function that executes the shell command
+// Run - Function that executes the shell command
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
-
+	msg := task.NewResponse()
 	res, err := listDrives()
-
 	if err != nil {
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}
-
 	driveJson, err := json.MarshalIndent(res, "", "    ")
+	if err != nil {
+		msg.SetError(err.Error())
+		task.Job.SendResponses <- msg
+		return
+	}
 	msg.UserOutput = string(driveJson)
 	msg.Completed = true
 	task.Job.SendResponses <- msg

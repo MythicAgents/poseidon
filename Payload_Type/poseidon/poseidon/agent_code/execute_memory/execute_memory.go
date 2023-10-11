@@ -21,8 +21,7 @@ type executeMemoryArgs struct {
 
 // Run - interface method that retrieves a process list
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 
 	args := executeMemoryArgs{}
 

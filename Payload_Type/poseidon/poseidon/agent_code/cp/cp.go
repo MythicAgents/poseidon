@@ -44,43 +44,54 @@ func copy(src, dst string) (int64, error) {
 	return nBytes, err
 }
 
-//Run - Function that executes the copy command
+// Run - Function that executes the copy command
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 	args := &Arguments{}
 	err := json.Unmarshal([]byte(task.Params), args)
 	if err != nil {
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}
 	fixedSourcePath := args.SourceFile
 	if strings.HasPrefix(fixedSourcePath, "~/") {
-		dirname, _ := os.UserHomeDir()
+		dirname, err := os.UserHomeDir()
+		if err != nil {
+			msg.SetError(err.Error())
+			task.Job.SendResponses <- msg
+			return
+		}
 		fixedSourcePath = filepath.Join(dirname, fixedSourcePath[2:])
 	}
-	args.SourceFile, _ = filepath.Abs(fixedSourcePath)
-	fixedDestinationPath := args.DestinationFile
-	if strings.HasPrefix(fixedDestinationPath, "~/") {
-		dirname, _ := os.UserHomeDir()
-		fixedDestinationPath = filepath.Join(dirname, fixedDestinationPath[2:])
-	}
-	args.DestinationFile, _ = filepath.Abs(fixedDestinationPath)
-
-	copiedBytes, err := copy(args.SourceFile, args.DestinationFile)
-
+	args.SourceFile, err = filepath.Abs(fixedSourcePath)
 	if err != nil {
-
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}
-
+	fixedDestinationPath := args.DestinationFile
+	if strings.HasPrefix(fixedDestinationPath, "~/") {
+		dirname, err := os.UserHomeDir()
+		if err != nil {
+			msg.SetError(err.Error())
+			task.Job.SendResponses <- msg
+			return
+		}
+		fixedDestinationPath = filepath.Join(dirname, fixedDestinationPath[2:])
+	}
+	args.DestinationFile, err = filepath.Abs(fixedDestinationPath)
+	if err != nil {
+		msg.SetError(err.Error())
+		task.Job.SendResponses <- msg
+		return
+	}
+	copiedBytes, err := copy(args.SourceFile, args.DestinationFile)
+	if err != nil {
+		msg.SetError(err.Error())
+		task.Job.SendResponses <- msg
+		return
+	}
 	msg.Completed = true
 	msg.UserOutput = fmt.Sprintf("Copied %d bytes to %s", copiedBytes, args.DestinationFile)
 	task.Job.SendResponses <- msg

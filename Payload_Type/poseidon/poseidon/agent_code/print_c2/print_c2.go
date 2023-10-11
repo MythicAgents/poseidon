@@ -11,13 +11,10 @@ import (
 
 // Run - package function to run print_c2
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
-
+	msg := task.NewResponse()
 	msg.UserOutput = profiles.GetAllC2Info()
 	msg.Completed = true
 	msg.Status = "completed"
 	task.Job.SendResponses <- msg
-
 	return
 }

@@ -24,8 +24,7 @@ type ProcessDetails struct {
 }
 
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 	var final string
 	args := Arguments{}
 	json.Unmarshal([]byte(task.Params), &args)

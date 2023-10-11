@@ -4,7 +4,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 	"github.com/google/uuid"
 	"net"
@@ -28,18 +29,18 @@ func (c poseidonTCP) ProcessIngressMessageForP2P(delegate *structs.DelegateMessa
 	if conn, ok := internalTCPConnections[delegate.UUID]; ok {
 		if delegate.MythicUUID != "" && delegate.MythicUUID != delegate.UUID {
 			// Mythic told us that our UUID was fake and gave the right one
-			profiles.PrintDebug(fmt.Sprintf("adding new MythicUUID: %s from %s\n", delegate.MythicUUID, delegate.UUID))
+			utils.PrintDebug(fmt.Sprintf("adding new MythicUUID: %s from %s\n", delegate.MythicUUID, delegate.UUID))
 			internalTCPConnections[delegate.MythicUUID] = conn
 			// remove our old one
-			profiles.PrintDebug(fmt.Sprintf("removing internal tcp connection for: %s\n", delegate.UUID))
+			utils.PrintDebug(fmt.Sprintf("removing internal tcp connection for: %s\n", delegate.UUID))
 			delete(internalTCPConnections, delegate.UUID)
 		}
-		profiles.PrintDebug(fmt.Sprintf("Sending ingress data to P2P connection\n"))
+		utils.PrintDebug(fmt.Sprintf("Sending ingress data to P2P connection\n"))
 		err = SendTCPData([]byte(delegate.Message), *conn)
 	}
 	internalTCPConnectionMutex.Unlock()
 	if err != nil {
-		profiles.PrintDebug(fmt.Sprintf("Failed to send data to linked p2p connection, %v\n", err))
+		utils.PrintDebug(fmt.Sprintf("Failed to send data to linked p2p connection, %v\n", err))
 		go c.RemoveInternalConnection(delegate.UUID)
 	}
 }
@@ -47,7 +48,7 @@ func (c poseidonTCP) RemoveInternalConnection(connectionUUID string) bool {
 	internalTCPConnectionMutex.Lock()
 	defer internalTCPConnectionMutex.Unlock()
 	if conn, ok := internalTCPConnections[connectionUUID]; ok {
-		profiles.PrintDebug(fmt.Sprintf("about to remove a connection, %s\n", connectionUUID))
+		utils.PrintDebug(fmt.Sprintf("about to remove a connection, %s\n", connectionUUID))
 		//printInternalTCPConnectionMap()
 		(*conn).Close()
 		delete(internalTCPConnections, connectionUUID)
@@ -66,11 +67,11 @@ func (c poseidonTCP) AddInternalConnection(connection interface{}) {
 	defer internalTCPConnectionMutex.Unlock()
 
 	newConnectionString := (*connection.(*net.Conn)).RemoteAddr().String()
-	profiles.PrintDebug(fmt.Sprintf("AddNewInternalConnectionChannel with UUID ( %s ) for %v\n", connectionUUID, newConnectionString))
+	utils.PrintDebug(fmt.Sprintf("AddNewInternalConnectionChannel with UUID ( %s ) for %v\n", connectionUUID, newConnectionString))
 	for _, v := range internalTCPConnections {
 		if (*v).RemoteAddr().String() == newConnectionString {
 			// we already have an existing connection to this IP:Port combination, close old one
-			profiles.PrintDebug("already have connection, closing old one")
+			utils.PrintDebug("already have connection, closing old one")
 			(*v).Close()
 			break
 		}
@@ -96,7 +97,7 @@ func (c poseidonTCP) readFromInternalTCPConnections(newConnection *net.Conn, tem
 	for {
 		err := binary.Read(*newConnection, binary.BigEndian, &sizeBuffer)
 		if err != nil {
-			profiles.PrintDebug(fmt.Sprintf("Failed to read size from tcp connection: %v\n", err))
+			utils.PrintDebug(fmt.Sprintf("Failed to read size from tcp connection: %v\n", err))
 			c.RemoveInternalConnection(tempConnectionUUID)
 			return
 		}
@@ -105,7 +106,7 @@ func (c poseidonTCP) readFromInternalTCPConnections(newConnection *net.Conn, tem
 
 			readSoFar, err := (*newConnection).Read(readBuffer)
 			if err != nil {
-				profiles.PrintDebug(fmt.Sprintf("Failed to read bytes from tcp connection: %v\n", err))
+				utils.PrintDebug(fmt.Sprintf("Failed to read bytes from tcp connection: %v\n", err))
 				c.RemoveInternalConnection(tempConnectionUUID)
 				return
 			}
@@ -115,7 +116,7 @@ func (c poseidonTCP) readFromInternalTCPConnections(newConnection *net.Conn, tem
 				nextBuffer := make([]byte, sizeBuffer-totalRead)
 				readSoFar, err = (*newConnection).Read(nextBuffer)
 				if err != nil {
-					profiles.PrintDebug(fmt.Sprintf("Failed to read bytes from tcp connection: %v\n", err))
+					utils.PrintDebug(fmt.Sprintf("Failed to read bytes from tcp connection: %v\n", err))
 					c.RemoveInternalConnection(tempConnectionUUID)
 					return
 				}
@@ -129,9 +130,9 @@ func (c poseidonTCP) readFromInternalTCPConnections(newConnection *net.Conn, tem
 			//fmt.Printf("converted %s to %s when sending message to Mythic\n", tempConnectionUUID, newDelegateMessage.UUID)
 			newDelegateMessage.C2ProfileName = c.ProfileName()
 			//fmt.Printf("Adding delegate message to channel: %v\n", newDelegateMessage)
-			profiles.NewDelegatesToMythicChannel <- newDelegateMessage
+			responses.NewDelegatesToMythicChannel <- newDelegateMessage
 		} else {
-			profiles.PrintDebug(fmt.Sprintf("Read 0 bytes from internal TCP connection\n"))
+			utils.PrintDebug(fmt.Sprintf("Read 0 bytes from internal TCP connection\n"))
 			c.RemoveInternalConnection(tempConnectionUUID)
 		}
 
@@ -145,14 +146,14 @@ func init() {
 func SendTCPData(sendData []byte, conn net.Conn) error {
 	err := binary.Write(conn, binary.BigEndian, int32(len(sendData)))
 	if err != nil {
-		profiles.PrintDebug(fmt.Sprintf("Failed to send down pipe with error: %v\n", err))
+		utils.PrintDebug(fmt.Sprintf("Failed to send down pipe with error: %v\n", err))
 		return err
 	}
 	totalWritten := 0
 	for totalWritten < len(sendData) {
 		currentWrites, err := conn.Write(sendData[totalWritten:])
 		if err != nil {
-			profiles.PrintDebug(fmt.Sprintf("Failed to send with error: %v\n", err))
+			utils.PrintDebug(fmt.Sprintf("Failed to send with error: %v\n", err))
 			return err
 		}
 		totalWritten += currentWrites
@@ -161,6 +162,6 @@ func SendTCPData(sendData []byte, conn net.Conn) error {
 		}
 	}
 
-	profiles.PrintDebug(fmt.Sprintf("Sent %d bytes to connection\n", totalWritten))
+	utils.PrintDebug(fmt.Sprintf("Sent %d bytes to connection\n", totalWritten))
 	return nil
 }

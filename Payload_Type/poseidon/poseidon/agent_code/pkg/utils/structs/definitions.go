@@ -108,11 +108,23 @@ type MythicMessageResponse struct {
 }
 
 type Task struct {
-	Command   string  `json:"command"`
-	Params    string  `json:"parameters"`
-	Timestamp float64 `json:"timestamp"`
-	TaskID    string  `json:"id"`
-	Job       *Job
+	Command           string  `json:"command"`
+	Params            string  `json:"parameters"`
+	Timestamp         float64 `json:"timestamp"`
+	TaskID            string  `json:"id"`
+	Job               *Job
+	removeRunningTask chan string
+}
+
+func (t *Task) SetRemoveRunningTaskChannel(removeRunningTask chan string) {
+	t.removeRunningTask = removeRunningTask
+}
+func (t *Task) NewResponse() Response {
+	newResponse := Response{
+		TaskID:            t.TaskID,
+		removeRunningTask: t.removeRunningTask,
+	}
+	return newResponse
 }
 
 type RemoveInternalConnectionMessage struct {
@@ -159,11 +171,11 @@ type SendFileToMythicStruct struct {
 	Data *[]byte
 	File *os.File
 	// channel to indicate once the file transfer has finished so that the task can act accordingly
-	FinishedTransfer chan (int)
+	FinishedTransfer chan int
 	// the following are set and used by Poseidon, Task doesn't use
 	// two components used by Poseidon internally to track and handle chunk responses from Mythic for this specific file transfer
 	TrackingUUID         string
-	FileTransferResponse chan (json.RawMessage)
+	FileTransferResponse chan json.RawMessage
 }
 type GetFileFromMythicStruct struct {
 	// the following are set by the calling Task
@@ -179,18 +191,19 @@ type GetFileFromMythicStruct struct {
 }
 
 type ProcessDetails struct {
-	ProcessID           int                    `json:"process_id"`
-	ParentProcessID     int                    `json:"parent_process_id"`
-	Arch                string                 `json:"architecture"`
-	User                string                 `json:"user"`
-	BinPath             string                 `json:"bin_path"`
-	Arguments           []string               `json:"args"`
-	Environment         map[string]interface{} `json:"env"`
-	SandboxPath         string                 `json:"sandboxpath"`
-	ScriptingProperties map[string]interface{} `json:"scripting_properties"`
-	Name                string                 `json:"name"`
-	BundleID            string                 `json:"bundleid"`
-	UpdateDeleted       bool                   `json:"update_deleted"`
+	ProcessID             int                    `json:"process_id"`
+	ParentProcessID       int                    `json:"parent_process_id"`
+	Arch                  string                 `json:"architecture"`
+	User                  string                 `json:"user"`
+	BinPath               string                 `json:"bin_path"`
+	Arguments             []string               `json:"args"`
+	Environment           map[string]interface{} `json:"env"`
+	SandboxPath           string                 `json:"sandboxpath"`
+	ScriptingProperties   map[string]interface{} `json:"scripting_properties"`
+	Name                  string                 `json:"name"`
+	BundleID              string                 `json:"bundleid"`
+	UpdateDeleted         bool                   `json:"update_deleted"`
+	AdditionalInformation map[string]interface{} `json:"additional_information"`
 }
 type Keylog struct {
 	User        string `json:"user"`
@@ -217,22 +230,26 @@ type Alert struct {
 }
 
 type Response struct {
-	TaskID          string               `json:"task_id"`
-	UserOutput      string               `json:"user_output,omitempty"`
-	Completed       bool                 `json:"completed,omitempty"`
-	Status          string               `json:"status,omitempty"`
-	FileBrowser     *FileBrowser         `json:"file_browser,omitempty"`
-	RemovedFiles    *[]RmFiles           `json:"removed_files,omitempty"`
-	Processes       *[]ProcessDetails    `json:"processes,omitempty"`
-	TrackingUUID    string               `json:"tracking_uuid,omitempty"`
-	Upload          *FileUploadMessage   `json:"upload,omitempty"`
-	Download        *FileDownloadMessage `json:"download,omitempty"`
-	Keylogs         *[]Keylog            `json:"keylogs,omitempty"`
-	Artifacts       *[]Artifact          `json:"artifacts,omitempty"`
-	Alerts          *[]Alert             `json:"alerts,omitempty"`
-	ProcessResponse *string              `json:"process_response,omitempty"`
+	TaskID            string               `json:"task_id"`
+	UserOutput        string               `json:"user_output,omitempty"`
+	Completed         bool                 `json:"completed,omitempty"`
+	Status            string               `json:"status,omitempty"`
+	FileBrowser       *FileBrowser         `json:"file_browser,omitempty"`
+	RemovedFiles      *[]RmFiles           `json:"removed_files,omitempty"`
+	Processes         *[]ProcessDetails    `json:"processes,omitempty"`
+	TrackingUUID      string               `json:"tracking_uuid,omitempty"`
+	Upload            *FileUploadMessage   `json:"upload,omitempty"`
+	Download          *FileDownloadMessage `json:"download,omitempty"`
+	Keylogs           *[]Keylog            `json:"keylogs,omitempty"`
+	Artifacts         *[]Artifact          `json:"artifacts,omitempty"`
+	Alerts            *[]Alert             `json:"alerts,omitempty"`
+	ProcessResponse   *string              `json:"process_response,omitempty"`
+	removeRunningTask chan string
 }
 
+func (r *Response) CompleteTask() {
+	r.removeRunningTask <- r.TaskID
+}
 func (r *Response) SetError(errString string) {
 	r.UserOutput = errString
 	r.Status = "error"

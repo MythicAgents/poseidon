@@ -26,3 +26,11 @@ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
 CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+## 3rd Party Licenses
+
+### TrueTree
+https://github.com/themittenmac/TrueTree/blob/master/license.md
+https://github.com/themittenmac/TrueTree 
+Jaron Bradley's TrueTree code was incorporated as part of the `ps` command to give better process listings

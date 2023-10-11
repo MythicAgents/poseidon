@@ -12,10 +12,9 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
-//Run - Function that executes the shell command
+// Run - Function that executes the shell command
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 	if task.Params == "" {
 		msg.SetError("No environment variable given to set. Must be of format:\nsetenv NAME VALUE")
 		task.Job.SendResponses <- msg
@@ -33,8 +32,7 @@ func Run(task structs.Task) {
 	err := os.Setenv(parts[0], parts[1])
 	if err != nil {
 		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}

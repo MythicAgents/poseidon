@@ -1,3 +1,4 @@
+//go:build darwin
 // +build darwin
 
 package ps
@@ -6,9 +7,68 @@ package ps
 #cgo LDFLAGS: -framework AppKit -framework Foundation -framework ApplicationServices
 #cgo CFLAGS: -x objective-c
 #include "rdprocess_darwin.h"
+#include <libproc.h>
+#include <xpc/xpc.h>
+#include <mach/task.h>
+#include <objc/objc.h>
+#import <dlfcn.h> // needed for dylsm
+#import <Foundation/Foundation.h>
+#import "launchdXPC.h"
+const int INFO_SIZE = 136;
 
+int getPPID(int pidOfInterest) {
+    // Call proc_pidinfo and return nil on error
+    struct proc_bsdinfo pidInfo;
+    int InfoSize = proc_pidinfo(pidOfInterest, PROC_PIDTBSDINFO, 0, &pidInfo, INFO_SIZE);
+    if(!InfoSize){
+        return 1;
+    }
+    return pidInfo.pbi_ppid;
+}
+typedef int (*rpidFunc)(int);
+int getResponsiblePid(int pidOfInterest) {
+    // Get responsible pid using private Apple API
+    const char* path = "/usr/lib/system/libquarantine.dylib";
+    void* libquarHandle = dlopen(path, 2);
+    void* rpidSym = dlsym(libquarHandle, "responsibility_get_pid_responsible_for_pid");
+    if(rpidSym != NULL){
+        int responsiblePid = ((rpidFunc)rpidSym)(pidOfInterest);
+        if( responsiblePid == -1){
+            //printf("Error getting responsible pid for process \(pidOfInterest). Setting to responsible pid to itself\n");
+            return pidOfInterest;
+        } else {
+            return responsiblePid;
+        }
+    } else {
+        return pidOfInterest;
+
+    }
+}
 char* GetProcInfo(int pid) {
 	RDProcess *p = [[RDProcess alloc] initWithPID:pid];
+	NSString* source = @"unknown";
+	int ppid = getPPID(pid);
+	int responsiblePid = getResponsiblePid(pid);
+	int submittedPid = getSubmittedPid(pid);
+	int trueParent;
+	if (submittedPid > 1) {
+		trueParent = submittedPid;
+		source = @"application_services";
+	} else if (responsiblePid != pid) {
+		trueParent = responsiblePid;
+		source = @"responsible_pid";
+	} else {
+		trueParent = ppid;
+		source = @"parent_process";
+	}
+	// Collect a plist if it caused this program to run
+	NSString* plistNode = getSubmittedByPlist(pid);
+	if ( [plistNode hasSuffix:@".plist"] ){
+		source = @"launchd_xpc";
+	}
+	if(pid == 1){
+		trueParent = 0; // make sure we don't set parent of pid 1 to pid 1 by accident
+	}
     NSMutableDictionary *proc_details = [@{
         @"bundleID":p.bundleID ? : @"",
         @"args":p.launchArguments ? : @"",
@@ -19,7 +79,13 @@ char* GetProcInfo(int pid) {
         @"sandboxcontainer":p.sandboxContainerPath ? : @"",
 		@"pid":[NSNumber numberWithInt:p.pid],
 		@"scripting_properties":p.scriptingProperties ? : @"",
-		@"name":p.processName ? : @""
+		@"name":p.processName ? : @"",
+		@"ppid":[[NSNumber alloc] initWithInt:trueParent],
+		@"source": source,
+		@"responsible_pid": [[NSNumber alloc] initWithInt:responsiblePid],
+		@"submitted_pid": [[NSNumber alloc] initWithInt:submittedPid],
+		@"parent_pid": [[NSNumber alloc] initWithInt:ppid],
+		@"backing_plist": plistNode ? : @"",
 	}mutableCopy];
 
 	NSError *error = nil;
@@ -36,7 +102,6 @@ char* GetProcInfo(int pid) {
 
 	return "";
 }
-
 */
 import "C"
 import (
@@ -58,6 +123,12 @@ type ProcDetails struct {
 	Pid                 int             `json:"pid,omitempty"`
 	ScriptingProperties json.RawMessage `json:"scripting_properties,omitempty"`
 	Name                string          `json:"name,omitempty"`
+	Ppid                int             `json:"ppid"`
+	Source              string          `json:"source"`
+	ResponsiblePid      int             `json:"responsible_pid"`
+	SubmittedPid        int             `json:"submitted_pid"`
+	ParentPid           int             `json:"parent_pid"`
+	BackingPlist        string          `json:"backing_plist"`
 }
 
 type DarwinProcess struct {
@@ -72,6 +143,7 @@ type DarwinProcess struct {
 	scriptingproperties map[string]interface{}
 	name                string
 	bundleid            string
+	additionalInfo      map[string]interface{}
 }
 
 func (p *DarwinProcess) Pid() int {
@@ -122,6 +194,17 @@ func (p *DarwinProcess) BundleID() string {
 	return p.bundleid
 }
 
+func (p *DarwinProcess) AdditionalInfo() map[string]interface{} {
+	return map[string]interface{}{
+		"ppid":            p.additionalInfo["ppid"],
+		"source":          p.additionalInfo["source"],
+		"responsible_pid": p.additionalInfo["responsible_pid"],
+		"submitted_pid":   p.additionalInfo["submitted_pid"],
+		"parent_pid":      p.additionalInfo["parent_pid"],
+		"backing_plist":   p.additionalInfo["backing_plist"],
+	}
+}
+
 func findProcess(pid int) (Process, error) {
 	ps, err := Processes()
 	if err != nil {
@@ -170,7 +253,7 @@ func Processes() ([]Process, error) {
 		_ = json.Unmarshal([]byte(pinfo.ScriptingProperties), &scrptProps)
 		darwinProcs[i] = &DarwinProcess{
 			pid:                 int(p.Pid),
-			ppid:                int(p.PPid),
+			ppid:                pinfo.Ppid,
 			binary:              pinfo.Path,
 			owner:               pinfo.User,
 			args:                pinfo.Args,
@@ -179,6 +262,14 @@ func Processes() ([]Process, error) {
 			scriptingproperties: scrptProps,
 			name:                pinfo.Name,
 			bundleid:            pinfo.BundleID,
+			additionalInfo: map[string]interface{}{
+				"ppid":            pinfo.Ppid,
+				"source":          pinfo.Source,
+				"responsible_pid": pinfo.ResponsiblePid,
+				"submitted_pid":   pinfo.SubmittedPid,
+				"parent_pid":      pinfo.ParentPid,
+				"backing_plist":   pinfo.BackingPlist,
+			},
 		}
 
 	}
