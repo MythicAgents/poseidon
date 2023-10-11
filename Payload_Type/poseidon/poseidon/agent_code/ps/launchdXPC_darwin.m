@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 #import <dlfcn.h>
-#import "launchdXPC.h"
+#import "launchdXPC_darwin.h"
 #import <Foundation/Foundation.h>
 #import <ApplicationServices/ApplicationServices.h>
 

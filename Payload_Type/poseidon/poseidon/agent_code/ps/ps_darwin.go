@@ -13,7 +13,7 @@ package ps
 #include <objc/objc.h>
 #import <dlfcn.h> // needed for dylsm
 #import <Foundation/Foundation.h>
-#import "launchdXPC.h"
+#import "launchdXPC_darwin.h"
 const int INFO_SIZE = 136;
 
 int getPPID(int pidOfInterest) {
