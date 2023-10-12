@@ -20,7 +20,7 @@ var payloadDefinition = agentstructs.PayloadType{
 	Wrapper:                                false,
 	CanBeWrappedByTheFollowingPayloadTypes: []string{},
 	SupportsDynamicLoading:                 false,
-	Description:                            "A fully featured macOS and Linux Golang agent.\nVersion 2.0.2\nNeeds Mythic 3.1.0+",
+	Description:                            "A fully featured macOS and Linux Golang agent.\nVersion 2.0.3\nNeeds Mythic 3.1.0+",
 	SupportedC2Profiles:                    []string{"http", "websocket", "poseidon_tcp"},
 	MythicEncryptsData:                     true,
 	BuildParameters: []agentstructs.BuildParameter{

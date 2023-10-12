@@ -8,7 +8,7 @@ import (
 const USER_OUTPUT_CHUNK_SIZE = 512000 //Normal mythic chunk size
 
 func GetChunkNums(size int64) int64 {
-	return int64(math.Ceil(float64(size) / USER_OUTPUT_CHUNK_SIZE))
+	return int64(math.Max(float64(1), math.Ceil(float64(size)/USER_OUTPUT_CHUNK_SIZE)))
 }
 
 func Initialize(getProfilesPushChannelFunc func() chan structs.MythicMessage) {
