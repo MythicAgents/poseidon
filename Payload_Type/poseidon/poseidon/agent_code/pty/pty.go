@@ -80,7 +80,7 @@ func Run(task structs.Task) {
 					}
 					continue
 				}
-				fmt.Printf("got a message from interactive tasking (%d):\n%s\n", inputMsg.MessageType, data)
+				//fmt.Printf("got a message from interactive tasking (%d):\n%s\n", inputMsg.MessageType, data)
 				err = nil
 				switch inputMsg.MessageType {
 				case InteractiveTask.Input:
@@ -148,7 +148,7 @@ func Run(task structs.Task) {
 						MessageType: InteractiveTask.Error,
 					}
 				}
-				fmt.Printf("successfully sent message along to interactive session\n")
+				//fmt.Printf("successfully sent message along to interactive session\n")
 			}
 		}
 	}()
@@ -174,10 +174,10 @@ func Run(task structs.Task) {
 				}
 				return
 			case newBufferedOutput := <-outputChannel:
-				fmt.Printf("got new output for buffered channel:\n%s", newBufferedOutput)
+				//fmt.Printf("got new output for buffered channel:\n%s", newBufferedOutput)
 				bufferedOutput += newBufferedOutput
 			case newBufferedError := <-errorChannel:
-				fmt.Printf("got new error for buffered channel:\n%s", newBufferedError)
+				//fmt.Printf("got new error for buffered channel:\n%s", newBufferedError)
 				bufferedError += newBufferedError
 			case <-sendTimeDelayChannel:
 				if bufferedOutput != "" {
@@ -218,16 +218,16 @@ func Run(task structs.Task) {
 		for readError == nil {
 			totalRead, readError = reader.Read(buff)
 			if readError != nil && readError == io.EOF {
-				fmt.Printf("reached EOF\n")
+				//fmt.Printf("reached EOF\n")
 				return
 			} else if readError != nil {
-				fmt.Printf("got an error reading: %v\n", err)
+				//fmt.Printf("got an error reading: %v\n", err)
 				return
 			} else {
 				outputChannel <- fmt.Sprintf("%s", string(buff[:totalRead]))
 			}
 		}
-		fmt.Printf("Finished reading from tty\n")
+		//fmt.Printf("Finished reading from tty\n")
 	}()
 	err = command.Wait()
 	if err != nil {
