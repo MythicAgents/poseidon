@@ -1,11 +1,14 @@
 package agentfunctions
 
 import (
+	"archive/zip"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"github.com/MythicMeta/MythicContainer/mythicrpc"
+	"github.com/google/uuid"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -337,9 +340,101 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		payloadBuildResponse.BuildStdErr = stderr.String()
 	}
 	payloadBuildResponse.BuildStdOut = stdout.String()
+
 	if payloadBytes, err := os.ReadFile(fmt.Sprintf("/build/%s", payloadName)); err != nil {
 		payloadBuildResponse.Success = false
 		payloadBuildResponse.BuildMessage = "Failed to find final payload"
+	} else if mode == "c-archive" && targetOs == "darwin" {
+		zipUUID := uuid.New().String()
+		archive, err := os.Create(fmt.Sprintf("/build/%s", zipUUID))
+		if err != nil {
+			payloadBuildResponse.Success = false
+			payloadBuildResponse.BuildMessage = "Failed to make temp archive on disk"
+			payloadBuildResponse.BuildStdErr += fmt.Sprintf("\n%v\n", err)
+			return payloadBuildResponse
+		}
+		zipWriter := zip.NewWriter(archive)
+		fileWriter, err := zipWriter.Create("poseidon-darwin-10.12-amd64.a")
+		if err != nil {
+			payloadBuildResponse.Success = false
+			payloadBuildResponse.BuildMessage = "Failed to save payload to zip"
+			payloadBuildResponse.BuildStdErr += fmt.Sprintf("\n%v\n", err)
+			archive.Close()
+			return payloadBuildResponse
+		}
+		_, err = io.Copy(fileWriter, bytes.NewReader(payloadBytes))
+		if err != nil {
+			payloadBuildResponse.Success = false
+			payloadBuildResponse.BuildMessage = "Failed to write payload to zip"
+			payloadBuildResponse.BuildStdErr += fmt.Sprintf("\n%v\n", err)
+			archive.Close()
+			return payloadBuildResponse
+		}
+		headerName := fmt.Sprintf("%s.h", payloadName[:len(payloadName)-2])
+		headerWriter, err := zipWriter.Create("poseidon-darwin-10.12-amd64.h")
+		if err != nil {
+			payloadBuildResponse.Success = false
+			payloadBuildResponse.BuildMessage = "Failed to save header to zip"
+			payloadBuildResponse.BuildStdErr += fmt.Sprintf("\n%v\n", err)
+			archive.Close()
+			return payloadBuildResponse
+		}
+		headerFile, err := os.Open(fmt.Sprintf("/build/%s", headerName))
+		if err != nil {
+			payloadBuildResponse.Success = false
+			payloadBuildResponse.BuildMessage = "Failed to open header to zip"
+			payloadBuildResponse.BuildStdErr += fmt.Sprintf("\n%v\n", err)
+			archive.Close()
+			return payloadBuildResponse
+		}
+		_, err = io.Copy(headerWriter, headerFile)
+		if err != nil {
+			payloadBuildResponse.Success = false
+			payloadBuildResponse.BuildMessage = "Failed to write header to zip"
+			payloadBuildResponse.BuildStdErr += fmt.Sprintf("\n%v\n", err)
+			archive.Close()
+			return payloadBuildResponse
+		}
+		sharedWriter, err := zipWriter.Create("sharedlib-darwin-linux.c")
+		if err != nil {
+			payloadBuildResponse.Success = false
+			payloadBuildResponse.BuildMessage = "Failed to save payload to zip"
+			payloadBuildResponse.BuildStdErr += fmt.Sprintf("\n%v\n", err)
+			archive.Close()
+			return payloadBuildResponse
+		}
+		sharedLib, err := os.Open("./poseidon/agent_code/sharedlib/sharedlib-darwin-linux.c")
+		if err != nil {
+			payloadBuildResponse.Success = false
+			payloadBuildResponse.BuildMessage = "Failed to save sharedlib to zip"
+			payloadBuildResponse.BuildStdErr += fmt.Sprintf("\n%v\n", err)
+			archive.Close()
+			return payloadBuildResponse
+		}
+		_, err = io.Copy(sharedWriter, sharedLib)
+		if err != nil {
+			payloadBuildResponse.Success = false
+			payloadBuildResponse.BuildMessage = "Failed to write sharedlib to zip"
+			payloadBuildResponse.BuildStdErr += fmt.Sprintf("\n%v\n", err)
+			archive.Close()
+			return payloadBuildResponse
+		}
+		zipWriter.Close()
+		archive.Close()
+		archiveBytes, err := os.ReadFile(fmt.Sprintf("/build/%s", zipUUID))
+		if err != nil {
+			payloadBuildResponse.Success = false
+			payloadBuildResponse.BuildMessage = "Failed to read final zip"
+			payloadBuildResponse.BuildStdErr += fmt.Sprintf("\n%v\n", err)
+			return payloadBuildResponse
+		}
+		payloadBuildResponse.Payload = &archiveBytes
+		payloadBuildResponse.Success = true
+		payloadBuildResponse.BuildMessage = "Successfully built payload!"
+		if !strings.HasSuffix(payloadBuildMsg.Filename, ".zip") {
+			updatedFilename := fmt.Sprintf("%s.zip", payloadBuildMsg.Filename)
+			payloadBuildResponse.UpdatedFilename = &updatedFilename
+		}
 	} else {
 		payloadBuildResponse.Payload = &payloadBytes
 		payloadBuildResponse.Success = true
