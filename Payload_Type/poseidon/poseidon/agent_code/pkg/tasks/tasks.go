@@ -3,14 +3,15 @@ package tasks
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/enums/InteractiveTask"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/files"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/p2p"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 	"sort"
 	"sync"
+	"time"
 )
 
 var runningTasks = make(map[string]structs.Task)
@@ -61,23 +62,42 @@ func HandleMessageFromMythic(mythicMessage structs.MythicMessageResponse) {
 	// loop through each socks message and send it off
 	for j := 0; j < len(mythicMessage.Socks); j++ {
 		//fmt.Printf("got socks message from Mythic %v\n", mythicMessage.Socks[j])
-		responses.FromMythicSocksChannel <- mythicMessage.Socks[j]
+		select {
+		case responses.FromMythicSocksChannel <- mythicMessage.Socks[j]:
+		case <-time.After(1 * time.Second):
+			utils.PrintDebug("dropping socks message because channel is full")
+		}
+
 	}
 	// loop through each rpwfd message and send it off
 	for j := 0; j < len(mythicMessage.Rpfwds); j++ {
-		responses.FromMythicRpfwdChannel <- mythicMessage.Rpfwds[j]
+		select {
+		case responses.FromMythicRpfwdChannel <- mythicMessage.Rpfwds[j]:
+		case <-time.After(1 * time.Second):
+			utils.PrintDebug("dropping rpfwd message because channel is full")
+		}
+
 	}
 	// loop through interactive tasks
 	for j := 0; j < len(mythicMessage.InteractiveTasks); j++ {
 		if task, exists := runningTasks[mythicMessage.InteractiveTasks[j].TaskUUID]; exists {
-			fmt.Printf("interactive task exists, sending data along\n")
-			task.Job.InteractiveTaskInputChannel <- mythicMessage.InteractiveTasks[j]
+			//fmt.Printf("interactive task exists, sending data along\n")
+			select {
+			case task.Job.InteractiveTaskInputChannel <- mythicMessage.InteractiveTasks[j]:
+			case <-time.After(1 * time.Second):
+				utils.PrintDebug("dropping interactive task message because channel is full")
+			}
 		} else {
-			responses.NewInteractiveTaskOutputChannel <- structs.InteractiveTaskMessage{
+			select {
+			case responses.NewInteractiveTaskOutputChannel <- structs.InteractiveTaskMessage{
 				TaskUUID:    mythicMessage.InteractiveTasks[j].TaskUUID,
 				Data:        base64.StdEncoding.EncodeToString([]byte("Task no longer running\n")),
 				MessageType: InteractiveTask.Error,
+			}:
+			case <-time.After(1 * time.Second):
+				utils.PrintDebug("dropping interactive task output message because channel is full")
 			}
+
 		}
 	}
 	// sort the Tasks
@@ -111,7 +131,7 @@ func HandleMessageFromMythic(mythicMessage structs.MythicMessageResponse) {
 	}
 	// loop through each delegate and try to forward it along
 	if len(mythicMessage.Delegates) > 0 {
-		p2p.HandleDelegateMessageForInternalP2PConnections(mythicMessage.Delegates)
+		go p2p.HandleDelegateMessageForInternalP2PConnections(mythicMessage.Delegates)
 	}
 	//fmt.Printf("returning from HandleMessageFromMythic\n")
 	return

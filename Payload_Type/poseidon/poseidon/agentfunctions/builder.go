@@ -15,6 +15,8 @@ import (
 	"strings"
 )
 
+const version = "2.0.4"
+
 var payloadDefinition = agentstructs.PayloadType{
 	Name:                                   "poseidon",
 	FileExtension:                          "bin",
@@ -23,7 +25,7 @@ var payloadDefinition = agentstructs.PayloadType{
 	Wrapper:                                false,
 	CanBeWrappedByTheFollowingPayloadTypes: []string{},
 	SupportsDynamicLoading:                 false,
-	Description:                            "A fully featured macOS and Linux Golang agent.\nVersion 2.0.3\nNeeds Mythic 3.1.0+",
+	Description:                            fmt.Sprintf("A fully featured macOS and Linux Golang agent.\nVersion %s\nNeeds Mythic 3.1.0+", version),
 	SupportedC2Profiles:                    []string{"http", "websocket", "poseidon_tcp"},
 	MythicEncryptsData:                     true,
 	BuildParameters: []agentstructs.BuildParameter{

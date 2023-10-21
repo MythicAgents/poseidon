@@ -28,9 +28,11 @@ func getJobListing(task structs.Task) {
 		msg.UserOutput = "0 jobs"
 	} else {
 		var jobList []structs.TaskStub
+		runningTaskMutex.Lock()
 		for _, x := range runningTasks {
 			jobList = append(jobList, x.ToStub())
 		}
+		runningTaskMutex.Unlock()
 		jsonSlices, err := json.MarshalIndent(jobList, "", "	")
 		if err != nil {
 			msg.UserOutput = err.Error()

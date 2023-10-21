@@ -1,10 +1,12 @@
 package responses
 
 import (
+	"fmt"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 	"math"
 	"sync"
+	"time"
 )
 
 var (
@@ -174,13 +176,22 @@ func listenForSocksTrafficToMythic(getProfilesPushChannelFunc func() chan struct
 		response := <-InterceptToMythicSocksChannel
 		pushChan := getProfilesPushChannelFunc()
 		if pushChan != nil {
-			pushChan <- structs.MythicMessage{
+			select {
+			case pushChan <- structs.MythicMessage{
 				Action: "post_response",
 				Socks:  &[]structs.SocksMsg{response},
+			}:
+			case <-time.After(1 * time.Second):
+				utils.PrintDebug(fmt.Sprintf("dropping data because channel is full"))
 			}
+
 		} else {
 			// if there's no push channel, forward it along like normal for somebody else to get it
-			toMythicSocksChannel <- response
+			select {
+			case toMythicSocksChannel <- response:
+			case <-time.After(1 * time.Second):
+				utils.PrintDebug(fmt.Sprintf("dropping data because channel is full"))
+			}
 		}
 	}
 }
@@ -191,13 +202,23 @@ func listenForRpfwdTrafficToMythic(getProfilesPushChannelFunc func() chan struct
 		response := <-InterceptToMythicRpfwdChannel
 		pushChan := getProfilesPushChannelFunc()
 		if pushChan != nil {
-			pushChan <- structs.MythicMessage{
+			select {
+			case pushChan <- structs.MythicMessage{
 				Action: "post_response",
 				Rpfwds: &[]structs.SocksMsg{response},
+			}:
+			case <-time.After(1 * time.Second):
+				utils.PrintDebug(fmt.Sprintf("dropping data because channel is full"))
 			}
+
 		} else {
 			// if there's no push channel, forward it along like normal for somebody else to get it
-			toMythicRpfwdChannel <- response
+			select {
+			case toMythicRpfwdChannel <- response:
+			case <-time.After(1 * time.Second):
+				utils.PrintDebug(fmt.Sprintf("dropping data because channel is full"))
+			}
+
 		}
 	}
 }
