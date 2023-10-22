@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 2.0.5 - 2023-10-22
+
+- Updated agent functionality to add `tcc_check` from Justin Bui's Hermes agent
+
 ## 2.0.4 - 2023-10-20
 
 - Updated some SOCKS processing to reduce potential for deadlocking

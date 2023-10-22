@@ -1,0 +1,1 @@
+char* checkTCC(char* user);
