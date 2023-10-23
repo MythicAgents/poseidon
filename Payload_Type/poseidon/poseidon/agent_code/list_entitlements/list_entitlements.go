@@ -3,8 +3,6 @@ package list_entitlements
 import (
 	// Standard
 	"encoding/json"
-	"strings"
-
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
@@ -16,11 +14,11 @@ type Arguments struct {
 }
 
 type ProcessDetails struct {
-	ProcessID    int    `json:"process_id"`
-	Entitlements string `json:"entitlements"`
-	Name         string `json:"name"`
-	BinPath      string `json:"bin_path"`
-	CodeSign     int    `json:"code_sign"`
+	ProcessID    int                    `json:"process_id"`
+	Entitlements map[string]interface{} `json:"entitlements"`
+	Name         string                 `json:"name"`
+	BinPath      string                 `json:"bin_path"`
+	CodeSign     int                    `json:"code_sign"`
 }
 
 func Run(task structs.Task) {
@@ -31,16 +29,18 @@ func Run(task structs.Task) {
 	if args.PID < 0 {
 		procs, _ := ps.Processes()
 		p := make([]ProcessDetails, len(procs))
-		replacer := strings.NewReplacer("\n", "", "\t", "")
 		for index := 0; index < len(procs); index++ {
 			p[index].ProcessID = procs[index].Pid()
 			p[index].Name = procs[index].Name()
 			p[index].BinPath = procs[index].BinPath()
 			ent, _ := listEntitlements(p[index].ProcessID)
 			if ent.Successful {
-				p[index].Entitlements = replacer.Replace(ent.Message)
+				err := json.Unmarshal([]byte(ent.Message), &p[index].Entitlements)
+				if err != nil {
+					p[index].Entitlements = map[string]interface{}{"error": err.Error()}
+				}
 			} else {
-				p[index].Entitlements = "Unsuccessfully queried"
+				p[index].Entitlements = map[string]interface{}{"error": "Unable to parse"}
 			}
 			cs, _ := listCodeSign(p[index].ProcessID)
 			p[index].CodeSign = cs.CodeSign

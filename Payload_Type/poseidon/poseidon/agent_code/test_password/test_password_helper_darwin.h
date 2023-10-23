@@ -1,0 +1,1 @@
+char* testPassword(char* user, char* password);

@@ -1,5 +1,6 @@
 #include "tcc_check_helper_darwin.h"
 #import <Foundation/Foundation.h>
+#import <ApplicationServices/ApplicationServices.h>
 
 char* checkTCC(char* user){
     bool fullDiskAccess = false;
@@ -11,6 +12,18 @@ char* checkTCC(char* user){
     NSString* fdaQueryString = @"kMDItemDisplayName = *TCC.db";
     NSMutableString* output = [[NSMutableString alloc] initWithString:@""];
     NSString* suppliedUser = [[NSString alloc] initWithUTF8String:user];
+    // https://github.com/MythicAgents/hermes/blob/main/Payload_Type/hermes/agent_code/Hermes/commands/get_execution_context.swift
+    // https://cedowens.medium.com/spotlighting-your-tcc-access-permissions-ec6628d7a876
+    // information about execution context environment variables from Justin Bui's & Cedric Owen's information
+    [output appendString:@"Execution Context:\n"];
+    NSDictionary* env = [NSProcessInfo processInfo].environment;
+    NSString* bundleID = env[@"__CFBundleIdentifier"];
+    [output appendFormat:@"__CFBundleIdentifier: %s\n", [bundleID UTF8String]];
+    NSString* xpcService = env[@"XPC_SERVICE_NAME"];
+    [output appendFormat:@"XPC_SERVICE_NAME: %s\n", [xpcService UTF8String]];
+    NSString* packagePath = env[@"PACKAGE_PATH"];
+    [output appendFormat:@"PACKAGE_PATH: %s\n", [packagePath UTF8String]];
+    [output appendString:@"\n\nTCC Accesses:\n"];
     if(![suppliedUser isEqualToString:@""] ){
         username = [[NSString alloc] initWithFormat:@"%s", user];
     }else{
@@ -80,6 +93,11 @@ char* checkTCC(char* user){
         } else {
             [output appendString:@"Downloads Access: false\n"];
         }
+    }
+    if( AXIsProcessTrusted() ){
+        [output appendString:@"Accessibility Enabled: true\n"];
+    } else {
+        [output appendString:@"Accessibility Enabled: false\n"];
     }
     return [output UTF8String];
 }

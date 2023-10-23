@@ -41,7 +41,7 @@ type Process interface {
 	ProcessArguments() []string
 
 	//environment
-	ProcessEnvironment() map[string]interface{}
+	ProcessEnvironment() map[string]string
 
 	SandboxPath() string
 

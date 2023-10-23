@@ -97,9 +97,12 @@ char* parse_plist( char* plist_string){
     NSString* plistString = [NSString stringWithUTF8String:plist_string];
     NSData* plistData = [plistString dataUsingEncoding:NSUTF8StringEncoding];
     NSPropertyListFormat* format;
-    NSString* error;
+    NSError* error = NULL;
     NSDictionary* plist = [NSPropertyListSerialization propertyListWithData:plistData options:NSPropertyListImmutable format:&format error:&error];
     NSData * jsonData = [NSJSONSerialization  dataWithJSONObject:plist options:0 error:&error];
+    if(error != NULL){
+        return [error.localizedDescription UTF8String];
+    }
     NSString * myString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
     return [myString UTF8String];
 }

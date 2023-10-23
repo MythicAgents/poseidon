@@ -1,5 +1,4 @@
 //go:build darwin
-// +build darwin
 
 package clipboard_monitor
 
@@ -24,6 +23,6 @@ func GetFrontmostApp() (string, error) {
 	return C.GoString(C.getFrontmostApp()), nil
 }
 func WaitForTime() {
-	time.Sleep(2 * time.Second)
-	C.waitForTime()
+	time.Sleep(1 * time.Second)
+	//C.waitForTime()
 }

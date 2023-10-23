@@ -45,6 +45,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/socks"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/sshauth"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/tcc_check"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/test_password"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/triagedirectory"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/unlink_tcp"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/unsetenv"
@@ -166,6 +167,8 @@ func listenForNewTask() {
 			go pty.Run(task)
 		case "tcc_check":
 			go tcc_check.Run(task)
+		case "test_password":
+			go test_password.Run(task)
 		default:
 			// No tasks, do nothing
 			break

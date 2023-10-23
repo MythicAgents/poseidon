@@ -197,7 +197,7 @@ type ProcessDetails struct {
 	User                  string                 `json:"user"`
 	BinPath               string                 `json:"bin_path"`
 	Arguments             []string               `json:"args"`
-	Environment           map[string]interface{} `json:"env"`
+	Environment           map[string]string      `json:"env"`
 	SandboxPath           string                 `json:"sandboxpath"`
 	ScriptingProperties   map[string]interface{} `json:"scripting_properties"`
 	Name                  string                 `json:"name"`

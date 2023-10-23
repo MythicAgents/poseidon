@@ -1,5 +1,4 @@
 //go:build darwin
-// +build darwin
 
 package ps
 
@@ -75,7 +74,7 @@ char* GetProcInfo(int pid) {
         @"path":p.executablePath ? : @"",
         @"user":p.ownerUserName ? : @"",
         @"full_username":p.ownerFullUserName ? : @"",
-        @"env":p.environmentVariables ? : @"",
+        @"env": p.environmentVariables ? : @"",
         @"sandboxcontainer":p.sandboxContainerPath ? : @"",
 		@"pid":[NSNumber numberWithInt:p.pid],
 		@"scripting_properties":p.scriptingProperties ? : @"",
@@ -108,6 +107,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"strings"
 	"syscall"
 	"unsafe"
 )
@@ -138,7 +138,7 @@ type DarwinProcess struct {
 	architecture        string
 	owner               string
 	args                []string
-	env                 map[string]interface{}
+	env                 map[string]string
 	sandboxpath         string
 	scriptingproperties map[string]interface{}
 	name                string
@@ -174,7 +174,7 @@ func (p *DarwinProcess) ProcessArguments() []string {
 	return p.args
 }
 
-func (p *DarwinProcess) ProcessEnvironment() map[string]interface{} {
+func (p *DarwinProcess) ProcessEnvironment() map[string]string {
 	return p.env
 }
 
@@ -246,11 +246,16 @@ func Processes() ([]Process, error) {
 		raw := C.GoString(cresult)
 		r := []byte(raw)
 		pinfo := ProcDetails{}
-		var envJson map[string]interface{}
+		var envJson map[string]string
 		var scrptProps map[string]interface{}
 		_ = json.Unmarshal(r, &pinfo)
-		_ = json.Unmarshal([]byte(pinfo.Env), &envJson)
-		_ = json.Unmarshal([]byte(pinfo.ScriptingProperties), &scrptProps)
+		_ = json.Unmarshal(pinfo.Env, &envJson)
+		// fixing an issue where some ENV values have nested JSON
+		for key, _ := range envJson {
+			envJson[key] = strings.ReplaceAll(envJson[key], `"`, `\\"`)
+			envJson[key] = strings.ReplaceAll(envJson[key], "%22", "\\\"")
+		}
+		_ = json.Unmarshal(pinfo.ScriptingProperties, &scrptProps)
 		darwinProcs[i] = &DarwinProcess{
 			pid:                 int(p.Pid),
 			ppid:                pinfo.Ppid,
@@ -275,19 +280,6 @@ func Processes() ([]Process, error) {
 	}
 
 	return darwinProcs, nil
-}
-
-func darwinCstring(s [16]byte) string {
-	i := 0
-	for _, b := range s {
-		if b != 0 {
-			i++
-		} else {
-			break
-		}
-	}
-
-	return string(s[:i])
 }
 
 func darwinSyscall() (*bytes.Buffer, error) {

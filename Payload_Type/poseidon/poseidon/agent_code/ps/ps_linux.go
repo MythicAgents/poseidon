@@ -61,8 +61,8 @@ func (p *UnixProcess) ProcessArguments() []string {
 	return []string{""}
 }
 
-func (p *UnixProcess) ProcessEnvironment() map[string]interface{} {
-	var emptyMap map[string]interface{}
+func (p *UnixProcess) ProcessEnvironment() map[string]string {
+	var emptyMap map[string]string
 	return emptyMap
 }
 

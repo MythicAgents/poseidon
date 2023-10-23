@@ -1,37 +1,41 @@
 function(task, response){
 	var rows = [];
 	let all_interesting = ["com.apple.security.cs.allow-jit",
-			"com.apple.security.cs.allow-unsigned-executable-memory",
-			"com.apple.security.cs.allow-dyld-environment-variables",
-			"com.apple.security.cs.disable-library-validation",
-			"com.apple.security.cs.disable-executable-page-protection",
-			"com.apple.security.cs.debugger", "No Entitlements", "Invalid argument"];
+		"com.apple.security.cs.allow-unsigned-executable-memory",
+		"com.apple.security.cs.allow-dyld-environment-variables",
+		"com.apple.security.cs.disable-library-validation",
+		"com.apple.security.cs.disable-executable-page-protection",
+		"com.apple.security.cs.debugger", "No Entitlements", "Invalid argument"];
 	let headers = [
-			{"plaintext": "actions", "type": "button", "width": 100, "disableSort": true},
-            {"plaintext": "pid", "type": "number", "width": 100},
-			{"plaintext": "code_sign", "type": "number", "width": 150},
-			{"plaintext": "interesting", "type": "button", "width": 150, "disableSort": true},
-            {"plaintext": "name", "type": "string", "fillWidth": true},
+		{"plaintext": "actions", "type": "button", "width": 100, "disableSort": true},
+		{"plaintext": "pid", "type": "number", "width": 100},
+		{"plaintext": "code_sign", "type": "number", "width": 150},
+		{"plaintext": "interesting", "type": "button", "width": 150, "disableSort": true},
+		{"plaintext": "name", "type": "string", "fillWidth": true},
 
-        ];
+	];
 	if(response.length === 0){
 		return {"plaintext": "No response yet from agent..."};
 	}
 	try{
-		let permissions = JSON.parse(response[0]);
+		let responses = "";
+		for(let i = 0; i < response.length; i++){
+			responses += response[i];
+		}
+		let permissions = JSON.parse(responses);
 		for(let i = 0; i < permissions.length; i++){
 			let data = permissions[i];
 			let perms = data["entitlements"];
 			let interesting = {};
 			try{
-				perms = JSON.parse(perms);
 				for(let j = 0; j < all_interesting.length; j++){
 					if(all_interesting[j] in perms){
 						interesting[all_interesting[j]] = perms[all_interesting[j]];
 					}
 				}
 			}catch(error){
-				//console.log("error in list_entitlements browser script", error);
+				console.log("error in list_entitlements browser script", error);
+				continue;
 			}
 			rows.push({
 				"pid": {"plaintext": data['process_id']},
@@ -47,9 +51,9 @@ function(task, response){
 						"title": "Viewing Interesting Entitlements"
 					}},
 				"actions": {"button": {
-					"name": "Actions",
-					"type": "menu",
-					"value": [
+						"name": "Actions",
+						"type": "menu",
+						"value": [
 							{
 								"name": "View Entitlements",
 								"type": "dictionary",
@@ -76,12 +80,16 @@ function(task, response){
 			});
 		}
 		return {"table":[{
-            "headers": headers,
-            "rows": rows,
-        }],
-		"plaintext": "Searched for the following interesting entitlements:\n" + JSON.stringify(all_interesting, null, 2)};
+				"headers": headers,
+				"rows": rows,
+			}],
+			"plaintext": "Searched for the following interesting entitlements:\n" + JSON.stringify(all_interesting, null, 2)};
 	}catch(error){
-		//console.log("error trying to handle list_entitlements browser script", error, response);
-		return {"plaintext": response[0]}
+		console.log("error trying to handle list_entitlements browser script", error, response);
+		let responses = "";
+		for(let i = 0; i < response.length; i++){
+			responses += response[i];
+		}
+		return {"plaintext": responses}
 	}
 }
