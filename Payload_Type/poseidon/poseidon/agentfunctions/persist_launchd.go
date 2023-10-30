@@ -2,6 +2,7 @@ package agentfunctions
 
 import (
 	"errors"
+	"fmt"
 
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 )
@@ -80,16 +81,16 @@ func init() {
 				Description: "Path to save the new plist",
 			},
 			{
-				Name:          "LocalAgent",
+				Name:          "remove",
 				ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_BOOLEAN,
-				DefaultValue:  true,
+				DefaultValue:  false,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: false,
 						UIModalPosition:     6,
 					},
 				},
-				Description: "Should be a local user launch agent",
+				Description: "Remove this persistence",
 			},
 		},
 		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
@@ -97,6 +98,32 @@ func init() {
 				Success: true,
 				TaskID:  taskData.Task.ID,
 			}
+			label, err := taskData.Args.GetStringArg("Label")
+			if err != nil {
+				response.Success = false
+				response.Error = err.Error()
+				return response
+			}
+			path, err := taskData.Args.GetStringArg("LaunchPath")
+			if err != nil {
+				response.Success = false
+				response.Error = err.Error()
+				return response
+			}
+			remove, err := taskData.Args.GetBooleanArg("remove")
+			if err != nil {
+				response.Success = false
+				response.Error = err.Error()
+				return response
+			}
+			if remove {
+				displayParams := fmt.Sprintf("removing %s at %s", label, path)
+				response.DisplayParams = &displayParams
+			} else {
+				displayParams := fmt.Sprintf("%s at %s", label, path)
+				response.DisplayParams = &displayParams
+			}
+
 			return response
 		},
 		TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {

@@ -61,7 +61,7 @@ char* getFrontmostApp(){
 		myNotifications = [[ActivateNotifications alloc] init];
 	}
 	if( [myNotifications getFrontmostName] != NULL){
-		return [myNotifications getFrontmostName];
+		return [[myNotifications getFrontmostName] UTF8String];
 	} else {
 		return "";
 	}

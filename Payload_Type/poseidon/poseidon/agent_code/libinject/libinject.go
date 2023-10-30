@@ -30,19 +30,13 @@ func Run(task structs.Task) {
 	err := json.Unmarshal([]byte(task.Params), &args)
 
 	if err != nil {
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}
-
 	result, err := injectLibrary(args.PID, args.LibraryPath)
-
 	if err != nil {
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}

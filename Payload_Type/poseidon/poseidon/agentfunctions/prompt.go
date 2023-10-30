@@ -2,61 +2,73 @@ package agentfunctions
 
 import (
 	"errors"
-	"github.com/MythicMeta/MythicContainer/logging"
-
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 )
 
 func init() {
 	agentstructs.AllPayloadData.Get("poseidon").AddCommand(agentstructs.Command{
-		Name:                "run",
-		Description:         "Execute a command from disk with arguments.",
-		HelpString:          "run -path /path/to/binary -args arg1 -args arg2 -args arg3",
+		Name:                "prompt",
+		Description:         "Prompt the user for their password by specifying a custom icon, title, and message text",
+		HelpString:          "prompt",
 		Version:             1,
-		Author:              "@its_a_feature_",
-		MitreAttackMappings: []string{"T1059.004"},
+		Author:              "@xorrior",
+		MitreAttackMappings: []string{},
 		SupportedUIFeatures: []string{},
 		CommandAttributes: agentstructs.CommandAttribute{
-			SupportedOS: []string{},
+			SupportedOS: []string{agentstructs.SUPPORTED_OS_MACOS},
 		},
 		CommandParameters: []agentstructs.CommandParameter{
 			{
-				Name:             "path",
-				ModalDisplayName: "Binary Path",
+				Name:             "icon",
+				ModalDisplayName: "Icon Path",
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
+				DefaultValue:     "",
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
-						ParameterIsRequired: true,
+						ParameterIsRequired: false,
 						UIModalPosition:     1,
 					},
 				},
-				Description: "Absolute path to the program to run",
+				Description: "Path to the .icns file to use as an icon in the popup",
 			},
 			{
-				Name:             "args",
-				ModalDisplayName: "Arguments",
-				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_ARRAY,
-				DefaultValue:     []string{},
+				Name:             "title",
+				ModalDisplayName: "Title Text",
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
+				DefaultValue:     "",
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: false,
 						UIModalPosition:     2,
 					},
 				},
-				Description: "Array of arguments to pass to the program.",
+				Description: "Title text to display in bold in the popup",
 			},
 			{
-				Name:             "env",
-				ModalDisplayName: "Environment Variables",
-				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_ARRAY,
-				DefaultValue:     []string{},
+				Name:             "message",
+				ModalDisplayName: "Message Text",
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
+				DefaultValue:     "",
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: false,
 						UIModalPosition:     3,
 					},
 				},
-				Description: "Array of environment variables to set in the format of Key=Val.",
+				Description: "Informative message text to display below the title for the popup",
+			},
+			{
+				Name:             "max_tries",
+				ModalDisplayName: "Max ReTries",
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_NUMBER,
+				DefaultValue:     -1,
+				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+					{
+						ParameterIsRequired: false,
+						UIModalPosition:     4,
+					},
+				},
+				Description: "Maximum number of times to re-prompt the user for their password before giving up. -1 is never give up.",
 			},
 		},
 		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
@@ -64,14 +76,7 @@ func init() {
 				Success: true,
 				TaskID:  taskData.Task.ID,
 			}
-			if path, err := taskData.Args.GetStringArg("path"); err != nil {
-				logging.LogError(err, "Failed to get path argument")
-				response.Success = false
-				response.Error = err.Error()
-				return response
-			} else {
-				response.DisplayParams = &path
-			}
+
 			return response
 		},
 		TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {

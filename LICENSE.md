@@ -34,3 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 https://github.com/themittenmac/TrueTree/blob/master/license.md
 https://github.com/themittenmac/TrueTree 
 Jaron Bradley's TrueTree code was incorporated as part of the `ps` command to give better process listings
+
+
+### launchctl
+https://github.com/ProcursusTeam/launchctl/blob/main/LICENSE

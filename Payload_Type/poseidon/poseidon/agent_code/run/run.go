@@ -14,8 +14,9 @@ import (
 )
 
 type runArgs struct {
-	Path string   `json:"path"`
-	Args []string `json:"args"`
+	Path        string   `json:"path"`
+	Args        []string `json:"args"`
+	Environment []string `json:"env"`
 }
 
 // Run - Function that executes the run command
@@ -31,7 +32,9 @@ func Run(task structs.Task) {
 	}
 	command := exec.Command(args.Path, args.Args...)
 	command.Env = os.Environ()
-
+	for _, val := range args.Environment {
+		command.Env = append(command.Env, val)
+	}
 	stdout, err := command.StdoutPipe()
 	if err != nil {
 		msg.SetError(err.Error())

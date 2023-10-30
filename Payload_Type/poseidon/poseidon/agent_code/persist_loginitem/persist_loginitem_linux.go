@@ -1,21 +1,13 @@
-// +build linux
+//go:build linux
 
 package persist_loginitem
 
-import (
-	"errors"
-)
-
 type PersistLoginItemLinux struct {
-	Successful bool
+	Message string
 }
 
-func (j *PersistLoginItemLinux) Success() bool {
-	return j.Successful
-}
-
-func runCommand(name string, path string, global bool) (PersistLoginItemLinux, error) {
+func runCommand(name string, path string, global bool, list bool, remove bool) PersistLoginItemLinux {
 	n := PersistLoginItemLinux{}
-	n.Successful = false
-	return n, errors.New("Not implemented")
+	n.Message = "Not Implemented"
+	return n
 }

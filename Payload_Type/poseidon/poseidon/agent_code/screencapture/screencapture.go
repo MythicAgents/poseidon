@@ -21,9 +21,7 @@ func Run(task structs.Task) {
 	result, err := getscreenshot()
 	msg := task.NewResponse()
 	if err != nil {
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}

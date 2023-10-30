@@ -1,6 +1,4 @@
 //go:build (linux || darwin) && poseidon_tcp
-// +build linux darwin
-// +build poseidon_tcp
 
 package profiles
 
@@ -10,7 +8,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 	"io"
 	"net"
@@ -252,7 +250,7 @@ func (c *C2PoseidonTCP) handleEgressConnectionIncomingMessage(conn net.Conn) {
 					fmt.Printf("Failed to unmarshal message into MythicResponse: %v\n", err)
 				}
 				utils.PrintDebug(fmt.Sprintf("Raw message from mythic: %s\n", string(enc_raw)))
-				tasks.HandleInboundMythicMessageFromEgressChannel <- taskResp
+				responses.HandleInboundMythicMessageFromEgressChannel <- taskResp
 			} else {
 				if c.ExchangingKeys {
 					// this will be our response to the initial staging message
@@ -322,7 +320,7 @@ func (c *C2PoseidonTCP) FinishNegotiateKey(resp []byte) bool {
 
 // NegotiateKey - EKE key negotiation
 func (c *C2PoseidonTCP) NegotiateKey() bool {
-	sessionID := GenerateSessionID()
+	sessionID := utils.GenerateSessionID()
 	pub, priv := crypto.GenerateRSAKeyPair()
 	c.RsaPrivateKey = priv
 	// Replace struct with dynamic json

@@ -1,3 +1,4 @@
+//go:build darwin
 // +build darwin
 
 package screencapture
@@ -27,18 +28,18 @@ import (
 	"unsafe"
 )
 
-//DarwinScreenshot - struct for screenshot data
+// DarwinScreenshot - struct for screenshot data
 type DarwinScreenshot struct {
 	MonitorIndex   int
 	ScreenshotData []byte
 }
 
-//Monitor - Darwin subclass method to return the monitor index
+// Monitor - Darwin subclass method to return the monitor index
 func (d *DarwinScreenshot) Monitor() int {
 	return d.MonitorIndex
 }
 
-//Data - Darwin subclass method to return the raw png data
+// Data - Darwin subclass method to return the raw png data
 func (d *DarwinScreenshot) Data() []byte {
 	return d.ScreenshotData
 }
@@ -70,7 +71,7 @@ func getscreenshot() ([]ScreenShot, error) {
 	return screens, nil
 }
 
-//CreateImage Create an RGBA Image structure in memory
+// CreateImage Create an RGBA Image structure in memory
 func CreateImage(rect image.Rectangle) (img *image.RGBA, e error) {
 	img = nil
 	e = errors.New("Cannot create image.RGBA")
@@ -87,7 +88,7 @@ func CreateImage(rect image.Rectangle) (img *image.RGBA, e error) {
 	return img, e
 }
 
-//Capture a screenshot
+// Capture a screenshot
 func Capture(x, y, width, height int) (*image.RGBA, error) {
 	if width <= 0 || height <= 0 {
 		return nil, errors.New("width or height should be > 0")
@@ -174,7 +175,7 @@ func Capture(x, y, width, height int) (*image.RGBA, error) {
 	return img, nil
 }
 
-//NumActiveDisplays get the number of active displays
+// NumActiveDisplays get the number of active displays
 func NumActiveDisplays() int {
 	var count C.uint32_t = 0
 	if C.CGGetActiveDisplayList(0, nil, &count) == C.kCGErrorSuccess {
@@ -184,12 +185,11 @@ func NumActiveDisplays() int {
 	}
 }
 
-//GetDisplayBounds Get the display bounds
+// GetDisplayBounds Get the display bounds
 func GetDisplayBounds(displayIndex int) image.Rectangle {
 	id := getDisplayID(displayIndex)
-	main := C.CGMainDisplayID()
-
 	var rect image.Rectangle
+	main := C.CGMainDisplayID()
 
 	bounds := getCoreGraphicsCoordinateOfDisplay(id)
 	rect.Min.X = int(bounds.origin.x)
@@ -206,13 +206,16 @@ func GetDisplayBounds(displayIndex int) image.Rectangle {
 	return rect
 }
 
-//getDisplayId Get the display ID
+// getDisplayId Get the display ID
 func getDisplayID(displayIndex int) C.CGDirectDisplayID {
 	main := C.CGMainDisplayID()
+	n := NumActiveDisplays()
+	if n == 0 {
+		return 0
+	}
 	if displayIndex == 0 {
 		return main
 	} else {
-		n := NumActiveDisplays()
 		ids := make([]C.CGDirectDisplayID, n)
 		if C.CGGetActiveDisplayList(C.uint32_t(n), (*C.CGDirectDisplayID)(unsafe.Pointer(&ids[0])), nil) != C.kCGErrorSuccess {
 			return 0

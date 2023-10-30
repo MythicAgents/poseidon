@@ -1,5 +1,4 @@
 //go:build darwin
-// +build darwin
 
 package xpc
 
@@ -134,14 +133,12 @@ func (d Dict) GetUUID(k string) UUID {
 	return GetUUID(d[k])
 }
 
-// an Array of things
 type Array []interface{}
 
 func (a Array) GetUUID(k int) UUID {
 	return GetUUID(a[k])
 }
 
-// a UUID
 type UUID [16]byte
 
 func (uuid UUID) String() string {
@@ -197,17 +194,6 @@ func runCommand(command string) ([]byte, error) {
 	case "list":
 		if len(args.ServiceName) == 0 {
 			response := XpcLaunchList("")
-			response = response.(Dict)
-			raw, err := json.MarshalIndent(response, "", "	")
-			if err != nil {
-				empty := make([]byte, 0)
-				return empty, err
-			}
-
-			return raw, err
-		} else {
-			response := XpcLaunchList(args.ServiceName)
-			response = response.(Dict)
 			raw, err := json.MarshalIndent(response, "", "	")
 			if err != nil {
 				empty := make([]byte, 0)
@@ -216,111 +202,157 @@ func runCommand(command string) ([]byte, error) {
 
 			return raw, err
 		}
+		response := XpcLaunchList(args.ServiceName)
+		raw, err := json.MarshalIndent(response, "", "	")
+		if err != nil {
+			empty := make([]byte, 0)
+			return empty, err
+		}
+
+		return raw, err
+	case "print":
+		if len(args.ServiceName) == 0 {
+			response := XpcLaunchPrint("")
+			return []byte(response), nil
+		}
+		response := XpcLaunchPrint(args.ServiceName)
+		return []byte(response), nil
+
 	case "start":
 		if len(args.ServiceName) == 0 {
 			empty := make([]byte, 0)
 			return empty, errors.New("Missing service name argument")
-		} else {
-			response := XpcLaunchControl(args.ServiceName, 1)
-			response = response.(Dict)
-			raw, err := json.MarshalIndent(response, "", "	")
-			if err != nil {
-				empty := make([]byte, 0)
-				return empty, err
-			}
-
-			return raw, err
 		}
+		response := XpcLaunchControl(args.ServiceName, 1)
+		raw, err := json.MarshalIndent(response, "", "	")
+		if err != nil {
+			empty := make([]byte, 0)
+			return empty, err
+		}
+
+		return raw, err
+
 	case "stop":
 		if len(args.ServiceName) == 0 {
 			empty := make([]byte, 0)
 			return empty, errors.New("Missing service name argument")
-		} else {
-			response := XpcLaunchControl(args.ServiceName, 0)
-			response = response.(Dict)
-			raw, err := json.MarshalIndent(response, "", "	")
-			if err != nil {
-				empty := make([]byte, 0)
-				return empty, err
-			}
-
-			return raw, err
 		}
+		response := XpcLaunchControl(args.ServiceName, 0)
+		raw, err := json.MarshalIndent(response, "", "	")
+		if err != nil {
+			empty := make([]byte, 0)
+			return empty, err
+		}
+
+		return raw, err
+
+	case "enable":
+		if len(args.ServiceName) == 0 {
+			empty := make([]byte, 0)
+			return empty, errors.New("Missing service name argument")
+		}
+		response := XpcLaunchControlEnableDisable(args.ServiceName, 1)
+		raw, err := json.MarshalIndent(response, "", "	")
+		if err != nil {
+			empty := make([]byte, 0)
+			return empty, err
+		}
+
+		return raw, err
+	case "disable":
+		if len(args.ServiceName) == 0 {
+			empty := make([]byte, 0)
+			return empty, errors.New("Missing service name argument")
+		}
+		response := XpcLaunchControlEnableDisable(args.ServiceName, 0)
+		raw, err := json.MarshalIndent(response, "", "	")
+		if err != nil {
+			empty := make([]byte, 0)
+			return empty, err
+		}
+
+		return raw, err
 	case "load":
 		if len(args.File) == 0 {
 			empty := make([]byte, 0)
 			return empty, errors.New("Missing file name argument")
-		} else {
-			response := XpcLaunchLoadPlist(args.File)
-			response = response.(Dict)
-			raw, err := json.MarshalIndent(response, "", "	")
-			if err != nil {
-				empty := make([]byte, 0)
-				return empty, err
-			}
-
-			return raw, err
 		}
+		response := XpcLaunchLoadPlist(args.File)
+		raw, err := json.MarshalIndent(response, "", "	")
+		if err != nil {
+			empty := make([]byte, 0)
+			return empty, err
+		}
+
+		return raw, err
+
 	case "unload":
 		if len(args.File) == 0 {
 			empty := make([]byte, 0)
 			return empty, errors.New("Missing file name argument")
-		} else {
-			response := XpcLaunchUnloadPlist(args.File)
-			response = response.(Dict)
-			raw, err := json.MarshalIndent(response, "", "	")
-			if err != nil {
-				empty := make([]byte, 0)
-				return empty, err
-			}
-
-			return raw, err
 		}
-	case "status":
+		response := XpcLaunchUnloadPlist(args.File)
+		raw, err := json.MarshalIndent(response, "", "	")
+		if err != nil {
+			empty := make([]byte, 0)
+			return empty, err
+		}
+
+		return raw, err
+
+	case "manageruid":
+		response := XpcLaunchControlGetManagerUID()
+		raw, err := json.MarshalIndent(response, "", "	")
+		if err != nil {
+			empty := make([]byte, 0)
+			return empty, err
+		}
+
+		return raw, err
+	case "remove":
 		if len(args.ServiceName) == 0 {
 			empty := make([]byte, 0)
 			return empty, errors.New("Missing service name argument")
-		} else {
-			response := XpcLaunchStatus(args.ServiceName)
-			response = response.(Dict)
-			raw, err := json.MarshalIndent(response, "", "	")
-			if err != nil {
-				empty := make([]byte, 0)
-				return empty, err
-			}
-
-			return raw, err
 		}
+		response := XpcLaunchRemove(args.ServiceName)
+		raw, err := json.MarshalIndent(response, "", "	")
+		if err != nil {
+			empty := make([]byte, 0)
+			return empty, err
+		}
+
+		return raw, err
 	case "procinfo":
 		if functions.IsElevated() {
 			response := XpcLaunchProcInfo(args.Pid)
 			return []byte(response), nil
-		} else {
-			return []byte("This subcommand requires root privileges"), nil
 		}
-
+		return []byte("This subcommand requires root privileges"), nil
+	case "dumpstate":
+		response := XpcLaunchDumpState()
+		return []byte(response), nil
 	case "submit":
 		if len(args.ServiceName) == 0 {
 			empty := make([]byte, 0)
 			return empty, errors.New("Missing service name argument")
-		} else if len(args.Program) == 0 {
+		}
+		if len(args.Program) == 0 {
 			empty := make([]byte, 0)
 			return empty, errors.New("Missing program argument")
-		} else {
-			response := XpcLaunchSubmit(args.ServiceName, args.Program)
-			response = response.(Dict)
-			raw, err := json.MarshalIndent(response, "", "	")
-			if err != nil {
-				empty := make([]byte, 0)
-				return empty, err
-			}
-
-			return raw, err
 		}
+		response := XpcLaunchSubmit(args.ServiceName, args.Program)
+		raw, err := json.MarshalIndent(response, "", "	")
+		if err != nil {
+			empty := make([]byte, 0)
+			return empty, err
+		}
+
+		return raw, err
+
 	case "send":
 		if len(args.Data) == 0 || len(args.ServiceName) == 0 {
 			empty := make([]byte, 0)
-			return empty, errors.New("Missing service name and/or pid argument")
+			return empty, errors.New("Missing service name and/or service name argument")
 		} else {
 			base64DecodedSendData, err := base64.StdEncoding.DecodeString(args.Data)
 			if err != nil {
@@ -347,7 +379,7 @@ func runCommand(command string) ([]byte, error) {
 	}
 }
 
-func XpcLaunchList(service string) interface{} {
+func XpcLaunchList(service string) Dict {
 	if len(service) == 0 {
 		raw := C.XpcLaunchdListServices(nil)
 		result := xpcToGo(raw).(Dict)
@@ -361,7 +393,29 @@ func XpcLaunchList(service string) interface{} {
 	}
 }
 
-func XpcLaunchControl(service string, startstop int) interface{} {
+func XpcLaunchPrint(service string) string {
+	if len(service) == 0 {
+		raw := C.XpcLaunchdPrint(nil)
+		result := C.GoString(raw)
+		return result
+	} else {
+		cservice := C.CString(service)
+		defer C.free(unsafe.Pointer(cservice))
+		raw := C.XpcLaunchdPrint(cservice)
+		result := C.GoString(raw)
+		return result
+	}
+}
+
+func XpcLaunchDumpState() string {
+
+	raw := C.XpcLaunchdDumpState()
+	result := C.GoString(raw)
+	return result
+
+}
+
+func XpcLaunchControl(service string, startstop int) Dict {
 	if len(service) == 0 {
 		return Dict{
 			"error": "service name required",
@@ -376,7 +430,30 @@ func XpcLaunchControl(service string, startstop int) interface{} {
 	}
 }
 
-func XpcLaunchSubmit(label string, program string) interface{} {
+func XpcLaunchControlEnableDisable(service string, enabledisable int) Dict {
+	if len(service) == 0 {
+		return Dict{
+			"error": "service name required",
+		}
+	} else {
+		cservice := C.CString(service)
+		defer C.free(unsafe.Pointer(cservice))
+		cstartstop := C.int(enabledisable)
+		raw := C.XpcLaunchdServiceControlEnableDisable(cservice, cstartstop)
+		result := xpcToGo(raw).(Dict)
+		return result
+	}
+}
+
+func XpcLaunchControlGetManagerUID() Dict {
+
+	raw := C.XpcLaunchdGetManagerUID()
+	result := xpcToGo(raw).(Dict)
+	return result
+
+}
+
+func XpcLaunchSubmit(label string, program string) Dict {
 	if len(label) == 0 || len(program) == 0 {
 		return Dict{
 			"error": "label and program required",
@@ -393,7 +470,7 @@ func XpcLaunchSubmit(label string, program string) interface{} {
 	}
 }
 
-func XpcLaunchStatus(service string) interface{} {
+func XpcLaunchRemove(service string) Dict {
 	if len(service) == 0 {
 		return Dict{
 			"error": "service name required",
@@ -401,7 +478,7 @@ func XpcLaunchStatus(service string) interface{} {
 	} else {
 		cservice := C.CString(service)
 		defer C.free(unsafe.Pointer(cservice))
-		raw := C.XpcLaunchdGetServiceStatus(cservice)
+		raw := C.XpcLaunchdRemove(cservice)
 		result := xpcToGo(raw).(Dict)
 		return result
 	}
@@ -421,7 +498,7 @@ func XpcLaunchProcInfo(pid int) string {
 
 }
 
-func XpcLaunchLoadPlist(path string) interface{} {
+func XpcLaunchLoadPlist(path string) Dict {
 	if len(path) == 0 {
 		return Dict{
 			"error": "path required",
@@ -436,7 +513,7 @@ func XpcLaunchLoadPlist(path string) interface{} {
 	}
 }
 
-func XpcLaunchUnloadPlist(path string) interface{} {
+func XpcLaunchUnloadPlist(path string) Dict {
 	if len(path) == 0 {
 		return Dict{
 			"error": "path required",
@@ -605,7 +682,6 @@ func xpcToGo(v C.xpc_object_t) interface{} {
 
 	case C.TYPE_STRING:
 		return C.GoString(C.xpc_string_get_string_ptr(v))
-
 	case C.TYPE_UUID:
 		a := [16]byte{}
 		C.XpcUUIDGetBytes(unsafe.Pointer(&a), v)
@@ -618,19 +694,18 @@ func xpcToGo(v C.xpc_object_t) interface{} {
 		return d
 	case C.TYPE_BOOL:
 		return C.xpc_bool_get_value(v)
-
 	case C.TYPE_CONNECTION:
 		log.Printf("Received connection xpc type: %#v", v)
-
 	case C.TYPE_FD:
 		log.Printf("Received file descriptor xpc type: %#v", v)
 	case C.TYPE_NULL:
 		log.Printf("Received null xpc type: %#v", v)
-
 	case C.TYPE_SHMEM:
 		log.Printf("Received shared memory xpc type: %#v", v)
 	default:
-		log.Printf("unexpected type %#v, value %#v", t, v)
+		log.Printf("unexpected type %#v, value %#v, name: %#v", t, v, C.xpc_type_get_name(t))
+		log.Printf("unexpected type length: %#v\n", C.int(C.xpc_data_get_length(v)))
+		return C.GoBytes(C.xpc_data_get_bytes_ptr(v), C.int(C.xpc_data_get_length(v)))
 	}
 	return nil
 }

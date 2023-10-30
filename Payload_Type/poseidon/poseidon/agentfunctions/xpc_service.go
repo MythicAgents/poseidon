@@ -6,9 +6,9 @@ import (
 
 func init() {
 	agentstructs.AllPayloadData.Get("poseidon").AddCommand(agentstructs.Command{
-		Name:                "xpc",
-		Description:         "Use xpc to execute routines with launchd or communicate with another service/process.",
-		HelpString:          "xpc",
+		Name:                "xpc_service",
+		Description:         "Use xpc to manipulate or list existing services",
+		HelpString:          "xpc_service",
 		Version:             1,
 		MitreAttackMappings: []string{"T1559"},
 		CommandParameters: []agentstructs.CommandParameter{
@@ -55,65 +55,86 @@ func init() {
 				},
 			},
 			{
-				Name:             "program",
-				ModalDisplayName: "Program to execute",
-				CLIName:          "program",
-				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
-				Description:      "Program/binary to execute",
-				DefaultValue:     "",
-				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
-					{
-						GroupName:           "submit",
-						UIModalPosition:     1,
-						ParameterIsRequired: true,
-					},
-				},
-			},
-			{
-				Name:             "load",
-				ModalDisplayName: "Flag to indicate the load command",
-				CLIName:          "load",
+				Name:             "enable",
+				ModalDisplayName: "Enable",
+				CLIName:          "enable",
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_BOOLEAN,
-				Description:      "Must be True to run 'load' with a file path to a plist file",
+				Description:      "Flag to indicate asking launchd to enable a service",
 				DefaultValue:     true,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
-						GroupName:       "load",
+						GroupName:       "enable",
 						UIModalPosition: 1,
 					},
 				},
 			},
 			{
-				Name:             "unload",
-				ModalDisplayName: "Flag to indicate the unload command",
-				CLIName:          "unload",
+				Name:             "disable",
+				ModalDisplayName: "Disable",
+				CLIName:          "disable",
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_BOOLEAN,
-				Description:      "Must be True to run 'unload' with a file path to a plist file",
+				Description:      "Flag to indicate asking launchd to disable a service",
 				DefaultValue:     true,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
-						GroupName:       "unload",
+						GroupName:       "disable",
 						UIModalPosition: 1,
 					},
 				},
 			},
 			{
-				Name:             "file",
-				ModalDisplayName: "Path to the file to load/unload on target",
-				CLIName:          "file",
-				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
-				Description:      "Path to the plist file on disk to load/unload",
-				DefaultValue:     "",
+				Name:             "status",
+				ModalDisplayName: "Status",
+				CLIName:          "status",
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_BOOLEAN,
+				Description:      "Flag to indicate asking launchd to get the status of a specific service",
+				DefaultValue:     true,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
-						GroupName:           "load",
-						UIModalPosition:     0,
-						ParameterIsRequired: true,
+						GroupName:       "status",
+						UIModalPosition: 0,
 					},
+				},
+			},
+			{
+				Name:             "remove",
+				ModalDisplayName: "Remove",
+				CLIName:          "remove",
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_BOOLEAN,
+				Description:      "Flag to indicate asking launchd to remove the specified service",
+				DefaultValue:     true,
+				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
-						GroupName:           "unload",
-						UIModalPosition:     0,
-						ParameterIsRequired: true,
+						GroupName:       "remove",
+						UIModalPosition: 0,
+					},
+				},
+			},
+			{
+				Name:             "print",
+				ModalDisplayName: "Print",
+				CLIName:          "print",
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_BOOLEAN,
+				Description:      "Flag to indicate asking launchd to print information about the specified service or all services",
+				DefaultValue:     true,
+				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+					{
+						GroupName:       "print",
+						UIModalPosition: 0,
+					},
+				},
+			},
+			{
+				Name:             "dumpstate",
+				ModalDisplayName: "DumpState",
+				CLIName:          "dumpstate",
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_BOOLEAN,
+				Description:      "Flag to indicate asking launchd to print information about the specified service or all services",
+				DefaultValue:     true,
+				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+					{
+						GroupName:       "dumpstate",
+						UIModalPosition: 0,
 					},
 				},
 			},
@@ -126,16 +147,6 @@ func init() {
 				DefaultValue:     "",
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
-						GroupName:           "send",
-						UIModalPosition:     0,
-						ParameterIsRequired: true,
-					},
-					{
-						GroupName:           "submit",
-						UIModalPosition:     0,
-						ParameterIsRequired: true,
-					},
-					{
 						GroupName:           "start",
 						UIModalPosition:     0,
 						ParameterIsRequired: true,
@@ -146,7 +157,12 @@ func init() {
 						ParameterIsRequired: true,
 					},
 					{
-						GroupName:           "status",
+						GroupName:           "enable",
+						UIModalPosition:     0,
+						ParameterIsRequired: true,
+					},
+					{
+						GroupName:           "disable",
 						UIModalPosition:     0,
 						ParameterIsRequired: true,
 					},
@@ -155,33 +171,15 @@ func init() {
 						UIModalPosition:     0,
 						ParameterIsRequired: false,
 					},
-				},
-			},
-			{
-				Name:             "pid",
-				ModalDisplayName: "PID",
-				CLIName:          "pid",
-				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_NUMBER,
-				Description:      "PID of the process to target",
-				DefaultValue:     0,
-				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
-						GroupName:       "procinfo",
-						UIModalPosition: 1,
+						GroupName:           "remove",
+						UIModalPosition:     0,
+						ParameterIsRequired: true,
 					},
-				},
-			},
-			{
-				Name:             "data",
-				ModalDisplayName: "Data to send",
-				CLIName:          "data",
-				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
-				Description:      "base64 encoded JSON of data to send to a target service",
-				DefaultValue:     "",
-				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
-						GroupName:       "send",
-						UIModalPosition: 1,
+						GroupName:           "print",
+						UIModalPosition:     0,
+						ParameterIsRequired: false,
 					},
 				},
 			},
@@ -236,6 +234,8 @@ func init() {
 				Success: true,
 				TaskID:  task.Task.ID,
 			}
+			commandName := "xpc"
+			response.CommandName = &commandName
 			return response
 		},
 	})

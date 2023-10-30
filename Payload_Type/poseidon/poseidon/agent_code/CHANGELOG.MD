@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 2.0.7 - 2023-10-30
+
+- Updated `run` command to take KEY=VALUE environment pairs
+- Removed `xpc` command
+  - Added `xpc_service` command for `list`, `start`, `stop`, `enable`, `disable`, `print`, and `dumpstate` subcommands
+  - Added `xpc_load`
+  - Added `xpc_unload`
+  - Added `xpc_submit`
+  - Added `xpc_manageruid`
+  - Added `xpc_send`
+  - Added `xpc_procinfo`
+- Updated `persist_launchd` (takes in `~` and has `remove` option)
+- Updated `persist_loginitem` (supports session/global adds/removes, and adds list subcommand)
+- Fixed issue in `screencapture` that would sometimes break
+- Removed `dyld_inject` command since it couldn't actually start applications hidden
+- Removed `execute_macho` command since it causes instability between multiple runs
+  - `execute_macho` terminates the entire program when executing a universal/fat binary
+- Updated `execute_memory` to `execute_library` and drop a dylib to disk and run it instead of using `NSCreateObjectFileImageFromMemory`
+  - `NSCreateObjectFileImageFromMemory` writes out the macho/dylib to `/private/tmp/NSCreateObjectFileImageFromMemory-XXXX` and then calls `dlopen` on it; this removed its "memory execution" and made it much easier to detect
+  - `execute_library` requires that symbols exist in the library/executable 
+- Added `tail` and `head` commands
+- Added `prompt` command to prompt for credentials on macOS
+
 ## 2.0.6 - 2023-10-23
 
 - Updated `ps` command to escape JSON values in environment variables properly

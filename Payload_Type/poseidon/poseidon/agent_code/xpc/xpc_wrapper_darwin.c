@@ -45,12 +45,12 @@ const ptr_to_uuid_t ptr_to_uuid(void *p) { return (ptr_to_uuid_t)p; }
 
 
 xpc_object_t XpcLaunchdListServices(char *ServiceName) {
-
+    // launchctl list [com.itsafeature.testing]
   xpc_object_t dict = xpc_dictionary_create(NULL, NULL, 0);
   xpc_dictionary_set_uint64(dict, "subsystem", 3);
   xpc_dictionary_set_uint64(dict, "handle",0);
   xpc_dictionary_set_uint64(dict, "routine", ROUTINE_LIST);
-  xpc_dictionary_set_uint64(dict, "type",1);
+  xpc_dictionary_set_uint64(dict, "type",7); //used to be 1?
 
   if (ServiceName)
   {
@@ -77,14 +77,172 @@ xpc_object_t XpcLaunchdListServices(char *ServiceName) {
   return errDict;
 }
 
+char* XpcLaunchdPrint(char *ServiceName) {
+
+  vm_address_t addr;
+  vm_size_t sz = 0x1400000;
+  xpc_object_t shmem;
+  const char *name = NULL;
+  xpc_object_t dict = xpc_dictionary_create(NULL, NULL, 0);
+  if(ServiceName){
+        // launchctl print gui/501/com.itsafeature.testing
+      int ret = launchctl_setup_xpc_dict_for_service_name(ServiceName, dict, &name);
+      if(ret != 0){
+        switch(ret){
+            case ENODOMAIN:
+                return "Error: No Domain";
+            case ENOSERVICE:
+                return "Error: No Service";
+            case E2BIMPL:
+                return "Error: 2BIMPL";
+            case EUSAGE:
+                return "Error: Usage";
+            case EBADRESP:
+                return "Error: Bad Response";
+            case EDEPRECATED:
+                return "Error: Deprecated";
+            case EBADNAME:
+                return "Error: Bad Name, needs to be in x/y/z format";
+            default: {
+                return "error";
+            }
+
+        }
+      }
+      xpc_dictionary_set_uint64(dict, "routine", ROUTINE_DUMP_PROCESS);
+      xpc_dictionary_set_uint64(dict, "subsystem", ROUTINE_DUMP_PROCESS >> 8);
+  }else{
+        // launchctl print-cache
+      xpc_dictionary_set_uint64(dict, "subsystem", 3);
+      xpc_dictionary_set_uint64(dict, "handle",0);
+      xpc_dictionary_set_uint64(dict, "routine", ROUTINE_PRINT);
+      xpc_dictionary_set_uint64(dict, "type",1);
+      xpc_dictionary_set_bool(dict, "cache", true);
+  }
+  vm_allocate(mach_task_self(), &addr, sz, 0xf0000003);
+  shmem = xpc_shmem_create( (void*)addr, sz);
+  xpc_dictionary_set_value(dict, "shmem", shmem);
+
+  xpc_object_t *outDict = NULL;
+  struct xpc_global_data  *xpc_gd  = (struct xpc_global_data *)  _os_alloc_once_table[1].ptr;
+
+  int rc = xpc_pipe_routine (xpc_gd->xpc_bootstrap_pipe, dict, &outDict);
+
+  if (outDict != NULL)
+  {
+    uint64_t written;
+    written = xpc_dictionary_get_uint64(outDict, "bytes-written");
+    if(written <= sz){
+        if(written == 0){
+            vm_deallocate(mach_task_self(), addr, sz);
+            return "Wrote 0 bytes";
+        } else {
+            char* outputString = (char*)calloc(1, written + 1);
+            strncpy(outputString, (char*)addr, written);
+            vm_deallocate(mach_task_self(), addr, sz);
+            return outputString;
+        }
+    }else{
+        vm_deallocate(mach_task_self(), addr, sz);
+        return "Wrote too many bytes";
+    }
+  }
+  vm_deallocate(mach_task_self(), addr, sz);
+  return "xpc_bootstrap_pipe returned a null dictionary";
+}
+
+char* XpcLaunchdDumpState(void) {
+    // launchctl dumpstate
+  vm_address_t addr;
+  vm_size_t sz = 0x1400000;
+  xpc_object_t shmem;
+  xpc_object_t dict = xpc_dictionary_create(NULL, NULL, 0);
+  xpc_dictionary_set_uint64(dict, "subsystem", 3);
+  xpc_dictionary_set_uint64(dict, "handle",0);
+  xpc_dictionary_set_uint64(dict, "routine", ROUTINE_DUMP_STATE);
+  xpc_dictionary_set_uint64(dict, "type",1);
+
+  vm_allocate(mach_task_self(), &addr, sz, 0xf0000003);
+  shmem = xpc_shmem_create( (void*)addr, sz);
+  xpc_dictionary_set_value(dict, "shmem", shmem);
+
+  xpc_object_t *outDict = NULL;
+  struct xpc_global_data  *xpc_gd  = (struct xpc_global_data *)  _os_alloc_once_table[1].ptr;
+
+  int rc = xpc_pipe_routine (xpc_gd->xpc_bootstrap_pipe, dict, &outDict);
+
+  if (outDict != NULL)
+  {
+    uint64_t written;
+    written = xpc_dictionary_get_uint64(outDict, "bytes-written");
+    if(written <= sz){
+        if(written == 0){
+            vm_deallocate(mach_task_self(), addr, sz);
+            return "Wrote 0 bytes";
+        } else {
+            char* outputString = (char*)calloc(1, written + 1);
+            strncpy(outputString, (char*)addr, written);
+            vm_deallocate(mach_task_self(), addr, sz);
+            return outputString;
+        }
+    }else{
+        vm_deallocate(mach_task_self(), addr, sz);
+        return "Wrote too many bytes";
+    }
+  }
+  vm_deallocate(mach_task_self(), addr, sz);
+  return "xpc_bootstrap_pipe returned a null dictionary";
+}
+
 xpc_object_t XpcLaunchdServiceControl(char *ServiceName, int StartStop) {
+    // launchctl {start|stop} com.itsafeature.testing
   xpc_object_t dict = xpc_dictionary_create(NULL, NULL, 0);
   xpc_dictionary_set_uint64 (dict, "subsystem", 3);               
-  xpc_dictionary_set_uint64(dict, "type",1);                     
+  xpc_dictionary_set_uint64(dict, "type",7); // was 1?
   xpc_dictionary_set_uint64(dict, "handle",0); 		  
   xpc_dictionary_set_string(dict, "name", ServiceName);                     
   xpc_dictionary_set_bool(dict, "legacy", 1);                       
   xpc_dictionary_set_uint64(dict, "routine", StartStop ? ROUTINE_START : ROUTINE_STOP);     
+
+  xpc_object_t	*outDict = NULL;
+  struct xpc_global_data  *xpc_gd  = (struct xpc_global_data *)  _os_alloc_once_table[1].ptr;
+
+  int rc = xpc_pipe_routine (xpc_gd->xpc_bootstrap_pipe, dict, &outDict);
+
+  if (outDict != NULL)
+  {
+    return outDict;
+  }
+
+  xpc_object_t errDict = xpc_dictionary_create(NULL, NULL, 0);
+  xpc_dictionary_set_string(errDict, "error", "xpc_bootstrap_pipe returned a null dictionary");
+
+  return errDict;
+}
+
+xpc_object_t XpcLaunchdServiceControlEnableDisable(char *ServiceName, int Enable) {
+    // launchctl {enable|disable} gui/501/com.itsafeature.testing
+  xpc_object_t dict = xpc_dictionary_create(NULL, NULL, 0);
+  const char *name = NULL;
+  int ret = launchctl_setup_xpc_dict_for_service_name(ServiceName, dict, &name);
+  if (ret != 0){
+    xpc_object_t errDict = xpc_dictionary_create(NULL, NULL, 0);
+    xpc_dictionary_set_string(errDict, "error", "Failed to initialize service name, needs to be in x/y/z format");
+    return errDict;
+  }
+  if (name == NULL) {
+  	    xpc_object_t errDict = xpc_dictionary_create(NULL, NULL, 0);
+        xpc_dictionary_set_string(errDict, "error", "Bad service name, needs to be in x/y/z format");
+        return errDict;
+  }
+  xpc_dictionary_set_uint64 (dict, "subsystem", 3);
+  //xpc_dictionary_set_uint64(dict, "type",8);
+  //xpc_dictionary_set_uint64(dict, "handle",uid); //user id, typically 501
+  //xpc_dictionary_set_string(dict, "name", ServiceName);
+  xpc_object_t s = xpc_string_create(name);
+  xpc_object_t names = xpc_array_create(&s, 1);
+  xpc_dictionary_set_value(dict, "names", names);
+  xpc_dictionary_set_uint64(dict, "routine", Enable ? ROUTINE_ENABLE : ROUTINE_DISABLE);
 
   xpc_object_t	*outDict = NULL;
   struct xpc_global_data  *xpc_gd  = (struct xpc_global_data *)  _os_alloc_once_table[1].ptr;
@@ -140,31 +298,82 @@ xpc_object_t XpcLaunchdSubmitJob(char *Program, char *ServiceName, int KeepAlive
   return errDict;
 }
 
-xpc_object_t XpcLaunchdGetServiceStatus(char *ServiceName) {
+xpc_object_t XpcLaunchdRemove(char *ServiceName) {
   xpc_object_t dict = xpc_dictionary_create(NULL, NULL,0);
-  xpc_dictionary_set_uint64 (dict, "subsystem", 3);               
-  xpc_dictionary_set_uint64(dict, "type",1);                     
-  xpc_dictionary_set_uint64(dict, "handle",0); 		   
-  xpc_dictionary_set_uint64(dict, "routine", ROUTINE_STATUS) ; 
+  xpc_dictionary_set_uint64 (dict, "subsystem", 3);
+  xpc_dictionary_set_uint64(dict, "type",7);
+  xpc_dictionary_set_uint64(dict, "handle",0);
+  xpc_dictionary_set_uint64(dict, "routine", ROUTINE_REMOVE) ;
   xpc_dictionary_set_string (dict,"name", ServiceName);
+  xpc_dictionary_set_bool(dict, "legacy", true);
 
   xpc_object_t	*outDict = NULL;
   struct xpc_global_data  *xpc_gd  = (struct xpc_global_data *)  _os_alloc_once_table[1].ptr;
 
   int rc = xpc_pipe_routine (xpc_gd->xpc_bootstrap_pipe, dict, &outDict);
-   
+
   if (outDict != NULL)
   {
     return outDict;
   }
-
-
   // if we get here there was a problem
   xpc_object_t errDict = xpc_dictionary_create(NULL, NULL, 0);
   xpc_dictionary_set_string(errDict, "error", "xpc_bootstrap_pipe returned a null dictionary");
 
   return errDict;
 }
+
+xpc_object_t XpcLaunchdAsUser(char *program, int uid) {
+  xpc_object_t dict = xpc_dictionary_create(NULL, NULL,0);
+  xpc_dictionary_set_uint64 (dict, "subsystem", 3);
+  xpc_dictionary_set_uint64(dict, "type",1);
+  xpc_dictionary_set_uint64(dict, "handle",0);
+  xpc_dictionary_set_uint64(dict, "routine", 835);
+  xpc_dictionary_set_uint64(dict, "uid",uid);
+
+  xpc_object_t	*outDict = NULL;
+  struct xpc_global_data  *xpc_gd  = (struct xpc_global_data *)  _os_alloc_once_table[1].ptr;
+
+  int rc = xpc_pipe_routine (xpc_gd->xpc_bootstrap_pipe, dict, &outDict);
+
+  if (outDict != NULL)
+  {
+    return outDict;
+  }
+  // if we get here there was a problem
+  xpc_object_t errDict = xpc_dictionary_create(NULL, NULL, 0);
+  xpc_dictionary_set_string(errDict, "error", "xpc_bootstrap_pipe returned a null dictionary");
+
+  return errDict;
+}
+
+xpc_object_t XpcLaunchdGetManagerUID() {
+    // launchctl manageruid
+   xpc_object_t dict = xpc_dictionary_create(NULL, NULL,0);
+   xpc_dictionary_set_uint64 (dict, "subsystem", 6);
+   xpc_dictionary_set_uint64(dict, "type",7);
+   xpc_dictionary_set_uint64(dict, "handle",0);
+   xpc_dictionary_set_uint64(dict, "routine", 301) ;
+   xpc_dictionary_set_uint64(dict, "outgsk",3);
+   xpc_dictionary_set_bool(dict, "get", true);
+    xpc_dictionary_set_bool(dict, "self", true);
+   xpc_object_t	*outDict = NULL;
+   struct xpc_global_data  *xpc_gd  = (struct xpc_global_data *)  _os_alloc_once_table[1].ptr;
+
+   int rc = xpc_pipe_routine (xpc_gd->xpc_bootstrap_pipe, dict, &outDict);
+
+   if (outDict != NULL)
+   {
+     return outDict;
+   }
+
+
+   // if we get here there was a problem
+   xpc_object_t errDict = xpc_dictionary_create(NULL, NULL, 0);
+   xpc_dictionary_set_string(errDict, "error", "xpc_bootstrap_pipe returned a null dictionary");
+
+   return errDict;
+ }
 
 char* XpcLaunchdGetProcInfo(unsigned long pid) {
   char *pointer;
@@ -194,7 +403,7 @@ xpc_object_t XpcLaunchdLoadPlist(char *Plist, int Legacy) {
   xpc_dictionary_set_value(dict, "paths", paths);
 
   xpc_dictionary_set_uint64 (dict, "subsystem", 3);              
-  xpc_dictionary_set_bool(dict, "enable", true);
+  xpc_dictionary_set_bool(dict, "enable", true); // launchctl load -w (sets this to true), (no -w this is false)
 	if (Legacy) xpc_dictionary_set_bool(dict, "legacy", true);
   xpc_dictionary_set_bool(dict, "legacy-load", true);
   xpc_dictionary_set_uint64(dict, "type",7);                     
@@ -233,13 +442,14 @@ xpc_object_t XpcLaunchdUnloadPlist(char *Plist) {
   xpc_dictionary_set_value (dict, "paths", paths);
 
   xpc_dictionary_set_uint64 (dict, "subsystem", 3);             
-  xpc_dictionary_set_bool(dict, "disable", true);
+  xpc_dictionary_set_bool(dict, "disable", true); // launchctl unload -w (sets this to true), (no -w this is false)
   xpc_dictionary_set_bool(dict, "legacy-load", true);
   xpc_dictionary_set_bool(dict, "legacy", true);
   xpc_dictionary_set_uint64(dict, "type",7);                      
   xpc_dictionary_set_uint64(dict, "handle",0); 		   
   xpc_dictionary_set_string(dict, "session", "Aqua");
   xpc_dictionary_set_uint64(dict, "routine", ROUTINE_UNLOAD);
+  xpc_dictionary_set_bool(dict, "no-einprogress", true); // seen on ventura
 
 
   xpc_object_t	*outDict = NULL;
@@ -265,7 +475,6 @@ xpc_object_t XpcLaunchdUnloadPlist(char *Plist) {
 
   return errDict;
 }
-
 
 xpc_connection_t XpcConnect(char *service, uintptr_t ctx, int privileged) {
     dispatch_queue_t queue = dispatch_queue_create(service, 0);
@@ -317,4 +526,64 @@ void XpcUUIDGetBytes(void *v, xpc_object_t uuid) {
    for (int i=0; i < sizeof(uuid_t); i++) {
      dest[i] = src[i];
    }
+}
+
+// https://github.com/ProcursusTeam/launchctl/blob/main/xpc_helper.c#L148C1-L221C2
+// modified to add support for gui/ service name
+int
+launchctl_setup_xpc_dict_for_service_name(char *servicetarget, xpc_object_t dict, const char **name)
+{
+	long handle = 0;
+
+	if (name != NULL) {
+		*name = NULL;
+	}
+
+	const char *split[3] = {NULL, NULL, NULL};
+	for (int i = 0; i < 3; i++) {
+		char *var = strsep(&servicetarget, "/");
+		if (var == NULL)
+			break;
+		split[i] = var;
+	}
+	if (split[0] == NULL || split[0][0] == '\0')
+		return EBADNAME;
+
+	if (strcmp(split[0], "system") == 0) {
+		xpc_dictionary_set_uint64(dict, "type", 1);
+		xpc_dictionary_set_uint64(dict, "handle", 0);
+		if (split[1] != NULL && split[1][0] != '\0') {
+			xpc_dictionary_set_string(dict, "name", split[1]);
+			if (name != NULL) {
+				*name = split[1];
+			}
+		}
+		return 0;
+	} else if (strcmp(split[0], "user") == 0) {
+		xpc_dictionary_set_uint64(dict, "type", 2);
+	} else if (strcmp(split[0], "session") == 0) {
+		xpc_dictionary_set_uint64(dict, "type", 4);
+	} else if (strcmp(split[0], "pid") == 0) {
+		xpc_dictionary_set_uint64(dict, "type", 5);
+    } else if(strcmp(split[0], "gui") == 0) {
+		xpc_dictionary_set_uint64(dict, "type", 8);
+	} else {
+		xpc_dictionary_set_uint64(dict, "type", 9);
+	}
+	if (split[1] != NULL) {
+		if (handle == 0) {
+			handle = strtol(split[1], NULL, 10);
+			if (handle == -1)
+				return EUSAGE;
+		}
+		xpc_dictionary_set_uint64(dict, "handle", handle);
+		if (split[2] != NULL && split[2][0] != '\0') {
+			xpc_dictionary_set_string(dict, "name", split[2]);
+			if (name != NULL) {
+				*name = split[2];
+			}
+		}
+		return 0;
+	}
+	return EBADNAME;
 }

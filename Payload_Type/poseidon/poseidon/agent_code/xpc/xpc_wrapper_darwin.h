@@ -7,6 +7,7 @@
 #include <xpc/connection.h>
 #include <sys/utsname.h>
 #include <launch.h>
+#include <errno.h>
 
 extern xpc_type_t TYPE_ERROR;
 extern xpc_type_t TYPE_ARRAY;
@@ -31,9 +32,13 @@ extern void XpcArrayApply(uintptr_t, xpc_object_t);
 extern void XpcDictApply(uintptr_t, xpc_object_t);
 extern void XpcUUIDGetBytes(void *, xpc_object_t);
 extern xpc_object_t XpcLaunchdListServices(char *);
+extern char* XpcLaunchdPrint(char *);
 extern xpc_object_t XpcLaunchdServiceControl(char *, int);
+extern xpc_object_t XpcLaunchdServiceControlEnableDisable(char *, int);
 extern xpc_object_t XpcLaunchdSubmitJob(char *, char *, int);
-extern xpc_object_t XpcLaunchdGetServiceStatus(char *);
+extern xpc_object_t XpcLaunchdRemove(char *);
+extern xpc_object_t XpcLaunchdGetManagerUID(void);
+extern char* XpcLaunchdDumpState(void);
 extern xpc_object_t XpcLaunchdLoadPlist(char *, int);
 extern char* XpcLaunchdGetProcInfo(unsigned long);
 extern xpc_object_t XpcLaunchdUnloadPlist(char *);
@@ -66,22 +71,80 @@ extern mach_port_t xpc_dictionary_copy_mach_send(xpc_object_t, char *key);
 #define ROUTINE_VERSION		0x33c
 #define ROUTINE_PRINT_CACHE	0x33c
 #define ROUTINE_PRINT		0x33c	// also VERSION.., cache..
+/* launchctl print-cache
+ = "<dictionary: 0x6000036a92c0> { count = 6, transaction: 0, voucher = 0x0, contents =
+	"subsystem" => <uint64: 0x20b97be030b61999>: 3
+	"handle" => <uint64: 0x20b97be030b62999>: 0
+	"shmem" => <shmem: 0x600000775bf0>: 20971520 bytes (5120 pages)
+	"routine" => <uint64: 0x20b97be03085e999>: 828
+	"type" => <uint64: 0x20b97be030b63999>: 1
+	"cache" => <bool: 0x7ff84432b120>: true
+}"
+// launchctl print gui/501/com.itsafeature.testing
+xpc_dictionary_get_string ( dictionary@0x600001b00960,"session")
+ = "<dictionary: 0x600001b00960> { count = 6, transaction: 0, voucher = 0x0, contents =
+	"subsystem" => <uint64: 0x25b6b6d3218c02d3>: 2
+	"handle" => <uint64: 0x25b6b6d3219372d3>: 501
+	"shmem" => <shmem: 0x600002b59b30>: 1048576 bytes (256 pages)
+	"routine" => <uint64: 0x25b6b6d321a062d3>: 708
+	"type" => <uint64: 0x25b6b6d3218ca2d3>: 8
+	"name" => <string: 0x600002b58fc0> { length = 23, contents = "com.itsafeature.testing" }
+}"
+*/
 #define ROUTINE_REBOOT_USERSPACE	803 // 10.11/9.0 only
 #define ROUTINE_START		0x32d	// 813
 #define ROUTINE_STOP		0x32e	// 814
 #define ROUTINE_LIST		0x32f	// 815
+#define ROUTINE_REMOVE 816
+/*
+ = "<dictionary: 0x600001b0d590> { count = 7, transaction: 0, voucher = 0x0, contents =
+	"subsystem" => <uint64: 0x25b6b6d3218c12d3>: 3
+	"handle" => <uint64: 0x25b6b6d3218c22d3>: 0
+	"routine" => <uint64: 0x25b6b6d321bf22d3>: 816
+	"type" => <uint64: 0x25b6b6d3218c52d3>: 7
+	"name" => <string: 0x600002b5b1e0> { length = 23, contents = "com.itsafeature.testing" }
+	"legacy" => <bool: 0x7ff846203120>: true
+	"domain-port" => <mach send right: 0x600002443b80> { name = 74243, right = send, urefs = 208 }
+}"
+*/
 #define ROUTINE_SETENV		0x333	// 819
 #define ROUTINE_GETENV		0x334  // 820
 #define ROUTINE_RESOLVE_PORT		0x336
 #define ROUTINE_EXAMINE		0x33a
 #define ROUTINE_LIMIT		0x339	// 825
 #define ROUTINE_DUMP_DOMAIN	0x33c	// 828
-#define ROUTINE_ASUSER	0x344	// ...
-#define ROUTINE_DUMP_STATE	0x342	// 034
+#define ROUTINE_ASUSER	0x344	// 836
+#define ROUTINE_DUMP_STATE	0x342	// 834
+/* launchctl dumpstate
+xpc_dictionary_get_string ( dictionary@0x6000036ac0f0,"session")
+ = "<dictionary: 0x6000036ac0f0> { count = 5, transaction: 0, voucher = 0x0, contents =
+	"subsystem" => <uint64: 0x20b97be030b61999>: 3
+	"handle" => <uint64: 0x20b97be030b62999>: 0
+	"shmem" => <shmem: 0x6000006f10e0>: 20971520 bytes (5120 pages)
+	"routine" => <uint64: 0x20b97be030820999>: 834
+	"type" => <uint64: 0x20b97be030b63999>: 1
+}"
+*/
 #define ROUTINE_DUMPJPCATEGORY		0x345	// was 346 in iOS 9
 // the input type for xpc_uuid_create should be uuid_t but CGO instists on unsigned char *
 // typedef uuid_t * ptr_to_uuid_t;
 typedef unsigned char * ptr_to_uuid_t;
 extern const ptr_to_uuid_t ptr_to_uuid(void *p);
+
+// https://github.com/ProcursusTeam/launchctl/blob/main/xpc_private.h#L93C1-L104C3
+int64_t xpc_user_sessions_enabled(void) __API_AVAILABLE(ios(16.0));
+uint64_t xpc_user_sessions_get_foreground_uid(uint64_t) __API_AVAILABLE(ios(16.0));
+enum {
+	ENODOMAIN = 112,
+	ENOSERVICE = 113,
+	E2BIMPL = 116,
+	EUSAGE = 117,
+	EBADRESP = 118,
+	EDEPRECATED = 126,
+	EMANY = 133,
+	EBADNAME = 140,
+	ENOTDEVELOPMENT = 142,
+	EWTF = 153,
+};
 
 #endif

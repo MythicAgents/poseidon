@@ -1,4 +1,4 @@
-// +build darwin
+//go:build darwin
 
 package persist_loginitem
 
@@ -10,30 +10,29 @@ package persist_loginitem
 import "C"
 
 type PersistLoginItemDarwin struct {
-	Successful bool
+	Message string
 }
 
-func (j *PersistLoginItemDarwin) Success() bool {
-	return j.Successful
-}
-
-func runCommand(path string, name string, global bool) (PersistLoginItemDarwin, error) {
-	var glbl int
-	cpath := C.CString(path)
-	cname := C.CString(name)
-	if global {
-		glbl = 1
+func runCommand(path string, name string, global bool, list bool, remove bool) PersistLoginItemDarwin {
+	if list {
+		res := C.listitems()
+		return PersistLoginItemDarwin{
+			Message: C.GoString(res),
+		}
+	} else if remove {
+		res := C.removeitem(C.CString(path), C.CString(name))
+		return PersistLoginItemDarwin{
+			Message: C.GoString(res),
+		}
+	} else if global {
+		res := C.addglobalitem(C.CString(path), C.CString(name))
+		return PersistLoginItemDarwin{
+			Message: C.GoString(res),
+		}
 	} else {
-		glbl = 0
+		res := C.addsessionitem(C.CString(path), C.CString(name))
+		return PersistLoginItemDarwin{
+			Message: C.GoString(res),
+		}
 	}
-	iglbl := C.int(glbl)
-	res := C.persist_loginitem(cpath, cname, iglbl)
-
-	r := PersistLoginItemDarwin{}
-	if res == 1 {
-		r.Successful = true
-	} else {
-		r.Successful = false
-	}
-	return r, nil
 }
