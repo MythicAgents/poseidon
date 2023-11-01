@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 2.0.8 - 2023-11-01
+
+- Added `clipboard` command similar to `apfell` for extraction of more than just plaintext from the clipboard
+
 ## 2.0.7 - 2023-10-30
 
 - Updated `run` command to take KEY=VALUE environment pairs

