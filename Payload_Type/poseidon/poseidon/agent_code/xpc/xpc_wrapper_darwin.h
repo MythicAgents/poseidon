@@ -14,6 +14,7 @@ extern xpc_type_t TYPE_ARRAY;
 extern xpc_type_t TYPE_DATA;
 extern xpc_type_t TYPE_DICT;
 extern xpc_type_t TYPE_INT64;
+extern xpc_type_t TYPE_UINT64;
 extern xpc_type_t TYPE_STRING;
 extern xpc_type_t TYPE_UUID;
 extern xpc_type_t TYPE_BOOL;
@@ -37,6 +38,7 @@ extern xpc_object_t XpcLaunchdServiceControl(char *, int);
 extern xpc_object_t XpcLaunchdServiceControlEnableDisable(char *, int);
 extern xpc_object_t XpcLaunchdSubmitJob(char *, char *, int);
 extern xpc_object_t XpcLaunchdRemove(char *);
+extern xpc_object_t XpcLaunchdAsUser(char *program, int uid);
 extern xpc_object_t XpcLaunchdGetManagerUID(void);
 extern char* XpcLaunchdDumpState(void);
 extern xpc_object_t XpcLaunchdLoadPlist(char *, int);
@@ -57,6 +59,23 @@ extern mach_port_t xpc_dictionary_copy_mach_send(xpc_object_t, char *key);
 
 #define ROUTINE_DEBUG		0x2c1	// 705
 #define ROUTINE_SUBMIT		100
+/*
+= "<dictionary: 0x600001b00960> { count = 5, transaction: 0, voucher = 0x0, contents =
+	"subsystem" => <uint64: 0x25b6b6d3218c52d3>: 7
+	"routine" => <uint64: 0x25b6b6d3218a62d3>: 100
+	"handle" => <uint64: 0x25b6b6d3218c22d3>: 0
+	"request" => <dictionary: 0x60000010d080> { count = 1, transaction: 0, voucher = 0x0, contents =
+		"SubmitJob" => <dictionary: 0x60000010d7a0> { count = 4, transaction: 0, voucher = 0x0, contents =
+			"KeepAlive" => <bool: 0x7ff846203120>: true
+			"Label" => <string: 0x600002b63b10> { length = 24, contents = "com.itsafeature.testuser" }
+			"ProgramArguments" => <array: 0x600002b60e40> { count = 0, capacity = 0, contents =
+			}
+			"Program" => <string: 0x600002b63de0> { length = 39, contents = "/Users/itsafeature/Desktop/poseidon.bin" }
+		}
+	}
+	"type" => <uint64: 0x25b6b6d3218c52d3>: 7
+}"
+*/
 #define ROUTINE_BLAME		0x2c3 	// 707
 #define ROUTINE_DUMP_PROCESS	0x2c4	// 708
 #define ROUTINE_RUNSTATS	0x2c5	// 709
@@ -113,7 +132,16 @@ xpc_dictionary_get_string ( dictionary@0x600001b00960,"session")
 #define ROUTINE_EXAMINE		0x33a
 #define ROUTINE_LIMIT		0x339	// 825
 #define ROUTINE_DUMP_DOMAIN	0x33c	// 828
-#define ROUTINE_ASUSER	0x344	// 836
+#define ROUTINE_ASUSER	0x344	// 836, but really 835 maybe?
+/*
+ = "<dictionary: 0x600001b08960> { count = 5, transaction: 0, voucher = 0x0, contents =
+	"subsystem" => <uint64: 0x25b6b6d3218c12d3>: 3
+	"routine" => <uint64: 0x25b6b6d321b812d3>: 835
+	"handle" => <uint64: 0x25b6b6d3218c22d3>: 0
+	"uid" => <uint64: 0x25b6b6d3219372d3>: 501
+	"type" => <uint64: 0x25b6b6d3218c32d3>: 1
+}"
+*/
 #define ROUTINE_DUMP_STATE	0x342	// 834
 /* launchctl dumpstate
 xpc_dictionary_get_string ( dictionary@0x6000036ac0f0,"session")

@@ -348,7 +348,19 @@ func runCommand(command string) ([]byte, error) {
 		}
 
 		return raw, err
+	case "asuser":
+		if len(args.Program) == 0 {
+			empty := make([]byte, 0)
+			return empty, errors.New("Missing program argument")
+		}
+		response := XpcLaunchAsUser(args.Program, args.UID)
+		raw, err := json.MarshalIndent(response, "", "	")
+		if err != nil {
+			empty := make([]byte, 0)
+			return empty, err
+		}
 
+		return raw, err
 	case "send":
 		if len(args.Data) == 0 || len(args.ServiceName) == 0 {
 			empty := make([]byte, 0)
@@ -411,6 +423,16 @@ func XpcLaunchDumpState() string {
 
 	raw := C.XpcLaunchdDumpState()
 	result := C.GoString(raw)
+	return result
+
+}
+
+func XpcLaunchAsUser(program string, uid int) Dict {
+	cProgram := C.CString(program)
+	defer C.free(unsafe.Pointer(cProgram))
+	cUid := C.int(uid)
+	raw := C.XpcLaunchdAsUser(cProgram, cUid)
+	result := xpcToGo(raw).(Dict)
 	return result
 
 }
@@ -660,7 +682,9 @@ func dictSet(u C.uintptr_t, k *C.char, v C.xpc_object_t) {
 // note that not all the types are supported, but only the subset required for Blued
 func xpcToGo(v C.xpc_object_t) interface{} {
 	t := C.xpc_get_type(v)
-
+	//log.Printf("xpcToGo processing type %#v, value %#v, name: %s", t, v, C.GoString(C.xpc_type_get_name(t)))
+	//desc := C.GoString(C.xpc_copy_description(v))
+	//log.Printf("description: %s\n", desc)
 	switch t {
 	case C.TYPE_ARRAY:
 		a := make(Array, C.int(C.xpc_array_get_count(v)))
@@ -679,7 +703,8 @@ func xpcToGo(v C.xpc_object_t) interface{} {
 
 	case C.TYPE_INT64:
 		return int64(C.xpc_int64_get_value(v))
-
+	case C.TYPE_UINT64:
+		return uint64(C.xpc_uint64_get_value(v))
 	case C.TYPE_STRING:
 		return C.GoString(C.xpc_string_get_string_ptr(v))
 	case C.TYPE_UUID:
@@ -703,9 +728,8 @@ func xpcToGo(v C.xpc_object_t) interface{} {
 	case C.TYPE_SHMEM:
 		log.Printf("Received shared memory xpc type: %#v", v)
 	default:
-		log.Printf("unexpected type %#v, value %#v, name: %#v", t, v, C.xpc_type_get_name(t))
-		log.Printf("unexpected type length: %#v\n", C.int(C.xpc_data_get_length(v)))
-		return C.GoBytes(C.xpc_data_get_bytes_ptr(v), C.int(C.xpc_data_get_length(v)))
+		//log.Printf("unexpected type %#v, value %#v, name: %#v", t, v, C.GoString(C.xpc_type_get_name(t)))
+		return C.GoString(C.xpc_copy_description(v))
 	}
 	return nil
 }

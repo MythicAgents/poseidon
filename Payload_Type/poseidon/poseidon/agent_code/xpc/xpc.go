@@ -18,6 +18,7 @@ type Arguments struct {
 	File        string `json:"file"`
 	Pid         int    `json:"pid"`
 	Data        string `json:"data"`
+	UID         int    `json:"uid"`
 }
 
 func Run(task structs.Task) {

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 2.0.9 - 2023-11-03
+
+- Added `sudo` command for macOS that leverages AuthorizationCreate and AuthorizationExecuteWithPrivileges to execute commands in an elevated context
+  - You can control prompt text, prompt icon, or supply username and password to cause no prompt at all
+- Updated `xpc_submit` with initial pieces of `launchctl asuser` functionality, but currently a work in progress
+
 ## 2.0.8 - 2023-11-01
 
 - Added `clipboard` command similar to `apfell` for extraction of more than just plaintext from the clipboard
