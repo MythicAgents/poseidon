@@ -1,6 +1,4 @@
 //go:build (linux || darwin) && websocket
-// +build linux darwin
-// +build websocket
 
 package profiles
 

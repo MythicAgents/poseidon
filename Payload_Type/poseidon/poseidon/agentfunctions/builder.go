@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-const version = "2.0.8"
+const version = "2.0.10"
 
 var payloadDefinition = agentstructs.PayloadType{
 	Name:                                   "poseidon",
@@ -26,7 +26,7 @@ var payloadDefinition = agentstructs.PayloadType{
 	CanBeWrappedByTheFollowingPayloadTypes: []string{},
 	SupportsDynamicLoading:                 false,
 	Description:                            fmt.Sprintf("A fully featured macOS and Linux Golang agent.\nVersion %s\nNeeds Mythic 3.1.0+", version),
-	SupportedC2Profiles:                    []string{"http", "websocket", "poseidon_tcp"},
+	SupportedC2Profiles:                    []string{"http", "websocket", "poseidon_tcp", "dynamichttp"},
 	MythicEncryptsData:                     true,
 	BuildParameters: []agentstructs.BuildParameter{
 		{
@@ -71,7 +71,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			Description:   "Prioritize the order in which egress connections are made (if including multiple egress c2 profiles)",
 			Required:      false,
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_ARRAY,
-			DefaultValue:  []string{"http", "websocket"},
+			DefaultValue:  []string{"http", "websocket", "dynamichttp"},
 		},
 		{
 			Name:          "egress_failover",
@@ -197,6 +197,26 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 					stringBytes = strings.ReplaceAll(stringBytes, "\"", "\\\"")
 					ldflags += fmt.Sprintf(" -X '%s.%s_%s=%s'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, stringBytes)
 				}
+			} else if key == "raw_c2_config" {
+				agentConfigString, err := payloadBuildMsg.C2Profiles[index].GetStringArg(key)
+				if err != nil {
+					payloadBuildResponse.Success = false
+					payloadBuildResponse.BuildStdErr = err.Error()
+					return payloadBuildResponse
+				}
+				configData, err := mythicrpc.SendMythicRPCFileGetContent(mythicrpc.MythicRPCFileGetContentMessage{
+					AgentFileID: agentConfigString,
+				})
+				if err != nil {
+					payloadBuildResponse.Success = false
+					payloadBuildResponse.BuildStdErr = err.Error()
+					return payloadBuildResponse
+				}
+				agentConfigString = strings.ReplaceAll(string(configData.Content), "\\", "\\\\")
+				agentConfigString = strings.ReplaceAll(agentConfigString, "\"", "\\\"")
+				agentConfigString = strings.ReplaceAll(agentConfigString, "\n", "")
+				ldflags += fmt.Sprintf(" -X '%s.%s_%s=%s'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, agentConfigString)
+
 			} else {
 				val, err := payloadBuildMsg.C2Profiles[index].GetArg(key)
 				if err != nil {

@@ -36,11 +36,21 @@ BINARY_NAME=poseidon
 C2_HTTP=http
 C2_WEBSOCKET=websocket
 C2_TCP=poseidon_tcp
+C2_DYNAMICHTTP=dynamichttp
 
-EGRESS_ORDER=[\"http\",\"websocket\"]
+EGRESS_ORDER=[\"http\",\"websocket\",\"dynamichttp\"]
 EGRESS_FAILOVER="round-robin"
 DEBUG=true
 failedConnectionCountThresholdString=10
+
+DYNAMICHTTP_UUID=67b0094a-c99e-4410-9922-3f4ec00e5a88
+DYNAMICHTTP_KILL_DATE=2023-12-31
+DYNAMICHTTP_INTERVAL=2
+DYNAMICHTTP_JITTER=0
+DYNAMICHTTP_ENCRYPTED_EXCHANGE_CHECK=true
+DYNAMICHTTP_AESPSK=t9OmSw+/U4qn+WnA9mm20czT4rw5pwOVTIfcDO730g8=
+DYNAMICHTTP_AGENT_CONFIG_FILE=dynamichttp_test_agent_config.json
+DYNAMICHTTP_AGENT_CONFIG=$(shell cat ${DYNAMICHTTP_AGENT_CONFIG_FILE} |  sed 's/\\/\\\\/g' |  sed 's/"/\\"/g' | tr -d '\n')
 
 build_http:
 	go build -o ${BINARY_NAME}_${C2_HTTP}.bin -tags="${C2_HTTP}" -ldflags=" \
@@ -130,15 +140,35 @@ build_websocket_http:
     -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.${C2_HTTP}_headers=${HTTP_HEADERS}' \
     " .
 
-run_darwin_http: 
+build_dynamichttp:
+	go build -o ${BINARY_NAME}_${C2_DYNAMICHTTP}.bin -tags="${C2_DYNAMICHTTP}" -ldflags=" \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.UUID=${DYNAMICHTTP_UUID}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_order=${EGRESS_ORDER}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_failover=${EGRESS_FAILOVER}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils.debugString=${DEBUG}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.failedConnectionCountThresholdString=${failedConnectionCountThresholdString}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.${C2_DYNAMICHTTP}_killdate=${DYNAMICHTTP_KILL_DATE}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.${C2_DYNAMICHTTP}_callback_interval=${DYNAMICHTTP_INTERVAL}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.${C2_DYNAMICHTTP}_callback_jitter=${DYNAMICHTTP_JITTER}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.${C2_DYNAMICHTTP}_encrypted_exchange_check=${DYNAMICHTTP_ENCRYPTED_EXCHANGE_CHECK}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.${C2_DYNAMICHTTP}_AESPSK=${DYNAMICHTTP_AESPSK}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.${C2_DYNAMICHTTP}_agent_config=${DYNAMICHTTP_AGENT_CONFIG}' \
+" .
+
+run_http:
 	./${BINARY_NAME}_${C2_HTTP}.bin
 
-run_darwin_tcp:
+run_tcp:
 	./${BINARY_NAME}_${C2_TCP}.bin
 
-build_and_run_http: build_http run_darwin_http
+run_dynamichttp:
+	./${BINARY_NAME}_${C2_DYNAMICHTTP}.bin
 
-build_and_run_tcp: build_tcp run_darwin_tcp
+build_and_run_http: build_http run_http
+
+build_and_run_tcp: build_tcp run_tcp
+
+build_and_run_dynamichttp: build_dynamichttp run_dynamichttp
 
 build_all: build_http build_tcp build_websocket
 

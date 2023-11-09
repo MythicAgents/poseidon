@@ -13,8 +13,10 @@ WEBHOOK_DEFAULT_STARTUP_CHANNEL?=
 build:
 	go mod download 
 	go mod tidy
-	GOOS=linux go build -o ${BINARY_NAME} .
+	go build -o ${BINARY_NAME} .
 	cp ${BINARY_NAME} /
+	cd ./poseidon/agent_code && go mod download && go mod tidy && cd ../..
+
 
 run:
 	cp /${BINARY_NAME} .

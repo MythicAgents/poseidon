@@ -40,3 +40,7 @@ func GenerateSessionID() string {
 	}
 	return string(b)
 }
+
+func RandomNumInRange(limit int) int {
+	return SeededRand.Intn(limit)
+}

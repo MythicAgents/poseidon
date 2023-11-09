@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 2.0.10 - 2023-11-09
+
+- Added `dynamichttp` v2.0 profile support
+
 ## 2.0.9 - 2023-11-03
 
 - Added `sudo` command for macOS that leverages AuthorizationCreate and AuthorizationExecuteWithPrivileges to execute commands in an elevated context
