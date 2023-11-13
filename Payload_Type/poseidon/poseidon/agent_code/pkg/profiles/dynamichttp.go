@@ -391,6 +391,7 @@ func (c *C2DynamicHTTP) SendMessage(sendData []byte) []byte {
 			continue
 		}
 		if resp.StatusCode != 200 {
+			resp.Body.Close()
 			utils.PrintDebug(fmt.Sprintf("error resp.StatusCode: %v\n", resp.StatusCode))
 			IncrementFailedConnection(c.ProfileName())
 			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)

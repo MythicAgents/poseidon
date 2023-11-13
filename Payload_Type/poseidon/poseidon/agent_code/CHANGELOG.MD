@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 2.0.11 - 2023-11-13
+
+### Changed
+
+- Updated `curl` command with `curl_env_set`, `curl_env_get`, and `curl_env_clear` commands
+  - This now allows you to set "environment" variables that can be used in your `curl` command for substitutions in `url` and `headers` fields
+  - The `header` field is now an array of strings formatted like `Header: Value`
+
 ## 2.0.10 - 2023-11-09
 
 - Added `dynamichttp` v2.0 profile support

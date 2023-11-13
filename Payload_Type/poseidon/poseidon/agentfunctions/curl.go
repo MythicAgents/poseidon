@@ -13,7 +13,7 @@ func init() {
 	agentstructs.AllPayloadData.Get("poseidon").AddCommand(agentstructs.Command{
 		Name:                "curl",
 		Description:         "Execute a single web request",
-		HelpString:          "curl -url https://www.google.com -method GET",
+		HelpString:          "curl -url https://www.google.com -method GET -headers \"Host: abc.com\" -headers \"Authorization: Bearer $TOKEN\"",
 		Version:             1,
 		Author:              "@xorrior",
 		MitreAttackMappings: []string{"T1213"},
@@ -51,14 +51,14 @@ func init() {
 			{
 				Name:             "headers",
 				ModalDisplayName: "HTTP Headers",
-				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_ARRAY,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: false,
 						UIModalPosition:     3,
 					},
 				},
-				Description: "JSON string of headers",
+				Description: "Array of headers in Key: Value entries",
 			},
 			{
 				Name:             "body",
@@ -86,16 +86,11 @@ func init() {
 				logging.LogError(err, "Failed to get method string")
 				response.Success = false
 				response.Error = err.Error()
-			} else if headerString, err := taskData.Args.GetStringArg("headers"); err != nil {
-				logging.LogError(err, "Failed to get headers string")
-				response.Success = false
-				response.Error = err.Error()
 			} else if bodyString, err := taskData.Args.GetStringArg("body"); err != nil {
 				logging.LogError(err, "Failed to get body string")
 				response.Success = false
 				response.Error = err.Error()
 			} else {
-				taskData.Args.SetArgValue("headers", base64.StdEncoding.EncodeToString([]byte(headerString)))
 				taskData.Args.SetArgValue("body", base64.StdEncoding.EncodeToString([]byte(bodyString)))
 				displayParams := fmt.Sprintf("%s via HTTP %s", url, method)
 				response.DisplayParams = &displayParams

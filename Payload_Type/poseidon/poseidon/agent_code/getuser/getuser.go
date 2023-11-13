@@ -41,9 +41,7 @@ func Run(task structs.Task) {
 	curUser, err := user.Current()
 
 	if err != nil {
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}
@@ -56,20 +54,10 @@ func Run(task structs.Task) {
 		HomeDir:  curUser.HomeDir,
 	}
 
-	if err != nil {
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
-		task.Job.SendResponses <- msg
-		return
-	}
-
 	res, err := json.MarshalIndent(serUser, "", "    ")
 
 	if err != nil {
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}

@@ -12,7 +12,7 @@ func init() {
 		Version:             1,
 		MitreAttackMappings: []string{"T1135"},
 		CommandAttributes: agentstructs.CommandAttribute{
-			SupportedOS: []string{agentstructs.SUPPORTED_OS_LINUX},
+			SupportedOS: []string{},
 		},
 		TaskFunctionParseArgString: func(args *agentstructs.PTTaskMessageArgsData, input string) error {
 			return nil
