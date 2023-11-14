@@ -21,6 +21,21 @@ func init() {
 			ScriptPath: filepath.Join(".", "poseidon", "browserscripts", "ps_new.js"),
 			Author:     "@djhohnstein",
 		},
+		CommandParameters: []agentstructs.CommandParameter{
+			{
+				Name:             "regex_filter",
+				CLIName:          "regex_filter",
+				ModalDisplayName: "Regex Filter",
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
+				Description:      "Regular expression filter to limit which processes are returned",
+				DefaultValue:     "",
+				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+					{
+						ParameterIsRequired: false,
+					},
+				},
+			},
+		},
 		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,
