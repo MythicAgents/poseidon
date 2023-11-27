@@ -6,7 +6,7 @@ hidden = false
 +++
 
 ## Summary
-Cat a file via golang functions.
+Cat a file via golang functions. If the file size is greater than 5 * CHUNK_SIZE (typically 512kb) then cat won't return the contents of the file and will instruct you to download the file instead.
  
 - Needs Admin: False  
 - Version: 1  
@@ -24,6 +24,7 @@ Cat a file via golang functions.
 
 ```
 cat /path/to/file
+cat -path /path/to/file
 ```
 
 ## MITRE ATT&CK Mapping

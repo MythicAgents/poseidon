@@ -6,7 +6,7 @@ hidden = false
 +++
 
 ## Summary
-Install launchd persistence
+Install launchd persistence (LaunchAgent or LaunchDaemon).
 
 - Needs Admin: False  
 - Version: 1  
@@ -16,7 +16,7 @@ Install launchd persistence
 
 #### Args
 
-- Description: List of arguments to execute in the ProgramArguments section of the PLIST
+- Description: List of arguments to execute in the ProgramArguments section of the PLIST. The first argument should be the path to the program to execute.
 - Required Value: True
 - Default Value: None
 
@@ -44,11 +44,10 @@ Install launchd persistence
 - Required Value: True
 - Default Value: None
 
-#### LocalAgent
-
-- Description: Should be a local user launch agent?
-- Required Value: True
-- Default Value: True
+#### remove
+- Description: Boolean indicating to remove the specified launchd persistence
+- Required Value: False
+- Default Value: False
 
 ## Usage 
 ```
@@ -62,4 +61,5 @@ persist_launchd
 
 ## Detailed Summary
 
-Create a launch agent or daemon plist file and save it to ~/Library/LaunchAgents or /Library/LaunchDaemons. For additional information on launch agent parameters please visit: https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/CreatingLaunchdJobs.html
+Create a launch agent or daemon plist file. 
+For additional information on launch agent parameters please visit: https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/CreatingLaunchdJobs.html

@@ -10,7 +10,7 @@ func init() {
 	agentstructs.AllPayloadData.Get("poseidon").AddCommand(agentstructs.Command{
 		Name:                "curl_env_clear",
 		Description:         "Clear environment variables to use in subsequent curl requests",
-		HelpString:          "curl -clearEnv TOKEN -clearEnv URL",
+		HelpString:          "curl_env_clear -clearEnv TOKEN -clearEnv URL",
 		Version:             1,
 		Author:              "@its_a_feature_",
 		MitreAttackMappings: []string{},

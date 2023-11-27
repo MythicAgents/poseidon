@@ -27,4 +27,4 @@ download {path to remote file}
 - T1041  
 ## Detailed Summary
 
-Download a file from the remote host in chunks. Download is a non-blocking command
+Download a file from the remote host in chunks. 

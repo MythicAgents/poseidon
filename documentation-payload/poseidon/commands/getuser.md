@@ -25,4 +25,4 @@ getuser
 - T1033  
 ## Detailed Summary
 
-This command uses the golang `os/user` package and the `user.CurrentUser()` function to return the current users username, uid, gid, and home directory.
+This command uses the golang `os/user` package and the `user.CurrentUser()` function to return the current user's username, uid, gid, and home directory.

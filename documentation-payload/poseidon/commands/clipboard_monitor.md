@@ -7,6 +7,7 @@ hidden = false
 
 ## Summary
 Monitor a user's clipboard on macOS and send that data back every second if there's been a change.
+This reports data back to the responses for that task as well as the keylog data.
 
 - Needs Admin: False  
 - Version: 1  

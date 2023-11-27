@@ -24,4 +24,4 @@ exit
 
 ## Detailed Summary
 
-Exits an agent. The agent will post an "exiting..." msg to the server if successful
+Exits an agent.

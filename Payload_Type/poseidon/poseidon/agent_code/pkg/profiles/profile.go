@@ -185,14 +185,17 @@ func StartNextEgress(failedConnectionC2Profile string) {
 			Action:        "remove",
 			C2ProfileName: failedConnectionC2Profile,
 		}
-		source := fmt.Sprintf("poseidon: %s", GetMythicID())
-		level := structs.AlertLevelInfo
-		utils.PrintDebug("adding alert to NewAlertChannel")
-		responses.NewAlertChannel <- structs.Alert{
-			Alert:  fmt.Sprintf("Poseidon, %s, Stopped C2 Profile '%s' and started '%s'", GetMythicID(), failedConnectionC2Profile, startedC2),
-			Source: &source,
-			Level:  &level,
-		}
+		/*
+			source := fmt.Sprintf("poseidon: %s", GetMythicID())
+			level := structs.AlertLevelInfo
+			utils.PrintDebug("adding alert to NewAlertChannel")
+			responses.NewAlertChannel <- structs.Alert{
+				Alert:  fmt.Sprintf("Poseidon, %s, Stopped C2 Profile '%s' and started '%s'", GetMythicID(), failedConnectionC2Profile, startedC2),
+				Source: &source,
+				Level:  &level,
+			}
+
+		*/
 	}
 }
 

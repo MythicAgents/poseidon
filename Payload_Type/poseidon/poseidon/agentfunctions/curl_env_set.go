@@ -9,7 +9,7 @@ func init() {
 	agentstructs.AllPayloadData.Get("poseidon").AddCommand(agentstructs.Command{
 		Name:                "curl_env_set",
 		Description:         "Set environment variables to use in subsequent curl requests",
-		HelpString:          "curl -setEnv TOKEN=ejyaskdj -setEnv URL=https://mydomain.com",
+		HelpString:          "curl_env_set -setEnv TOKEN=ejyaskdj -setEnv URL=https://mydomain.com",
 		Version:             1,
 		Author:              "@its_a_feature_",
 		MitreAttackMappings: []string{},

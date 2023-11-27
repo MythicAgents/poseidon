@@ -6,7 +6,7 @@ hidden = false
 +++
 
 ## Summary
-Get all of the current environment variables.
+Get all the current environment variables.
   
 - Needs Admin: False  
 - Version: 1  

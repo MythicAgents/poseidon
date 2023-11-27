@@ -26,10 +26,13 @@ func init() {
 						UIModalPosition:     1,
 						ParameterIsRequired: true,
 					},
-					{
-						GroupName:       "asuser",
-						UIModalPosition: 2,
-					},
+					/*
+						{
+							GroupName:       "asuser",
+							UIModalPosition: 2,
+						},
+
+					*/
 				},
 			},
 			{
@@ -45,26 +48,32 @@ func init() {
 						UIModalPosition:     0,
 						ParameterIsRequired: true,
 					},
-					{
-						GroupName:       "asuser",
-						UIModalPosition: 2,
-					},
+					/*
+						{
+							GroupName:       "asuser",
+							UIModalPosition: 2,
+						},
+
+					*/
 				},
 			},
-			{
-				Name:             "uid",
-				ModalDisplayName: "User UID",
-				CLIName:          "uid",
-				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_NUMBER,
-				Description:      "User UID to bootstrap for execution",
-				DefaultValue:     0,
-				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
-					{
-						GroupName:       "asuser",
-						UIModalPosition: 2,
+			/*
+				{
+					Name:             "uid",
+					ModalDisplayName: "User UID",
+					CLIName:          "uid",
+					ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_NUMBER,
+					Description:      "User UID to bootstrap for execution",
+					DefaultValue:     0,
+					ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+						{
+							GroupName:       "asuser",
+							UIModalPosition: 2,
+						},
 					},
 				},
-			},
+
+			*/
 		},
 		CommandAttributes: agentstructs.CommandAttribute{
 			SupportedOS: []string{agentstructs.SUPPORTED_OS_MACOS},

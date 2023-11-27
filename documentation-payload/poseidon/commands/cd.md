@@ -24,10 +24,12 @@ Change working directory (can be relative, but no ~).
 
 ```
 cd [path]
+cd -path [path]
 ```
 
 ## MITRE ATT&CK Mapping
 
 - T1005  
+
 ## Detailed Summary
 

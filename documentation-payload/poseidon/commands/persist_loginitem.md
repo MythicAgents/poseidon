@@ -6,7 +6,7 @@ hidden = false
 +++
 
 ## Summary
-Install launchd persistence
+Install loginitem persistence
 
 - Needs Admin: False  
 - Version: 1  
@@ -17,20 +17,30 @@ Install launchd persistence
 #### Path
 
 - Description: Path to the binary to execute at login
-- Required Value: True
+- Required Value: False
 - Default Value: None
 
 #### Name
 
 - Description: The name that is displayed in the Login Items section of the Users & Groups preferences pane
-- Required Value: True
+- Required Value: False
 - Default Value: None
 
 #### Global
 
 - Description: Set this to true if the login item should be installed for all users. This requires administrative privileges
-- Required Value: True
+- Required Value: False
 - Default Value: True
+
+#### list
+- Description: Set this to true to list out all session and global login items
+- Required Value: False
+- Default Value: False
+
+#### remove
+- Description: Remove the specified loginitem persistence
+- Required Value: False
+- Default Value: False
 
 ## Usage
 ```

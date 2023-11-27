@@ -6,8 +6,8 @@ hidden = false
 +++
 
 ## Summary
-Get information about mounted drives on Linux hosts only.
- 
+Get information about mounted drives.
+
 - Needs Admin: False  
 - Version: 1  
 - Author: @djhohnstein 

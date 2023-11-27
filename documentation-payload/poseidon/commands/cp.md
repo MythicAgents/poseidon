@@ -29,7 +29,7 @@ Copy a file from one location to another.
 ## Usage
 
 ```
-cp
+cp -source test -destination test.bak
 ```
 
 

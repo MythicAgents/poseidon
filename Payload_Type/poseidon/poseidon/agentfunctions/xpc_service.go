@@ -83,20 +83,6 @@ func init() {
 				},
 			},
 			{
-				Name:             "status",
-				ModalDisplayName: "Status",
-				CLIName:          "status",
-				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_BOOLEAN,
-				Description:      "Flag to indicate asking launchd to get the status of a specific service",
-				DefaultValue:     true,
-				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
-					{
-						GroupName:       "status",
-						UIModalPosition: 0,
-					},
-				},
-			},
-			{
 				Name:             "remove",
 				ModalDisplayName: "Remove",
 				CLIName:          "remove",
@@ -143,7 +129,7 @@ func init() {
 				ModalDisplayName: "Service Name",
 				CLIName:          "servicename",
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
-				Description:      "Name of the service to communicate with. Used with the submit, send, start/stop commands",
+				Description:      "Name of the service to communicate with. Used with the submit, send, start/stop, print commands",
 				DefaultValue:     "",
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{

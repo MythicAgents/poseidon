@@ -14,10 +14,16 @@ Get a process listing.
 
 ### Arguments
 
+#### Regex Filter
+- Description: Filter which processes get returned based on a regex filter
+- Required value: False
+- Default value: False
+
 ## Usage
 
 ```
 ps
+ps -regex_filter poseidon.*
 ```
 
 ## MITRE ATT&CK Mapping

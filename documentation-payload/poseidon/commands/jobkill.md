@@ -6,7 +6,8 @@ hidden = false
 +++
 
 ## Summary
-Kill a job with the specified ID - not all jobs are killable though. Killable jobs are `keylog`, `triagedirectory`, and `portscan`.
+Kill a job with the specified ID. Some jobs will take longer to try to kill based on how frequently they can check for a kill status.
+To get the GUID to use, run the `jobs` command.
 
 
 - Needs Admin: False  

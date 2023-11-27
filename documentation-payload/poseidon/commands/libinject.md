@@ -6,7 +6,7 @@ hidden = false
 +++
 
 ## Summary
-Inject a library from on-host into a process on macOS.
+Inject a library from on-host into a process on macOS for AMD64 (no arm support yet).
   
 - Needs Admin: False  
 - Version: 1  
