@@ -6,7 +6,7 @@ import (
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"github.com/MythicMeta/MythicContainer/logging"
 	"github.com/MythicMeta/MythicContainer/mythicrpc"
-	"github.com/MythicMeta/MythicContainer/utils"
+	"github.com/MythicMeta/MythicContainer/utils/helpers"
 )
 
 func init() {
@@ -118,7 +118,7 @@ func getCallbackFiles(input agentstructs.PTRPCDynamicQueryFunctionMessage) []str
 	} else {
 		potentialFiles := []string{}
 		for _, file := range fileResp.Files {
-			if !utils.StringSliceContains(potentialFiles, file.Filename) {
+			if !helpers.StringSliceContains(potentialFiles, file.Filename) {
 				potentialFiles = append(potentialFiles, file.Filename)
 			}
 		}
