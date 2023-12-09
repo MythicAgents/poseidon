@@ -47,6 +47,7 @@ func Run(task structs.Task) {
 	stderrScanner := bufio.NewScanner(stderr)
 	outputChannel := make(chan string, 1)
 	doneChannel := make(chan bool)
+	finishedReadingOutput := make(chan bool)
 	doneTimeDelayChannel := make(chan bool)
 	sendTimeDelayChannel := make(chan bool)
 	go func() {
@@ -66,6 +67,7 @@ func Run(task structs.Task) {
 					}
 					task.Job.SendResponses <- outputMsg
 					doneTimeDelayChannel <- true
+					finishedReadingOutput <- true
 					return
 				}
 			case newBufferedOutput := <-outputChannel:
@@ -108,6 +110,8 @@ func Run(task structs.Task) {
 		task.Job.SendResponses <- msg
 		return
 	}
+	// Need to finish reading stdout/stderr before calling .Wait()
+	<-finishedReadingOutput
 	err = command.Wait()
 	if err != nil {
 		msg.SetError(err.Error())
