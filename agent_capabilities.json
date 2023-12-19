@@ -3,8 +3,9 @@
   "languages": ["go"] ,
   "dynamic_loading": false,
   "features": {
-    "mythic": ["p2p", "artifacts", "file chunking", "screenshots", "keylogs", "file browser", "process browser", "alerts", "socks", "rpfwd", "interactive", "push c2"],
-    "custom": []
+    "mythic": ["p2p", "artifacts", "file chunking", "screenshots", "keylogs", "file browser", "process browser",
+      "alerts", "socks", "rpfwd", "interactive", "push c2"],
+    "custom": ["key exchange", "multiple egress", "killdate"]
   },
   "payload_output": ["macho", "elf", "dylib", "so"],
   "architectures": ["x86_64", "arm_64"],
