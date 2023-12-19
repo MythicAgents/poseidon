@@ -1,7 +1,6 @@
 {
   "os": ["macOS", "Linux"],
   "languages": ["go"] ,
-  "dynamic_loading": false,
   "features": {
     "mythic": ["p2p", "artifacts", "file chunking", "screenshots", "keylogs", "file browser", "process browser",
       "alerts", "socks", "rpfwd", "interactive", "push c2"],
