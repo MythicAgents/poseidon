@@ -861,7 +861,7 @@ func (c *C2DynamicHTTP) GetDynamicMessageResponse(resp *http.Response, config *C
 	for key, _ := range config.ServerHeaders {
 		if config.ServerHeaders[key] != resp.Header.Get(key) {
 			utils.PrintDebug(fmt.Sprintf("Header '%s' is different from server and expected! %s vs %s", key, config.ServerHeaders[key], resp.Header.Get(key)))
-			return nil, errors.New("header mismatch from server")
+			//return nil, errors.New("header mismatch from server")
 		}
 	}
 	cookies := resp.Cookies()
@@ -872,13 +872,13 @@ func (c *C2DynamicHTTP) GetDynamicMessageResponse(resp *http.Response, config *C
 				found = true
 				if cookies[i].Value != config.ServerCookies[key] {
 					utils.PrintDebug(fmt.Sprintf("Cookie '%s' is different from server and expected! %s vs %s", key, config.ServerCookies[key], cookies[i].Value))
-					return nil, errors.New("cookie mismatch from server")
+					//return nil, errors.New("cookie mismatch from server")
 				}
 			}
 		}
 		if !found {
 			utils.PrintDebug(fmt.Sprintf("Cookie %s is different from server and expected! %s vs %s", key, config.ServerCookies[key], "Not Found"))
-			return nil, errors.New("cookie mismatch from server")
+			//return nil, errors.New("cookie mismatch from server")
 		}
 	}
 	return c.performReverseTransforms(body, config.ServerBody)
