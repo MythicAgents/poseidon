@@ -152,7 +152,7 @@ build_dynamichttp:
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.${C2_DYNAMICHTTP}_callback_jitter=${DYNAMICHTTP_JITTER}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.${C2_DYNAMICHTTP}_encrypted_exchange_check=${DYNAMICHTTP_ENCRYPTED_EXCHANGE_CHECK}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.${C2_DYNAMICHTTP}_AESPSK=${DYNAMICHTTP_AESPSK}' \
--X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.${C2_DYNAMICHTTP}_agent_config=${DYNAMICHTTP_AGENT_CONFIG}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.${C2_DYNAMICHTTP}_raw_c2_config=${DYNAMICHTTP_AGENT_CONFIG}' \
 " .
 
 run_http:

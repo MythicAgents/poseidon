@@ -31,7 +31,7 @@ var dynamichttp_callback_jitter string
 var dynamichttp_callback_interval string
 var dynamichttp_killdate string
 var dynamichttp_encrypted_exchange_check string
-var dynamichttp_agent_config string
+var dynamichttp_raw_c2_config string
 var dynamichttp_AESPSK string
 
 type C2DynamicHTTPFunction struct {
@@ -109,7 +109,7 @@ func init() {
 
 	// Add Agent Configuration
 	//json.Unmarshal([]byte("[{\"name\": \"User-Agent\",\"key\": \"User-Agent\",\"value\": \"Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko\"}]"), &profile.HeaderList)
-	if err := json.Unmarshal([]byte(dynamichttp_agent_config), &profile.Config); err != nil {
+	if err := json.Unmarshal([]byte(dynamichttp_raw_c2_config), &profile.Config); err != nil {
 		utils.PrintDebug(fmt.Sprintf("error trying to unmarshal agent configuration: %v\n", err))
 		os.Exit(1)
 	}
