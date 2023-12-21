@@ -343,14 +343,15 @@ type FileBrowserArguments struct {
 	FileBrowser bool   `json:"file_browser"`
 }
 
-// Struct for dealing with Socks messages
+// SocksMsg struct for dealing with Socks and rpfwd messages
 type SocksMsg struct {
 	ServerId uint32 `json:"server_id"`
 	Data     string `json:"data"`
 	Exit     bool   `json:"exit"`
+	Port     uint32 `json:"port"`
 }
 
-// Message - struct definition for external C2 messages
+// Message - struct definition for websocket C2 messages
 type Message struct {
 	Data string `json:"data"`
 }
