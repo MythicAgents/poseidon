@@ -771,8 +771,18 @@ func (c *C2DynamicHTTP) isMessageOutsideBody(agentMessage C2DynamicHTTPAgentMess
 func (c *C2DynamicHTTP) CreateDynamicMessage(content []byte) (*http.Request, *C2DynamicHTTPAgentConfig, error) {
 	method := "GET"
 	usedConfig := &c.Config.Get
-	agentMessage := c.Config.Get.AgentMessage[utils.RandomNumInRange(len(c.Config.Get.AgentMessage))]
-	if len(content) > 4000 {
+	var agentMessage C2DynamicHTTPAgentMessage
+	if len(c.Config.Get.AgentMessage) > 0 {
+		agentMessage = c.Config.Get.AgentMessage[utils.RandomNumInRange(len(c.Config.Get.AgentMessage))]
+	} else if len(c.Config.Post.AgentMessage) > 0 {
+		method = "POST"
+		usedConfig = &c.Config.Post
+		agentMessage = c.Config.Post.AgentMessage[utils.RandomNumInRange(len(c.Config.Post.AgentMessage))]
+	} else {
+		return nil, nil, errors.New("no Get/Post options")
+	}
+
+	if len(content) > 4000 && len(c.Config.Post.AgentMessage) > 0 {
 		// if the message length is too long, switch to POST instead
 		method = "POST"
 		usedConfig = &c.Config.Post
@@ -781,6 +791,9 @@ func (c *C2DynamicHTTP) CreateDynamicMessage(content []byte) (*http.Request, *C2
 	// determine ahead of time if the content message is located in the body or in another field
 	isMessageOutsideBody := c.isMessageOutsideBody(agentMessage)
 	// pick the URL from the list of URLs randomly
+	if len(agentMessage.URLs) == 0 {
+		return nil, nil, errors.New("no urls to choose from")
+	}
 	postURL := agentMessage.URLs[utils.RandomNumInRange(len(agentMessage.URLs))]
 	// generate the URL Path
 	newURI, err := c.updateURI(agentMessage.URI, agentMessage.URLFunctions, &content)
