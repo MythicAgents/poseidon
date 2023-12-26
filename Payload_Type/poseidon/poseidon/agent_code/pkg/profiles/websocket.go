@@ -579,6 +579,7 @@ func (c *C2Websockets) reconnect() {
 				}
 				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
 			}
+			IncrementFailedConnection(c.ProfileName())
 			continue
 		}
 		utils.PrintDebug(fmt.Sprintf("Successfully reconnected to server: %s\n", c.TaskingType))
@@ -699,6 +700,9 @@ func (c *C2Websockets) sendDataNoResponse(sendData []byte) {
 	if c.PushConn == nil && c.TaskingType == TaskingTypePush {
 		c.reconnect()
 	}
+	if c.PushConn == nil || c.ShouldStop {
+		return
+	}
 
 	m := structs.Message{}
 	utils.PrintDebug(fmt.Sprintf("about to send data to Mythic from Websocket Push\n%v\n", string(sendData)))
@@ -749,8 +753,11 @@ func (c *C2Websockets) getData() {
 			return
 		}
 		resp := structs.Message{}
-		if c.PushConn == nil && c.TaskingType == TaskingTypePush {
+		if c.PushConn == nil {
 			c.reconnect()
+		}
+		if c.ShouldStop || c.TaskingType == TaskingTypePoll || c.PushConn == nil {
+			return
 		}
 		err := c.PushConn.ReadJSON(&resp)
 		if c.ShouldStop || c.TaskingType == TaskingTypePoll {
@@ -758,7 +765,6 @@ func (c *C2Websockets) getData() {
 		}
 		if err != nil {
 			utils.PrintDebug(fmt.Sprintf("Error trying to read message %v", err.Error()))
-			IncrementFailedConnection(c.ProfileName())
 			c.reconnect()
 			time.Sleep(1 * time.Second)
 			continue
