@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-const version = "2.0.19"
+const version = "2.0.21"
 
 var payloadDefinition = agentstructs.PayloadType{
 	Name:                                   "poseidon",
@@ -26,7 +26,7 @@ var payloadDefinition = agentstructs.PayloadType{
 	CanBeWrappedByTheFollowingPayloadTypes: []string{},
 	SupportsDynamicLoading:                 false,
 	Description:                            fmt.Sprintf("A fully featured macOS and Linux Golang agent.\nVersion %s\nNeeds Mythic 3.1.0+", version),
-	SupportedC2Profiles:                    []string{"http", "websocket", "poseidon_tcp", "dynamichttp"},
+	SupportedC2Profiles:                    []string{"http", "websocket", "poseidon_tcp", "dynamichttp", "webshell"},
 	MythicEncryptsData:                     true,
 	BuildParameters: []agentstructs.BuildParameter{
 		{
@@ -467,8 +467,17 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	return payloadBuildResponse
 }
 
+// dummy example function for executing something on a new poseidon callback
+func onNewBuild(data agentstructs.PTOnNewCallbackAllData) agentstructs.PTOnNewCallbackResponse {
+	return agentstructs.PTOnNewCallbackResponse{
+		AgentCallbackID: data.Callback.AgentCallbackID,
+		Success:         true,
+		Error:           "",
+	}
+}
 func Initialize() {
 	agentstructs.AllPayloadData.Get("poseidon").AddPayloadDefinition(payloadDefinition)
 	agentstructs.AllPayloadData.Get("poseidon").AddBuildFunction(build)
+	agentstructs.AllPayloadData.Get("poseidon").AddOnNewCallbackFunction(onNewBuild)
 	agentstructs.AllPayloadData.Get("poseidon").AddIcon(filepath.Join(".", "poseidon", "agentfunctions", "poseidon.svg"))
 }

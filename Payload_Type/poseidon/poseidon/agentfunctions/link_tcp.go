@@ -65,49 +65,67 @@ func init() {
 				Success: true,
 				TaskID:  taskData.Task.ID,
 			}
-			if groupName, err := taskData.Args.GetParameterGroupName(); err != nil {
+			groupName, err := taskData.Args.GetParameterGroupName()
+			if err != nil {
 				logging.LogError(err, "Failed to get parameter group name")
 				response.Success = false
 				response.Error = err.Error()
 				return response
-			} else if groupName == "Default" {
-				if address, err := taskData.Args.GetStringArg("address"); err != nil {
+			}
+			if groupName == "Default" {
+				address, err := taskData.Args.GetStringArg("address")
+				if err != nil {
 					response.Error = err.Error()
 					response.Success = false
-				} else if port, err := taskData.Args.GetNumberArg("port"); err != nil {
-					response.Error = err.Error()
-					response.Success = false
-				} else {
-					displayString := fmt.Sprintf("%s on port %.0f", address, port)
-					response.DisplayParams = &displayString
+					return response
 				}
+				port, err := taskData.Args.GetNumberArg("port")
+				if err != nil {
+					response.Error = err.Error()
+					response.Success = false
+					return response
+				}
+				displayString := fmt.Sprintf("%s on port %.0f", address, port)
+				response.DisplayParams = &displayString
+
 			} else {
-				if connectionInfo, err := taskData.Args.GetConnectionInfoArg("connection"); err != nil {
+				connectionInfo, err := taskData.Args.GetConnectionInfoArg("connection")
+				if err != nil {
 					logging.LogError(err, "Failed to get connection information")
 					response.Success = false
 					response.Error = err.Error()
 					return response
-				} else if err := taskData.Args.RemoveArg("connection"); err != nil {
+				}
+				err = taskData.Args.RemoveArg("connection")
+				if err != nil {
 					logging.LogError(err, "Failed to remove connection data")
 					response.Success = false
 					response.Error = err.Error()
 					return response
-				} else if err := taskData.Args.SetArgValue("address", connectionInfo.Host); err != nil {
+				}
+				err = taskData.Args.SetArgValue("address", connectionInfo.Host)
+				if err != nil {
 					logging.LogError(err, "Failed to get address information")
 					response.Success = false
 					response.Error = err.Error()
 					return response
-				} else if port, err := strconv.Atoi(connectionInfo.C2ProfileInfo.Parameters["port"].(string)); err != nil {
+				}
+				port, err := strconv.Atoi(connectionInfo.C2ProfileInfo.Parameters["port"].(string))
+				if err != nil {
 					logging.LogError(err, "Failed to convert port to integer")
-				} else if err := taskData.Args.SetArgValue("port", port); err != nil {
+					response.Success = false
+					response.Error = err.Error()
+					return response
+				}
+				err = taskData.Args.SetArgValue("port", port)
+				if err != nil {
 					logging.LogError(err, "Failed to get port information")
 					response.Success = false
 					response.Error = err.Error()
 					return response
-				} else {
-					displayString := fmt.Sprintf("%s on port %d", connectionInfo.Host, port)
-					response.DisplayParams = &displayString
 				}
+				displayString := fmt.Sprintf("%s on port %d", connectionInfo.Host, port)
+				response.DisplayParams = &displayString
 			}
 
 			return response

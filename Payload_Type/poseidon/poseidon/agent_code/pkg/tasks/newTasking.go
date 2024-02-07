@@ -21,6 +21,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/kill"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/libinject"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/link_tcp"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/link_webshell"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/list_entitlements"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/listtasks"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/ls"
@@ -52,6 +53,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/test_password"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/triagedirectory"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/unlink_tcp"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/unlink_webshell"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/unsetenv"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/update_c2"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/upload"
@@ -178,6 +180,10 @@ func listenForNewTask() {
 			go clipboard.Run(task)
 		case "sudo":
 			go sudo.Run(task)
+		case "link_webshell":
+			go link_webshell.Run(task)
+		case "unlink_webshell":
+			go unlink_webshell.Run(task)
 		default:
 			// No tasks, do nothing
 			break

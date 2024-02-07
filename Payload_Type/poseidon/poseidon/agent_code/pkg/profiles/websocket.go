@@ -530,6 +530,17 @@ func (c *C2Websockets) FinishNegotiateKey(resp []byte) bool {
 	SetAllEncryptionKeys(c.Key)
 	return true
 }
+func (c *C2Websockets) closeConnections() {
+	if c.TaskingType == TaskingTypePoll {
+		if c.PollConn != nil {
+			c.PollConn.Close()
+		}
+	} else if c.TaskingType == TaskingTypePush {
+		if c.PushConn != nil {
+			c.PushConn.Close()
+		}
+	}
+}
 func (c *C2Websockets) reconnect() {
 	if c.ShouldStop {
 		utils.PrintDebug(fmt.Sprintf("got c.ShouldStop in reconnect\n"))
@@ -701,6 +712,7 @@ func (c *C2Websockets) sendDataNoResponse(sendData []byte) {
 		c.reconnect()
 	}
 	if c.PushConn == nil || c.ShouldStop {
+		c.closeConnections()
 		return
 	}
 
@@ -719,11 +731,12 @@ func (c *C2Websockets) sendDataNoResponse(sendData []byte) {
 	for i := 0; i < 5; i++ {
 		today := time.Now()
 		if today.After(c.Killdate) {
+			utils.PrintDebug(fmt.Sprintf("after killdate, exiting\n"))
 			os.Exit(1)
 		}
 		if c.ShouldStop || c.TaskingType == TaskingTypePoll {
 			utils.PrintDebug(fmt.Sprintf("got c.ShouldStop || c.TaskingType change in Pushing sendDataNoResponse\n"))
-
+			c.closeConnections()
 			return
 		}
 		//log.Printf("Sending message \n")
@@ -731,7 +744,7 @@ func (c *C2Websockets) sendDataNoResponse(sendData []byte) {
 		if err != nil {
 			utils.PrintDebug(fmt.Sprintf("Error writing to push connection: %v", err))
 			IncrementFailedConnection(c.ProfileName())
-			c.PushConn.Close()
+			c.closeConnections()
 			time.Sleep(1 * time.Second)
 			continue
 		}
@@ -750,6 +763,7 @@ func (c *C2Websockets) getData() {
 	for {
 		//fmt.Printf("looping to read data\n")
 		if c.ShouldStop || c.TaskingType == TaskingTypePoll {
+			c.closeConnections()
 			return
 		}
 		resp := structs.Message{}
@@ -757,13 +771,16 @@ func (c *C2Websockets) getData() {
 			c.reconnect()
 		}
 		if c.ShouldStop || c.TaskingType == TaskingTypePoll || c.PushConn == nil {
+			c.closeConnections()
 			return
 		}
 		err := c.PushConn.ReadJSON(&resp)
 		if c.ShouldStop || c.TaskingType == TaskingTypePoll {
+			c.closeConnections()
 			return
 		}
 		if err != nil {
+			c.closeConnections()
 			utils.PrintDebug(fmt.Sprintf("Error trying to read message %v", err.Error()))
 			c.reconnect()
 			time.Sleep(1 * time.Second)

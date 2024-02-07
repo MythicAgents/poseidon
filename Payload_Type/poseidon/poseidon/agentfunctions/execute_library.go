@@ -70,6 +70,7 @@ func init() {
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_ARRAY,
 				Description:      "Arguments to pass to function",
 				DefaultValue:     []string{},
+				//Choices:          []string{"int*", "char*"},
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: true,

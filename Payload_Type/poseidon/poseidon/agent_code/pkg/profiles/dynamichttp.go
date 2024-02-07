@@ -864,8 +864,8 @@ func (c *C2DynamicHTTP) CreateDynamicMessage(content []byte) (*http.Request, *C2
 	return req, usedConfig, nil
 }
 func (c *C2DynamicHTTP) GetDynamicMessageResponse(resp *http.Response, config *C2DynamicHTTPAgentConfig) ([]byte, error) {
-	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
 	// now that we have the body of the message response, we need to fetch out the response from it
 	if err != nil {
 		return nil, err

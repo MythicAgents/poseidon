@@ -142,7 +142,7 @@ func init() {
 	registerAvailableP2P(poseidonTCP{})
 }
 
-// SendTCPData sends TCP P2P data in the proper format for poseidon_tcp connections
+// SendWebshellData sends TCP P2P data in the proper format for poseidon_tcp connections
 func SendTCPData(sendData []byte, conn net.Conn) error {
 	err := binary.Write(conn, binary.BigEndian, int32(len(sendData)))
 	if err != nil {
