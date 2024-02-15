@@ -26,7 +26,22 @@
 }
 -(void)updateFrontmost:(NSNotification *)notification
 {
-	self.frontmost = [[[[notification userInfo] objectForKey:NSWorkspaceApplicationKey] localizedName] UTF8String];
+    NSDictionary *UserInfo = [notification userInfo];
+    if (UserInfo != nil ){
+        NSString* app = [UserInfo objectForKey:NSWorkspaceApplicationKey];
+        if(app != nil ){
+            NSString* localizedName = [app localizedName];
+            if(localizedName != nil){
+                self.frontmost = [localizedName UTF8String];
+            } else {
+                self.frontmost = [app UTF8String];
+            }
+            //NSLog(@"Self.frontmost updated to: %s", self.frontmost);
+            return;
+        }
+    }
+    self.frontmost = "UNKNOWN";
+	//self.frontmost = [[[[notification userInfo] objectForKey:NSWorkspaceApplicationKey] localizedName] UTF8String];
 	//NSLog(@"Self.frontmost updated to: %s", self.frontmost);
 	//NSLog(@"Reacting to notification %@ from object %@ with userInfo %@", notification, notification.object, notification.userInfo);
 }
@@ -61,7 +76,7 @@ char* getFrontmostApp(){
 		myNotifications = [[ActivateNotifications alloc] init];
 	}
 	if( [myNotifications getFrontmostName] != NULL){
-		return [[myNotifications getFrontmostName] UTF8String];
+		return [myNotifications getFrontmostName];
 	} else {
 		return "";
 	}
@@ -73,5 +88,6 @@ void waitForTime(){
 															value:1
 															toDate:now
 															options:NSCalendarMatchNextTime];
-	[[NSRunLoop mainRunLoop] runUntilDate:nowPlusOneSecond];
+	//[[NSRunLoop mainRunLoop] runUntilDate:nowPlusOneSecond];
+	[[NSRunLoop mainRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:1.1f]];
 }

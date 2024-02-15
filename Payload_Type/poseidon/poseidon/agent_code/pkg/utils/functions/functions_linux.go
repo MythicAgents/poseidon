@@ -1,20 +1,40 @@
-// +build linux
+//go:build linux
 
 package functions
 
+/*
+#include <unistd.h>;
+int UpdateEUID();
+int UpdateEUID(){
+    uid_t euid = geteuid();
+    uid_t uid = getuid();
+    if(euid != uid){
+        setuid(euid);
+    }
+    gid_t egid = getegid();
+    gid_t gid = getgid();
+    if(egid != gid){
+        setgid(egid);
+    }
+	uid_t finalUID = getuid();
+    return finalUID;
+}
+*/
+import "C"
 import (
 	"fmt"
 	"os"
 	"os/user"
 	"runtime"
+	"strconv"
 	"unicode/utf16"
 
 	"golang.org/x/sys/unix"
 )
 
 func isElevated() bool {
-	currentUser, _ := user.Current()
-	return currentUser.Uid == "0"
+	uid := C.UpdateEUID()
+	return uid == 0
 }
 func getArchitecture() string {
 	return runtime.GOARCH
@@ -43,11 +63,16 @@ func getStringFromBytes(data [65]byte) string {
 }
 func getOS() string {
 	u := unix.Utsname{}
-	unix.Uname(&u)
+	err := unix.Uname(&u)
+	if err != nil {
+		return fmt.Sprintf("Unknown Error: %v", err)
+	}
 	return getStringFromBytes(u.Sysname) + "\n" + getStringFromBytes(u.Nodename) + "\n" + getStringFromBytes(u.Release) + "\n" + getStringFromBytes(u.Version) + "\n" + getStringFromBytes(u.Machine)
 }
 func getUser() string {
-	currentUser, err := user.Current()
+	uid := C.UpdateEUID()
+	currentUser, err := user.LookupId(strconv.Itoa(int(uid)))
+	//currentUser, err := user.Current()
 	if err != nil {
 		return ""
 	} else {
@@ -82,7 +107,8 @@ func UINT32ByteCountDecimal(b uint32) string {
 }
 
 // Helper function to convert LARGE_INTEGER byte
-//  counts to human readable sizes.
+//
+//	counts to human readable sizes.
 func UINT64ByteCountDecimal(b uint64) string {
 	const unit = 1024
 	if b < unit {

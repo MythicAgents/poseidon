@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 2.0.22 - 2024-02-15
+
+### Changed
+
+- Fixed an issue with prompt command not releasing the prompt window on successful input
+- Fixed an issue with the clipboard_monitor crashing when it couldn't find the window name
+- Fixed an issue with the sudo command on macOS not respecting and changing the new process's UID/GID
+
 ## 2.0.20 - 2024-01-10
 
 ### Changed

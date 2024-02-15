@@ -8,13 +8,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 	"io"
 	"net"
 	"strconv"
 	"strings"
-	"time"
-
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 // ****** The following is from https://github.com/armon/go-socks5 *****
@@ -156,7 +154,7 @@ func handleMutexMapModifications() {
 				// got a message from mythic, we know of that serverID, send the data along
 				select {
 				case channelMap[msg.ServerId].Channel <- msg:
-				case <-time.After(1 * time.Second):
+				default:
 					//fmt.Printf("dropping data because channel is full")
 				}
 			} else if !msg.Exit {

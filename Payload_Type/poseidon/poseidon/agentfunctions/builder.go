@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-const version = "2.0.21"
+const version = "2.0.22"
 
 var payloadDefinition = agentstructs.PayloadType{
 	Name:                                   "poseidon",
@@ -111,7 +111,6 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		Success:            true,
 		UpdatedCommandList: &payloadBuildMsg.CommandList,
 	}
-
 	if len(payloadBuildMsg.C2Profiles) == 0 {
 		payloadBuildResponse.Success = false
 		payloadBuildResponse.BuildStdErr = "Failed to build - must select at least one C2 Profile"
@@ -468,7 +467,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 }
 
 // dummy example function for executing something on a new poseidon callback
-func onNewBuild(data agentstructs.PTOnNewCallbackAllData) agentstructs.PTOnNewCallbackResponse {
+func onNewCallback(data agentstructs.PTOnNewCallbackAllData) agentstructs.PTOnNewCallbackResponse {
 	return agentstructs.PTOnNewCallbackResponse{
 		AgentCallbackID: data.Callback.AgentCallbackID,
 		Success:         true,
@@ -478,6 +477,6 @@ func onNewBuild(data agentstructs.PTOnNewCallbackAllData) agentstructs.PTOnNewCa
 func Initialize() {
 	agentstructs.AllPayloadData.Get("poseidon").AddPayloadDefinition(payloadDefinition)
 	agentstructs.AllPayloadData.Get("poseidon").AddBuildFunction(build)
-	agentstructs.AllPayloadData.Get("poseidon").AddOnNewCallbackFunction(onNewBuild)
+	agentstructs.AllPayloadData.Get("poseidon").AddOnNewCallbackFunction(onNewCallback)
 	agentstructs.AllPayloadData.Get("poseidon").AddIcon(filepath.Join(".", "poseidon", "agentfunctions", "poseidon.svg"))
 }

@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/user"
 	"runtime"
+	"strconv"
 	"strings"
 	"unicode/utf16"
 )
@@ -21,11 +22,8 @@ import (
 func cstring(s *C.NSString) *C.char { return C.nsstring2cstring(s) }
 func gostring(s *C.NSString) string { return C.GoString(cstring(s)) }
 func isElevated() bool {
-	currentUser, err := user.Current()
-	if err != nil {
-		return false
-	}
-	return currentUser.Uid == "0"
+	uid := C.UpdateEUID()
+	return uid == 0
 }
 func getArchitecture() string {
 	return runtime.GOARCH
@@ -62,7 +60,9 @@ func getOS() string {
 	//return runtime.GOOS
 }
 func getUser() string {
-	currentUser, err := user.Current()
+	uid := C.UpdateEUID()
+	currentUser, err := user.LookupId(strconv.Itoa(int(uid)))
+	//currentUser, err := user.Current()
 	if err != nil {
 		return ""
 	} else {

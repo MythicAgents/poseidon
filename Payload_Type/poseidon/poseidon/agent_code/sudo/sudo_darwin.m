@@ -35,7 +35,7 @@ const char* sudo_poseidon(char* username, char* password, char* promptText, char
     if (status != noErr) {
         return [[[NSString alloc] initWithFormat:@"Error: %d. Cannot create authorization reference.", status] UTF8String];
     }
-    AuthorizationFlags flags = kAuthorizationFlagDefaults | kAuthorizationFlagExtendRights | kAuthorizationFlagPreAuthorize; // | kAuthorizationFlagInteractionAllowed; //<- Just for debugging, will display the OS auth dialog if needed!!!
+    AuthorizationFlags flags = kAuthorizationFlagDefaults | kAuthorizationFlagExtendRights | kAuthorizationFlagPreAuthorize;// | kAuthorizationFlagInteractionAllowed; //<- Just for debugging, will display the OS auth dialog if needed!!!
     if( strlen(password) == 0 ){
         // only allow user authorization if we don't know the password
         flags |= kAuthorizationFlagInteractionAllowed;
@@ -53,13 +53,13 @@ const char* sudo_poseidon(char* username, char* password, char* promptText, char
 
     status = AuthorizationExecuteWithPrivileges(authRef, command, kAuthorizationFlagDefaults, args, &pipe);
 
-    // Print to standard output
-    char readBuffer[128];
     if (status == errAuthorizationSuccess) {
         AuthorizationFree(authRef,kAuthorizationFlagDestroyRights);
         *fd = fileno(pipe);
         return "";
         /*
+        // Print to standard output
+        char readBuffer[128];
         for (;;) {
             int bytesRead = read(fileno(pipe), readBuffer, sizeof(readBuffer));
             if (bytesRead < 1) break;

@@ -40,21 +40,27 @@ func sudoWithPromptOption(task structs.Task, args Arguments) {
 		}
 		defer newFD.Close()
 		data := make([]byte, 1024)
-		n, err := newFD.Read(data)
-		if err != nil && n == 0 {
-			if err == io.EOF {
-				msg.Completed = true
-				msg.Status = "completed"
+		for {
+			n, err := newFD.Read(data)
+			if err != nil {
+				if err == io.EOF {
+					msg.Completed = true
+					msg.UserOutput = ""
+					msg.Status = "completed"
+					task.Job.SendResponses <- msg
+					return
+				}
+				msg.SetError(err.Error())
 				task.Job.SendResponses <- msg
 				return
 			}
-			msg.SetError(err.Error())
-			task.Job.SendResponses <- msg
-			return
+			if n > 0 {
+				msg.UserOutput = string(data[0:n])
+				task.Job.SendResponses <- msg
+				n = 0
+			}
 		}
-		msg.UserOutput = string(data[0:n])
-		msg.Completed = true
-		task.Job.SendResponses <- msg
+
 	} else {
 		msg.SetError(C.GoString(contents))
 		task.Job.SendResponses <- msg

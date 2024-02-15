@@ -34,19 +34,19 @@ var (
 )
 var (
 	// HandleInboundMythicMessageFromEgressChannel processes messages from egress
-	HandleInboundMythicMessageFromEgressChannel = make(chan structs.MythicMessageResponse, 10)
+	HandleInboundMythicMessageFromEgressChannel = make(chan structs.MythicMessageResponse, 100)
 	// FromMythicSocksChannel gets SOCKS messages from Mythic
-	FromMythicSocksChannel = make(chan structs.SocksMsg, 100)
+	FromMythicSocksChannel = make(chan structs.SocksMsg, 2000)
 	// FromMythicRpfwdChannel gets RPFWD messages from Mythic
-	FromMythicRpfwdChannel = make(chan structs.SocksMsg, 100)
+	FromMythicRpfwdChannel = make(chan structs.SocksMsg, 2000)
 	// InterceptToMythicSocksChannel gets SOCKS messages from agent and determines if they should be held or passed to Push C2 immediately
-	InterceptToMythicSocksChannel = make(chan structs.SocksMsg, 100)
+	InterceptToMythicSocksChannel = make(chan structs.SocksMsg, 2000)
 	// toMythicSocksChannel gets SOCKS messages queued up waiting for the agent to check back in with Mythic again
-	toMythicSocksChannel = make(chan structs.SocksMsg, 100)
+	toMythicSocksChannel = make(chan structs.SocksMsg, 2000)
 	// InterceptToMythicRpfwdChannel gets SOCKS messages from agent and determines if they should be held or passed to Push C2 immediately
-	InterceptToMythicRpfwdChannel = make(chan structs.SocksMsg, 100)
+	InterceptToMythicRpfwdChannel = make(chan structs.SocksMsg, 2000)
 	// toMythicRpfwdChannel gets SOCKS messages queued up waiting for the agent to check back in with Mythic again
-	toMythicRpfwdChannel = make(chan structs.SocksMsg, 100)
+	toMythicRpfwdChannel = make(chan structs.SocksMsg, 2000)
 )
 
 // listenForDelegateMessagesToMythic gathers the delegate messages (NewDelegatesToMythicChannel) that need to go out the egress channel into a central location
@@ -182,7 +182,7 @@ func listenForSocksTrafficToMythic(getProfilesPushChannelFunc func() chan struct
 				Socks:  &[]structs.SocksMsg{response},
 			}:
 			case <-time.After(1 * time.Second):
-				utils.PrintDebug(fmt.Sprintf("dropping data because channel is full"))
+				utils.PrintDebug(fmt.Sprintf("dropping push socks data because channel is full, %d", len(pushChan)))
 			}
 
 		} else {
@@ -190,7 +190,7 @@ func listenForSocksTrafficToMythic(getProfilesPushChannelFunc func() chan struct
 			select {
 			case toMythicSocksChannel <- response:
 			case <-time.After(1 * time.Second):
-				utils.PrintDebug(fmt.Sprintf("dropping data because channel is full"))
+				utils.PrintDebug(fmt.Sprintf("dropping data because channel is full, %d", len(toMythicSocksChannel)))
 			}
 		}
 	}
