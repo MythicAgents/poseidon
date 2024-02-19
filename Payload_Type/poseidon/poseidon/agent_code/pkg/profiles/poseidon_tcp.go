@@ -140,6 +140,7 @@ func (c *C2PoseidonTCP) IsRunning() bool {
 }
 func (c *C2PoseidonTCP) SetEncryptionKey(newKey string) {
 	c.Key = newKey
+	c.FinishedStaging = true
 	c.ExchangingKeys = false
 }
 func (c *C2PoseidonTCP) UpdateConfig(parameter string, value string) {

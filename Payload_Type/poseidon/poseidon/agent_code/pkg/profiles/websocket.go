@@ -208,6 +208,7 @@ func (c *C2Websockets) Start() {
 			// If we successfully checkin, get our new ID and start looping
 			if strings.Contains(checkIn.Status, "success") {
 				SetMythicID(checkIn.ID)
+				SetAllEncryptionKeys(c.Key)
 				break
 			} else {
 				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
@@ -291,6 +292,7 @@ func (c *C2Websockets) UpdateConfig(parameter string, value string) {
 		changingConnectionParameter = true
 	case "EncryptionKey":
 		c.Key = value
+		SetAllEncryptionKeys(c.Key)
 	case "Endpoint":
 		c.Endpoint = value
 	case "Killdate":
@@ -437,6 +439,7 @@ func (c *C2Websockets) CheckIn() structs.CheckInMessageResponse {
 			SetMythicID(response.ID)
 			c.ExchangingKeys = false
 			c.FinishedStaging = true
+			SetAllEncryptionKeys(c.Key)
 			return response
 		}
 	}

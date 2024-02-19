@@ -338,6 +338,7 @@ func (c *C2HTTP) CheckIn() structs.CheckInMessageResponse {
 			}
 			if len(response.ID) != 0 {
 				SetMythicID(response.ID)
+				SetAllEncryptionKeys(c.Key)
 				return response
 			} else {
 				time.Sleep(time.Duration(c.GetSleepTime()))

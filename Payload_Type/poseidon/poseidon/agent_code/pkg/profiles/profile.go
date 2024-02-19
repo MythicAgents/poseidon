@@ -212,6 +212,7 @@ func GetAllC2Info() string {
 // SetAllEncryptionKeys makes sure all compiled c2 profiles are updated with callback encryption information
 func SetAllEncryptionKeys(newKey string) {
 	for c2, _ := range availableC2Profiles {
+		utils.PrintDebug(fmt.Sprintf("Updating encryption keys for: %s", c2))
 		availableC2Profiles[c2].SetEncryptionKey(newKey)
 	}
 }
@@ -229,6 +230,14 @@ func StartC2Profile(profileName string) {
 // StopC2Profile stops a specific c2 profile by name (usually via tasking)
 func StopC2Profile(profileName string) {
 	utils.PrintDebug(fmt.Sprintf("Stopping C2 profile by name from tasking: %s\n", profileName))
+	for c2, _ := range availableC2Profiles {
+		if c2 == profileName {
+			utils.PrintDebug(fmt.Sprintf("stopping: %s\n", c2))
+			failedConnectionCounts[c2] = 0
+			availableC2Profiles[c2].Stop()
+			break
+		}
+	}
 	StartNextEgress(profileName)
 }
 
@@ -261,9 +270,22 @@ func UpdateC2Profile(profileName string, argName string, argValue string) {
 
 // GetPushChannel gets the channel for the currently running c2 profile if one exists
 func GetPushChannel() chan structs.MythicMessage {
+	hasEgress := false
 	for c2, _ := range availableC2Profiles {
-		if availableC2Profiles[c2].GetPushChannel() != nil {
+		// try to find direct egress push channels first
+		if !availableC2Profiles[c2].IsP2P() && availableC2Profiles[c2].GetPushChannel() != nil {
 			return availableC2Profiles[c2].GetPushChannel()
+		}
+		if availableC2Profiles[c2].IsRunning() && !availableC2Profiles[c2].IsP2P() {
+			hasEgress = true
+		}
+	}
+	if !hasEgress {
+		// we have no push egress and no direct egress at all, so check p2p
+		for c2, _ := range availableC2Profiles {
+			if availableC2Profiles[c2].IsP2P() && availableC2Profiles[c2].GetPushChannel() != nil {
+				return availableC2Profiles[c2].GetPushChannel()
+			}
 		}
 	}
 	return nil
