@@ -11,10 +11,7 @@ var shell = agentstructs.Command{
 	Description:               "execute a single shell command via /bin/sh",
 	MitreAttackMappings:       []string{"T1059"},
 	TaskFunctionCreateTasking: shellCreateTasking,
-	TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
-		return args.LoadArgsFromDictionary(input)
-	},
-	Version: 1,
+	Version:                   1,
 }
 
 func init() {

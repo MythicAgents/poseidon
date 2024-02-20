@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-const version = "2.0.22"
+const version = "2.0.23"
 
 var payloadDefinition = agentstructs.PayloadType{
 	Name:                                   "poseidon",
