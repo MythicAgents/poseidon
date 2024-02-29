@@ -22,6 +22,7 @@ func init() {
 			{
 				Name:             "clearEnv",
 				ModalDisplayName: "Environment Names to clear",
+				DefaultValue:     []string{},
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_ARRAY,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
@@ -34,6 +35,7 @@ func init() {
 			{
 				Name:             "clearAllEnv",
 				ModalDisplayName: "Clear All Environment variables",
+				DefaultValue:     false,
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_BOOLEAN,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{

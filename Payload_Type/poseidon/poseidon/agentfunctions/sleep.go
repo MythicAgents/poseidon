@@ -27,6 +27,7 @@ func init() {
 				Name:             "interval",
 				ModalDisplayName: "Interval Seconds",
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_NUMBER,
+				DefaultValue:     0,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: true,
@@ -38,6 +39,7 @@ func init() {
 			{
 				Name:             "jitter",
 				ModalDisplayName: "Jitter Percentage",
+				DefaultValue:     0,
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_NUMBER,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{

@@ -21,6 +21,7 @@ func init() {
 			{
 				Name:             "setEnv",
 				ModalDisplayName: "Environment Values",
+				DefaultValue:     []string{},
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_ARRAY,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{

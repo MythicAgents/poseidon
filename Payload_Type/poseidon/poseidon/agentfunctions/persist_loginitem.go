@@ -23,6 +23,7 @@ func init() {
 			{
 				Name:             "path",
 				ModalDisplayName: "Program Location",
+				DefaultValue:     "",
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
@@ -35,6 +36,7 @@ func init() {
 			{
 				Name:          "name",
 				ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_STRING,
+				DefaultValue:  "",
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: false,

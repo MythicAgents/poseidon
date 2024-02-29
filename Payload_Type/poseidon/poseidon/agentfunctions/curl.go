@@ -51,6 +51,7 @@ func init() {
 			{
 				Name:             "headers",
 				ModalDisplayName: "HTTP Headers",
+				DefaultValue:     []string{},
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_ARRAY,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
@@ -63,6 +64,7 @@ func init() {
 			{
 				Name:             "body",
 				ModalDisplayName: "Body",
+				DefaultValue:     "",
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{

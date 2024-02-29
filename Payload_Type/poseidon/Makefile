@@ -23,6 +23,9 @@ run:
 	./${BINARY_NAME}
 
 run_custom:
+	go mod download
+	go mod tidy
+	go build -o ${BINARY_NAME} .
 	DEBUG_LEVEL=${DEBUG_LEVEL} \
 RABBITMQ_HOST=${RABBITMQ_HOST} \
 RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD} \

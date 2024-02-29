@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 2.0.24 - 2024-02-29
+
+### Changed
+
+- Fixed the `cd` command to handle surrounding quotes
+- Updated a few other commands with default values that were missing them
+- Updated go.mod files
+
 ## 2.0.22 - 2024-02-15
 
 ### Changed
