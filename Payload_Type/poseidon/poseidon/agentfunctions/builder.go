@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-const version = "2.0.24"
+const version = "2.0.25"
 
 var payloadDefinition = agentstructs.PayloadType{
 	Name:                                   "poseidon",
@@ -88,6 +88,13 @@ var payloadDefinition = agentstructs.PayloadType{
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_NUMBER,
 			DefaultValue:  10,
 		},
+		{
+			Name:          "static",
+			Description:   "Statically compile the payload",
+			Required:      false,
+			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_BOOLEAN,
+			DefaultValue:  false,
+		},
 	},
 	BuildSteps: []agentstructs.BuildStep{
 		{
@@ -141,6 +148,12 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		payloadBuildResponse.BuildStdErr = err.Error()
 		return payloadBuildResponse
 	}
+	static, err := payloadBuildMsg.BuildParameters.GetBooleanArg("static")
+	if err != nil {
+		payloadBuildResponse.Success = false
+		payloadBuildResponse.BuildStdErr = err.Error()
+		return payloadBuildResponse
+	}
 	failedConnectionCountThresholdString, err := payloadBuildMsg.BuildParameters.GetNumberArg("failover_threshold")
 	if err != nil {
 		payloadBuildResponse.Success = false
@@ -154,7 +167,12 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 
 	// Build Go link flags that are passed in at compile time through the "-ldflags=" argument
 	// https://golang.org/cmd/link/
-	ldflags := fmt.Sprintf("-s -w -X '%s.UUID=%s'", poseidon_repo_profile, payloadBuildMsg.PayloadUUID)
+	ldflags := ""
+	if static {
+		ldflags += fmt.Sprintf("-extldflags=-static -s -w -X '%s.UUID=%s'", poseidon_repo_profile, payloadBuildMsg.PayloadUUID)
+	} else {
+		ldflags += fmt.Sprintf("-s -w -X '%s.UUID=%s'", poseidon_repo_profile, payloadBuildMsg.PayloadUUID)
+	}
 	ldflags += fmt.Sprintf(" -X '%s.debugString=%v'", poseidon_repo_utils, debug)
 	ldflags += fmt.Sprintf(" -X '%s.egress_failover=%s'", poseidon_repo_profile, egress_failover)
 	ldflags += fmt.Sprintf(" -X '%s.failedConnectionCountThresholdString=%v'", poseidon_repo_profile, failedConnectionCountThresholdString)
@@ -259,6 +277,9 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		goarch = "arm64"
 	}
 	tags := []string{}
+	if static {
+		tags = []string{"osusergo", "netgo"}
+	}
 	for index, _ := range payloadBuildMsg.C2Profiles {
 		tags = append(tags, payloadBuildMsg.C2Profiles[index].Name)
 	}

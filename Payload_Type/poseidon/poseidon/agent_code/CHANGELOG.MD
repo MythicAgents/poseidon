@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 2.0.25 - 2024-03-06
+
+### Changed
+
+- Fixed the `ls` command to handle surrounding quotes
+- Added `static` option to statically compile poseidon
+
 ## 2.0.24 - 2024-02-29
 
 ### Changed

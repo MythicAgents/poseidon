@@ -5,6 +5,7 @@ import (
 	"github.com/MythicMeta/MythicContainer/logging"
 	"github.com/mitchellh/mapstructure"
 	"path/filepath"
+	"strings"
 )
 
 func init() {
@@ -24,14 +25,14 @@ func init() {
 				Success: true,
 				TaskID:  taskData.Task.ID,
 			}
-			if path, err := taskData.Args.GetStringArg("path"); err != nil {
+			path, err := taskData.Args.GetStringArg("path")
+			if err != nil {
 				logging.LogError(err, "Failed to get string arg for path")
 				response.Error = err.Error()
 				response.Success = false
 				return response
-			} else {
-				response.DisplayParams = &path
 			}
+			response.DisplayParams = &path
 			return response
 		},
 		TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
@@ -50,7 +51,7 @@ func init() {
 				args.AddArg(agentstructs.CommandParameter{
 					Name:          "path",
 					ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_STRING,
-					DefaultValue:  fileBrowserData.FullPath,
+					DefaultValue:  strings.Trim(fileBrowserData.FullPath, "\""),
 				})
 				return nil
 			}
@@ -67,7 +68,7 @@ func init() {
 				args.AddArg(agentstructs.CommandParameter{
 					Name:          "path",
 					ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_STRING,
-					DefaultValue:  input,
+					DefaultValue:  strings.Trim(input, "\""),
 				})
 			}
 			args.AddArg(agentstructs.CommandParameter{
