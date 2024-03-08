@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 2.0.26 - 2024-03-08
+
+### Changed
+
+- The latest ATT&CK removed `T1547.011` and replaced it with `T1647` which led to warnings in Mythic's UI
+
 ## 2.0.25 - 2024-03-06
 
 ### Changed

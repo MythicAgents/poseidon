@@ -13,8 +13,8 @@ func init() {
 		Description:         "Add a login item for the current user via the LSSharedFileListInsertItemURL function",
 		HelpString:          "persist_loginitem",
 		Version:             1,
-		Author:              "@xorrior",
-		MitreAttackMappings: []string{"T1547.011", "T1547.015"},
+		Author:              "@xorrior, @its_a_feature_",
+		MitreAttackMappings: []string{"T1547.015", "T1647"},
 		SupportedUIFeatures: []string{},
 		CommandAttributes: agentstructs.CommandAttribute{
 			SupportedOS: []string{agentstructs.SUPPORTED_OS_MACOS},
