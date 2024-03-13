@@ -3,6 +3,7 @@ package agentfunctions
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
@@ -15,7 +16,7 @@ import (
 	"strings"
 )
 
-const version = "2.0.27"
+const version = "2.0.28"
 
 var payloadDefinition = agentstructs.PayloadType{
 	Name:                                   "poseidon",
@@ -78,8 +79,8 @@ var payloadDefinition = agentstructs.PayloadType{
 			Description:   "How should egress mechanisms rotate",
 			Required:      false,
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_CHOOSE_ONE,
-			Choices:       []string{"round-robin"},
-			DefaultValue:  "round-robin",
+			Choices:       []string{"failover"},
+			DefaultValue:  "failover",
 		},
 		{
 			Name:          "failover_threshold",
@@ -154,6 +155,11 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		payloadBuildResponse.BuildStdErr = err.Error()
 		return payloadBuildResponse
 	}
+	if static && targetOs == "darwin" {
+		payloadBuildResponse.Success = false
+		payloadBuildResponse.BuildStdErr = "Cannot currently build fully static library for macOS"
+		return payloadBuildResponse
+	}
 	failedConnectionCountThresholdString, err := payloadBuildMsg.BuildParameters.GetNumberArg("failover_threshold")
 	if err != nil {
 		payloadBuildResponse.Success = false
@@ -181,13 +187,13 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		payloadBuildResponse.BuildStdErr = err.Error()
 		return payloadBuildResponse
 	} else {
-		stringBytes := string(egressBytes)
-		stringBytes = strings.ReplaceAll(stringBytes, "\"", "\\\"")
+		stringBytes := base64.StdEncoding.EncodeToString(egressBytes)
+		//stringBytes = strings.ReplaceAll(stringBytes, "\"", "\\\"")
 		ldflags += fmt.Sprintf(" -X '%s.egress_order=%s'", poseidon_repo_profile, stringBytes)
 	}
-
 	// Iterate over the C2 profile parameters and associated variable through Go's "-X" link flag
 	for index, _ := range payloadBuildMsg.C2Profiles {
+		initialConfig := make(map[string]interface{})
 		for _, key := range payloadBuildMsg.C2Profiles[index].GetArgNames() {
 			if key == "AESPSK" {
 				//cryptoVal := val.(map[string]interface{})
@@ -197,7 +203,8 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 					payloadBuildResponse.BuildStdErr = err.Error()
 					return payloadBuildResponse
 				}
-				ldflags += fmt.Sprintf(" -X '%s.%s_%s=%s'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, cryptoVal.EncKey)
+				initialConfig[key] = cryptoVal.EncKey
+				//ldflags += fmt.Sprintf(" -X '%s.%s_%s=%s'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, cryptoVal.EncKey)
 			} else if key == "headers" {
 				headers, err := payloadBuildMsg.C2Profiles[index].GetDictionaryArg(key)
 				if err != nil {
@@ -205,15 +212,19 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 					payloadBuildResponse.BuildStdErr = err.Error()
 					return payloadBuildResponse
 				}
-				if jsonBytes, err := json.Marshal(headers); err != nil {
-					payloadBuildResponse.Success = false
-					payloadBuildResponse.BuildStdErr = err.Error()
-					return payloadBuildResponse
-				} else {
-					stringBytes := string(jsonBytes)
-					stringBytes = strings.ReplaceAll(stringBytes, "\"", "\\\"")
-					ldflags += fmt.Sprintf(" -X '%s.%s_%s=%s'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, stringBytes)
-				}
+				initialConfig[key] = headers
+				/*
+					if jsonBytes, err := json.Marshal(headers); err != nil {
+						payloadBuildResponse.Success = false
+						payloadBuildResponse.BuildStdErr = err.Error()
+						return payloadBuildResponse
+					} else {
+						stringBytes := string(jsonBytes)
+						stringBytes = strings.ReplaceAll(stringBytes, "\"", "\\\"")
+						ldflags += fmt.Sprintf(" -X '%s.%s_%s=%s'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, stringBytes)
+					}
+
+				*/
 			} else if key == "raw_c2_config" {
 				agentConfigString, err := payloadBuildMsg.C2Profiles[index].GetStringArg(key)
 				if err != nil {
@@ -229,11 +240,18 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 					payloadBuildResponse.BuildStdErr = err.Error()
 					return payloadBuildResponse
 				}
-				agentConfigString = strings.ReplaceAll(string(configData.Content), "\\", "\\\\")
-				agentConfigString = strings.ReplaceAll(agentConfigString, "\"", "\\\"")
-				agentConfigString = strings.ReplaceAll(agentConfigString, "\n", "")
-				ldflags += fmt.Sprintf(" -X '%s.%s_%s=%s'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, agentConfigString)
-
+				err = json.Unmarshal(configData.Content, initialConfig[key])
+				if err != nil {
+					payloadBuildResponse.Success = false
+					payloadBuildResponse.BuildStdErr = err.Error()
+					return payloadBuildResponse
+				}
+				/*
+					agentConfigString = strings.ReplaceAll(string(configData.Content), "\\", "\\\\")
+					agentConfigString = strings.ReplaceAll(agentConfigString, "\"", "\\\"")
+					agentConfigString = strings.ReplaceAll(agentConfigString, "\n", "")
+					ldflags += fmt.Sprintf(" -X '%s.%s_%s=%s'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, agentConfigString)
+				*/
 			} else {
 				val, err := payloadBuildMsg.C2Profiles[index].GetArg(key)
 				if err != nil {
@@ -241,9 +259,19 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 					payloadBuildResponse.BuildStdErr = err.Error()
 					return payloadBuildResponse
 				}
-				ldflags += fmt.Sprintf(" -X '%s.%s_%s=%v'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, val)
+				initialConfig[key] = val
+				//ldflags += fmt.Sprintf(" -X '%s.%s_%s=%v'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, val)
 			}
 		}
+		initialConfigBytes, err := json.Marshal(initialConfig)
+		if err != nil {
+			payloadBuildResponse.Success = false
+			payloadBuildResponse.BuildStdErr = err.Error()
+			return payloadBuildResponse
+		}
+		initialConfigBase64 := base64.StdEncoding.EncodeToString(initialConfigBytes)
+		payloadBuildResponse.BuildStdOut += fmt.Sprintf("%s's config: \n%v\n", payloadBuildMsg.C2Profiles[index].Name, initialConfig)
+		ldflags += fmt.Sprintf(" -X '%s.%s_%s=%v'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, "initial_config", initialConfigBase64)
 	}
 
 	proxyBypass, err := payloadBuildMsg.BuildParameters.GetBooleanArg("proxy_bypass")
@@ -283,7 +311,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	for index, _ := range payloadBuildMsg.C2Profiles {
 		tags = append(tags, payloadBuildMsg.C2Profiles[index].Name)
 	}
-	command := fmt.Sprintf("rm -rf /deps; CGO_ENABLED=1 GOOS=%s GOARCH=%s ", targetOs, goarch)
+	command := fmt.Sprintf("CGO_ENABLED=1 GOOS=%s GOARCH=%s ", targetOs, goarch)
 	goCmd := fmt.Sprintf("-tags %s -buildmode %s -ldflags \"%s\"", strings.Join(tags, ","), mode, ldflags)
 	if targetOs == "darwin" {
 		command += "CC=o64-clang CXX=o64-clang++ "
@@ -355,8 +383,8 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	if err := cmd.Run(); err != nil {
 		payloadBuildResponse.Success = false
 		payloadBuildResponse.BuildMessage = "Compilation failed with errors"
-		payloadBuildResponse.BuildStdErr = stderr.String() + "\n" + err.Error()
-		payloadBuildResponse.BuildStdOut = stdout.String()
+		payloadBuildResponse.BuildStdErr += stderr.String() + "\n" + err.Error()
+		payloadBuildResponse.BuildStdOut += stdout.String()
 		mythicrpc.SendMythicRPCPayloadUpdateBuildStep(mythicrpc.MythicRPCPayloadUpdateBuildStepMessage{
 			PayloadUUID: payloadBuildMsg.PayloadUUID,
 			StepName:    "Compiling",
@@ -381,7 +409,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	if !garble {
 		payloadBuildResponse.BuildStdErr = stderr.String()
 	}
-	payloadBuildResponse.BuildStdOut = stdout.String()
+	payloadBuildResponse.BuildStdOut += stdout.String()
 
 	if payloadBytes, err := os.ReadFile(fmt.Sprintf("/build/%s", payloadName)); err != nil {
 		payloadBuildResponse.Success = false

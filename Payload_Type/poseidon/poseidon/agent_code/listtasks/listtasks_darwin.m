@@ -15,17 +15,26 @@ char* listtasks() {
         kern_return_t kr;
         host_get_host_priv_port(mach_host_self(), &host_priv);
         kr = processor_set_default(host_priv, &psDefault);
+        if (kr != KERN_SUCCESS) {
+            return [[NSString stringWithFormat:@"{\"error\": \"%x\"}", kr] UTF8String];
+        }
         processor_set_name_array_t    *psets = malloc(1024);
         mach_msg_type_number_t      psetCount;
         kr = host_processor_sets(host_priv, psets, &psetCount);
+        if (kr != KERN_SUCCESS) {
+            return [[NSString stringWithFormat:@"{\"error\": \"%x\"}", kr] UTF8String];
+        }
         kr = host_processor_set_priv(host_priv, psDefault, &psDefault_control);
 
         if (kr != KERN_SUCCESS) {
-            return [NSString stringWithFormat:@"%x", kr];
+            return [[NSString stringWithFormat:@"{\"error\": \"%x\"}", kr] UTF8String];
         }
 
         numTasks=1000;
         kr = processor_set_tasks(psDefault_control, &tasks, &numTasks);
+        if (kr != KERN_SUCCESS) {
+            return [[NSString stringWithFormat:@"{\"error\": \"%x\"}", kr] UTF8String];
+        }
         NSMutableDictionary *taskList = [@{} mutableCopy];
 
         for (i = 0; i < numTasks; i++) {

@@ -24,18 +24,14 @@ import (
 )
 
 // All variables must be a string so they can be set with ldflags
+var tcp_initial_config string
 
-// port to listen on
-var poseidon_tcp_port string
-
-// killdate is the Killdate
-var poseidon_tcp_killdate string
-
-// encrypted_exchange_check is Perform Key Exchange
-var poseidon_tcp_encrypted_exchange_check string
-
-// AESPSK is the Crypto type
-var poseidon_tcp_AESPSK string
+type TCPInitialConfig struct {
+	Port                   uint   `json:"port"`
+	Killdate               string `json:"killdate"`
+	EncryptedExchangeCheck bool   `json:"encrypted_exchange_check"`
+	AESPSK                 string `json:"AESPSK"`
+}
 
 type C2PoseidonTCP struct {
 	ExchangingKeys       bool                `json:"ExchangingKeys"`
@@ -53,15 +49,26 @@ type C2PoseidonTCP struct {
 }
 
 func init() {
-	killDateString := fmt.Sprintf("%sT00:00:00.000Z", poseidon_tcp_killdate)
+	initialConfigBytes, err := base64.StdEncoding.DecodeString(tcp_initial_config)
+	if err != nil {
+		utils.PrintDebug(fmt.Sprintf("error trying to decode initial poseidon tcp config, exiting: %v\n", err))
+		os.Exit(1)
+	}
+	initialConfig := TCPInitialConfig{}
+	err = json.Unmarshal(initialConfigBytes, &initialConfig)
+	if err != nil {
+		utils.PrintDebug(fmt.Sprintf("error trying to unmarshal initial poseidon tcp config, exiting: %v\n", err))
+		os.Exit(1)
+	}
+	killDateString := fmt.Sprintf("%sT00:00:00.000Z", initialConfig.Killdate)
 	killDateTime, err := time.Parse("2006-01-02T15:04:05.000Z", killDateString)
 	if err != nil {
 		os.Exit(1)
 	}
 	profile := C2PoseidonTCP{
-		Key:                  poseidon_tcp_AESPSK,
-		Port:                 poseidon_tcp_port,
-		ExchangingKeys:       poseidon_tcp_encrypted_exchange_check == "true",
+		Key:                  initialConfig.AESPSK,
+		Port:                 fmt.Sprintf("%d", initialConfig.Port),
+		ExchangingKeys:       initialConfig.EncryptedExchangeCheck,
 		EgressTCPConnections: make(map[string]net.Conn),
 		FinishedStaging:      false,
 		Killdate:             killDateTime,

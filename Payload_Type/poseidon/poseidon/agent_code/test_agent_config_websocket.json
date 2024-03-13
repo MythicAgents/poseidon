@@ -1,0 +1,13 @@
+{
+  "callback_host": "ws://127.0.0.1",
+  "callback_port": 8081,
+  "AESPSK": "qgbrtDu3eaYYUXZmSuaeMpkzI+5mkVjr00iQ4p/xtpU=",
+  "ENDPOINT_REPLACE": "socket",
+  "USER_AGENT": "",
+  "callback_interval": 2,
+  "encrypted_exchange_check": true,
+  "domain_front": "",
+  "callback_jitter": 0,
+  "killdate": "2024-12-31",
+  "tasking_type": "Push"
+}

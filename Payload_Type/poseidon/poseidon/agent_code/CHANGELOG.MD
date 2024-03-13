@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 2.0.28 - 2024-03-13
+
+### Changed
+
+- Fixed an issue with `listtasks` causes a segfault when not root
+- Updated the build process to take in base64 encoded values to help reduce easily visible data from build
+
 ## 2.0.27 - 2024-03-08
 
 ### Changed
