@@ -9,14 +9,16 @@ import (
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"github.com/MythicMeta/MythicContainer/mythicrpc"
 	"github.com/google/uuid"
+	"golang.org/x/exp/slices"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-const version = "2.0.28"
+const version = "2.0.29"
 
 var payloadDefinition = agentstructs.PayloadType{
 	Name:                                   "poseidon",
@@ -252,15 +254,47 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 					agentConfigString = strings.ReplaceAll(agentConfigString, "\n", "")
 					ldflags += fmt.Sprintf(" -X '%s.%s_%s=%s'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, agentConfigString)
 				*/
-			} else {
-				val, err := payloadBuildMsg.C2Profiles[index].GetArg(key)
+			} else if slices.Contains([]string{"callback_jitter", "callback_interval", "callback_port", "port"}, key) {
+
+				val, err := payloadBuildMsg.C2Profiles[index].GetNumberArg(key)
+				if err != nil {
+					payloadBuildResponse.Success = false
+					payloadBuildResponse.BuildStdErr = err.Error()
+					return payloadBuildResponse
+				}
+				initialConfig[key] = int(val)
+				//ldflags += fmt.Sprintf(" -X '%s.%s_%s=%v'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, val)
+			} else if slices.Contains([]string{"encrypted_exchange_check"}, key) {
+				val, err := payloadBuildMsg.C2Profiles[index].GetBooleanArg(key)
 				if err != nil {
 					payloadBuildResponse.Success = false
 					payloadBuildResponse.BuildStdErr = err.Error()
 					return payloadBuildResponse
 				}
 				initialConfig[key] = val
-				//ldflags += fmt.Sprintf(" -X '%s.%s_%s=%v'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, val)
+			} else {
+				val, err := payloadBuildMsg.C2Profiles[index].GetStringArg(key)
+				if err != nil {
+					payloadBuildResponse.Success = false
+					payloadBuildResponse.BuildStdErr = err.Error()
+					return payloadBuildResponse
+				}
+				if key == "proxy_port" {
+					if val == "" {
+						initialConfig[key] = 0
+					} else {
+						intval, err := strconv.Atoi(val)
+						if err != nil {
+							payloadBuildResponse.Success = false
+							payloadBuildResponse.BuildStdErr = err.Error()
+							return payloadBuildResponse
+						}
+						initialConfig[key] = intval
+					}
+				} else {
+					initialConfig[key] = val
+				}
+
 			}
 		}
 		initialConfigBytes, err := json.Marshal(initialConfig)
@@ -270,7 +304,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 			return payloadBuildResponse
 		}
 		initialConfigBase64 := base64.StdEncoding.EncodeToString(initialConfigBytes)
-		payloadBuildResponse.BuildStdOut += fmt.Sprintf("%s's config: \n%v\n", payloadBuildMsg.C2Profiles[index].Name, initialConfig)
+		payloadBuildResponse.BuildStdOut += fmt.Sprintf("%s's config: \n%v\n", payloadBuildMsg.C2Profiles[index].Name, string(initialConfigBytes))
 		ldflags += fmt.Sprintf(" -X '%s.%s_%s=%v'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, "initial_config", initialConfigBase64)
 	}
 
