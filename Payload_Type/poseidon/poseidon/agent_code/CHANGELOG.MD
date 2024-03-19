@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 2.0.30 - 2024-03-19
+
+### Changed
+
+- Updated the dylib/so build process (c-shared mode) to not require additional compilation
+  - This leverages a build flow from [merlin](https://github.com/MythicAgents/merlin/) to conditionally add in constructors to auto run on load instead of waiting for RunMain execution
+  
 ## 2.0.29 - 2024-03-14
 
 ### Changed

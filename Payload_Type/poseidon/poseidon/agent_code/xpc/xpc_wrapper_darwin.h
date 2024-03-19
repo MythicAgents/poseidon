@@ -51,7 +51,7 @@ extern char *xpc_strerror (int);
 extern int csr_check (int what);
 
 // This is undocumented, but sooooo useful :)
-extern mach_port_t xpc_dictionary_copy_mach_send(xpc_object_t, char *key);
+extern mach_port_t xpc_dictionary_copy_mach_send(xpc_object_t, const char *key);
 
 
 // Some of the routine #s launchd recognizes. There are quite a few subsystems

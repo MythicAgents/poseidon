@@ -18,7 +18,7 @@ import (
 	"strings"
 )
 
-const version = "2.0.29"
+const version = "2.0.30"
 
 var payloadDefinition = agentstructs.PayloadType{
 	Name:                                   "poseidon",
@@ -344,6 +344,9 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	}
 	for index, _ := range payloadBuildMsg.C2Profiles {
 		tags = append(tags, payloadBuildMsg.C2Profiles[index].Name)
+	}
+	if mode == "c-shared" {
+		tags = append(tags, "shared")
 	}
 	command := fmt.Sprintf("CGO_ENABLED=1 GOOS=%s GOARCH=%s ", targetOs, goarch)
 	goCmd := fmt.Sprintf("-tags %s -buildmode %s -ldflags \"%s\"", strings.Join(tags, ","), mode, ldflags)
