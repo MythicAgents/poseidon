@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 2.0.31 - 2024-03-27
+
+### Changed
+
+- The websocket profile treats all values as strings instead of numbers and strings
+  - added extra checks to catch conversion errors and convert them properly before stamping into agent
+  
 ## 2.0.30 - 2024-03-19
 
 ### Changed
