@@ -202,7 +202,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 				cryptoVal, err := payloadBuildMsg.C2Profiles[index].GetCryptoArg(key)
 				if err != nil {
 					payloadBuildResponse.Success = false
-					payloadBuildResponse.BuildStdErr = err.Error()
+					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
 					return payloadBuildResponse
 				}
 				initialConfig[key] = cryptoVal.EncKey
@@ -211,7 +211,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 				headers, err := payloadBuildMsg.C2Profiles[index].GetDictionaryArg(key)
 				if err != nil {
 					payloadBuildResponse.Success = false
-					payloadBuildResponse.BuildStdErr = err.Error()
+					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
 					return payloadBuildResponse
 				}
 				initialConfig[key] = headers
@@ -231,7 +231,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 				agentConfigString, err := payloadBuildMsg.C2Profiles[index].GetStringArg(key)
 				if err != nil {
 					payloadBuildResponse.Success = false
-					payloadBuildResponse.BuildStdErr = err.Error()
+					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
 					return payloadBuildResponse
 				}
 				configData, err := mythicrpc.SendMythicRPCFileGetContent(mythicrpc.MythicRPCFileGetContentMessage{
@@ -239,13 +239,13 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 				})
 				if err != nil {
 					payloadBuildResponse.Success = false
-					payloadBuildResponse.BuildStdErr = err.Error()
+					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
 					return payloadBuildResponse
 				}
 				err = json.Unmarshal(configData.Content, initialConfig[key])
 				if err != nil {
 					payloadBuildResponse.Success = false
-					payloadBuildResponse.BuildStdErr = err.Error()
+					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
 					return payloadBuildResponse
 				}
 				/*
@@ -254,29 +254,47 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 					agentConfigString = strings.ReplaceAll(agentConfigString, "\n", "")
 					ldflags += fmt.Sprintf(" -X '%s.%s_%s=%s'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, agentConfigString)
 				*/
-			} else if slices.Contains([]string{"callback_jitter", "callback_interval", "callback_port", "port"}, key) {
+			} else if slices.Contains([]string{"callback_jitter", "callback_interval", "callback_port", "port", "callback_port"}, key) {
 
 				val, err := payloadBuildMsg.C2Profiles[index].GetNumberArg(key)
 				if err != nil {
-					payloadBuildResponse.Success = false
-					payloadBuildResponse.BuildStdErr = err.Error()
-					return payloadBuildResponse
+					stringVal, err := payloadBuildMsg.C2Profiles[index].GetStringArg(key)
+					if err != nil {
+						payloadBuildResponse.Success = false
+						payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
+						return payloadBuildResponse
+					}
+					realVal, err := strconv.Atoi(stringVal)
+					if err != nil {
+						payloadBuildResponse.Success = false
+						payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
+						return payloadBuildResponse
+					}
+					initialConfig[key] = realVal
+				} else {
+					initialConfig[key] = int(val)
 				}
-				initialConfig[key] = int(val)
+
 				//ldflags += fmt.Sprintf(" -X '%s.%s_%s=%v'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, val)
 			} else if slices.Contains([]string{"encrypted_exchange_check"}, key) {
 				val, err := payloadBuildMsg.C2Profiles[index].GetBooleanArg(key)
 				if err != nil {
-					payloadBuildResponse.Success = false
-					payloadBuildResponse.BuildStdErr = err.Error()
-					return payloadBuildResponse
+					stringVal, err := payloadBuildMsg.C2Profiles[index].GetStringArg(key)
+					if err != nil {
+						payloadBuildResponse.Success = false
+						payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
+						return payloadBuildResponse
+					}
+					initialConfig[key] = stringVal == "T"
+				} else {
+					initialConfig[key] = val
 				}
-				initialConfig[key] = val
+
 			} else {
 				val, err := payloadBuildMsg.C2Profiles[index].GetStringArg(key)
 				if err != nil {
 					payloadBuildResponse.Success = false
-					payloadBuildResponse.BuildStdErr = err.Error()
+					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
 					return payloadBuildResponse
 				}
 				if key == "proxy_port" {
@@ -286,7 +304,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 						intval, err := strconv.Atoi(val)
 						if err != nil {
 							payloadBuildResponse.Success = false
-							payloadBuildResponse.BuildStdErr = err.Error()
+							payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
 							return payloadBuildResponse
 						}
 						initialConfig[key] = intval
