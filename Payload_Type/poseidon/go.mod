@@ -5,9 +5,10 @@ go 1.19
 //replace github.com/MythicMeta/MythicContainer => ../../../../MythicMeta/MythicContainer
 
 require (
-	github.com/MythicMeta/MythicContainer v1.3.11
+	github.com/MythicMeta/MythicContainer v1.3.13
 	github.com/google/uuid v1.6.0
 	github.com/mitchellh/mapstructure v1.5.0
+	github.com/pelletier/go-toml v1.9.4
 	golang.org/x/exp v0.0.0-20240318143956-a85f2c67cd81
 )
 

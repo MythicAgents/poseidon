@@ -10,20 +10,27 @@ TCP_UUID=80844d19-9bfc-47f9-b9af-c6b9144c0fdc
 TCP_AGENT_CONFIG_FILE=test_agent_config_tcp.json
 TCP_CONFIG=$(shell base64 -i ${TCP_AGENT_CONFIG_FILE})
 
+DYNAMICHTTP_UUID=fbd34459-f783-4b78-9d4c-fd26a5289fee
+DYNAMICHTTP_AGENT_CONFIG_FILE=test_agent_config_dynamichttp.json
+DYNAMICHTTP_CONFIG=$(shell base64 -i ${DYNAMICHTTP_AGENT_CONFIG_FILE})
+
+HTTPX_UUID=215a0336-420e-4845-93c8-2fc194637185
+HTTPX_AGENT_CONFIG_FILE=test_agent_config_httpx.json
+HTTPX_CONFIG=$(shell base64 -i ${HTTPX_AGENT_CONFIG_FILE})
+
 BINARY_NAME=poseidon
 C2_HTTP=http
 C2_WEBSOCKET=websocket
 C2_TCP=poseidon_tcp
 C2_DYNAMICHTTP=dynamichttp
+C2_HTTPX=httpx
 
 EGRESS_ORDER=$(shell echo [\"http\",\"websocket\",\"dynamichttp\"] | base64 -i - )
 EGRESS_FAILOVER="failover"
 DEBUG=true
 failedConnectionCountThresholdString=10
 
-DYNAMICHTTP_UUID=fbd34459-f783-4b78-9d4c-fd26a5289fee
-DYNAMICHTTP_AGENT_CONFIG_FILE=test_agent_config_dynamichttp.json
-DYNAMICHTTP_CONFIG=$(shell base64 -i ${DYNAMICHTTP_AGENT_CONFIG_FILE})
+
 
 build_http:
 	go build -o ${BINARY_NAME}_${C2_HTTP}.bin -tags="${C2_HTTP}" -ldflags=" \
@@ -87,6 +94,16 @@ build_dynamichttp:
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.${C2_DYNAMICHTTP}_initial_config=${DYNAMICHTTP_CONFIG}'\
 " .
 
+build_httpx:
+	go build -o ${BINARY_NAME}_${C2_HTTPX}.bin -tags="${C2_HTTPX}" -ldflags=" \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.UUID=${HTTPX_UUID}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_order=${EGRESS_ORDER}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_failover=${EGRESS_FAILOVER}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils.debugString=${DEBUG}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.failedConnectionCountThresholdString=${failedConnectionCountThresholdString}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.${C2_HTTPX}_initial_config=${HTTPX_CONFIG}'\
+" .
+
 run_http:
 	./${BINARY_NAME}_${C2_HTTP}.bin
 
@@ -98,6 +115,9 @@ run_dynamichttp:
 
 run_websocket_http:
 	./${BINARY_NAME}_${C2_WEBSOCKET}_${C2_HTTP}.bin
+
+run_httpx:
+	./${BINARY_NAME}_${C2_HTTPX}.bin
 
 build_and_run_http: build_http run_http
 

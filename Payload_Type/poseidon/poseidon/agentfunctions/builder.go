@@ -9,6 +9,7 @@ import (
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"github.com/MythicMeta/MythicContainer/mythicrpc"
 	"github.com/google/uuid"
+	"github.com/pelletier/go-toml"
 	"golang.org/x/exp/slices"
 	"io"
 	"os"
@@ -18,7 +19,7 @@ import (
 	"strings"
 )
 
-const version = "2.0.31"
+const version = "2.0.32"
 
 var payloadDefinition = agentstructs.PayloadType{
 	Name:                                   "poseidon",
@@ -29,7 +30,7 @@ var payloadDefinition = agentstructs.PayloadType{
 	CanBeWrappedByTheFollowingPayloadTypes: []string{},
 	SupportsDynamicLoading:                 false,
 	Description:                            fmt.Sprintf("A fully featured macOS and Linux Golang agent.\nVersion %s\nNeeds Mythic 3.1.0+", version),
-	SupportedC2Profiles:                    []string{"http", "websocket", "poseidon_tcp", "dynamichttp", "webshell"},
+	SupportedC2Profiles:                    []string{"http", "websocket", "poseidon_tcp", "dynamichttp", "webshell", "httpx"},
 	MythicEncryptsData:                     true,
 	BuildParameters: []agentstructs.BuildParameter{
 		{
@@ -242,11 +243,21 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
 					return payloadBuildResponse
 				}
+				if !configData.Success {
+					payloadBuildResponse.Success = false
+					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + configData.Error
+					return payloadBuildResponse
+				}
 				err = json.Unmarshal(configData.Content, initialConfig[key])
 				if err != nil {
-					payloadBuildResponse.Success = false
-					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
-					return payloadBuildResponse
+					tomlConfig := make(map[string]interface{})
+					err = toml.Unmarshal(configData.Content, &tomlConfig)
+					if err != nil {
+						payloadBuildResponse.Success = false
+						payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
+						return payloadBuildResponse
+					}
+					initialConfig[key] = tomlConfig
 				}
 				/*
 					agentConfigString = strings.ReplaceAll(string(configData.Content), "\\", "\\\\")
@@ -254,7 +265,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 					agentConfigString = strings.ReplaceAll(agentConfigString, "\n", "")
 					ldflags += fmt.Sprintf(" -X '%s.%s_%s=%s'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, agentConfigString)
 				*/
-			} else if slices.Contains([]string{"callback_jitter", "callback_interval", "callback_port", "port", "callback_port"}, key) {
+			} else if slices.Contains([]string{"callback_jitter", "callback_interval", "callback_port", "port", "callback_port", "failover_threshold"}, key) {
 
 				val, err := payloadBuildMsg.C2Profiles[index].GetNumberArg(key)
 				if err != nil {
@@ -289,7 +300,14 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 				} else {
 					initialConfig[key] = val
 				}
-
+			} else if slices.Contains([]string{"callback_domains"}, key) {
+				val, err := payloadBuildMsg.C2Profiles[index].GetArrayArg(key)
+				if err != nil {
+					payloadBuildResponse.Success = false
+					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
+					return payloadBuildResponse
+				}
+				initialConfig[key] = val
 			} else {
 				val, err := payloadBuildMsg.C2Profiles[index].GetStringArg(key)
 				if err != nil {
