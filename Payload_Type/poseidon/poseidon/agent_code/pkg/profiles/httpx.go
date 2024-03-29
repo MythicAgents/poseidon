@@ -559,7 +559,7 @@ func (c *C2HTTPx) transformAppendReverse(prev []byte, value string) ([]byte, err
 	if len(value) > len(prev) {
 		return nil, errors.New("append value is longer that full value")
 	}
-	return prev[:len(value)], nil
+	return prev[:len(prev)-len(value)], nil
 }
 
 func (c *C2HTTPx) transformXor(prev []byte, value string) ([]byte, error) {
@@ -734,7 +734,7 @@ func (c *C2HTTPx) CreateDynamicMessage(content []byte, isGetTaskingRequest bool)
 	}
 	var bodyBuffer *bytes.Buffer
 	var bodyBytes []byte
-	utils.PrintDebug(fmt.Sprintf("sending message: %s", string(content)))
+	utils.PrintDebug(fmt.Sprintf("original message message: %s", string(content)))
 	agentMessageBytes, err := c.performTransforms(content, variation)
 	if err != nil {
 		utils.PrintDebug(fmt.Sprintf("Failed to create message: %s", err.Error()))
