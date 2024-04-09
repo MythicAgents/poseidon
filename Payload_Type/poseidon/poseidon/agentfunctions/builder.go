@@ -19,7 +19,7 @@ import (
 	"strings"
 )
 
-const version = "2.0.33"
+const version = "2.0.34"
 
 var payloadDefinition = agentstructs.PayloadType{
 	Name:                                   "poseidon",
@@ -248,17 +248,17 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + configData.Error
 					return payloadBuildResponse
 				}
-				err = json.Unmarshal(configData.Content, initialConfig[key])
+				tomlConfig := make(map[string]interface{})
+				err = json.Unmarshal(configData.Content, &tomlConfig)
 				if err != nil {
-					tomlConfig := make(map[string]interface{})
 					err = toml.Unmarshal(configData.Content, &tomlConfig)
 					if err != nil {
 						payloadBuildResponse.Success = false
 						payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
 						return payloadBuildResponse
 					}
-					initialConfig[key] = tomlConfig
 				}
+				initialConfig[key] = tomlConfig
 				/*
 					agentConfigString = strings.ReplaceAll(string(configData.Content), "\\", "\\\\")
 					agentConfigString = strings.ReplaceAll(agentConfigString, "\"", "\\\"")
