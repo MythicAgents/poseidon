@@ -24,7 +24,7 @@ import (
 )
 
 // All variables must be a string so they can be set with ldflags
-var tcp_initial_config string
+var poseidon_tcp_initial_config string
 
 type TCPInitialConfig struct {
 	Port                   uint   `json:"port"`
@@ -49,7 +49,7 @@ type C2PoseidonTCP struct {
 }
 
 func init() {
-	initialConfigBytes, err := base64.StdEncoding.DecodeString(tcp_initial_config)
+	initialConfigBytes, err := base64.StdEncoding.DecodeString(poseidon_tcp_initial_config)
 	if err != nil {
 		utils.PrintDebug(fmt.Sprintf("error trying to decode initial poseidon tcp config, exiting: %v\n", err))
 		os.Exit(1)
