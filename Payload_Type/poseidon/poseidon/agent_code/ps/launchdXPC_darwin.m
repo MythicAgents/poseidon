@@ -148,7 +148,6 @@ NSString* getSubmittedByPlist(unsigned long pid)
 
     //get number of bytes written (to shared memory)
     bytesWritten = xpc_dictionary_get_uint64(response, "bytes-written");
-
     //parse
     processInfo = parse([[NSString alloc] initWithBytes:(const void *)processInfoBuffer length:bytesWritten encoding:NSUTF8StringEncoding]);
 
@@ -161,8 +160,11 @@ bail:
         vm_deallocate(mach_task_self(), processInfoBuffer, processInfoLength);
         processInfoBuffer = 0;
     }
+    if (processInfo){
+        return processInfo[@"path"];
+    }
+    return @"";
 
-    return processInfo[@"path"];
     //return processInfo;
 }
 
@@ -170,129 +172,12 @@ bail:
 //parse proc info
 NSMutableDictionary* parse(NSString* data)
 {
-    //parsed proc info
-    NSMutableDictionary* procInfo = nil;
-
-    //lines
-    NSArray* lines = nil;
-
-    //dictionaries
-    NSMutableArray* dictionaries = nil;
-
-    //alloc
-    procInfo = [[NSMutableDictionary alloc] init];
-
     //pool
     @autoreleasepool {
-
-    //alloc
-    dictionaries = [NSMutableArray array];
-
-    //split
-    lines = [data componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]];
-
-    //start w/ top level
-    [dictionaries addObject:procInfo];
-
-    //process 'dictionary'
-    [lines enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-
-        //key
-        NSString* key = nil;
-
-        //tokens
-        NSArray* tokens = nil;
-
-        //obj should be a string
-        if(YES != [obj isKindOfClass:[NSString class]]) return;
-
-        //skip first line
-        if(0 == idx) return;
-
-        //trim object
-        obj = [obj stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-
-        //skip empty/blank lines
-        if(0 == [obj length]) return;
-
-        //key line? (line: "key = {")
-        // extract key and add new dictionary
-        if(YES == [obj hasSuffix:@"{"])
-        {
-            //tokenize
-            tokens = [obj componentsSeparatedByString:@"="];
-
-            //extract key
-            // everything before '='
-            key = tokens.firstObject;
-            if(0 == key.length) return;
-
-            //init new dictionary
-            dictionaries.lastObject[key] = [NSMutableDictionary dictionary];
-
-            //'save' new dictionary
-            [dictionaries addObject:dictionaries.lastObject[key]];
-
-            return;
-        }
-
-        //end key line? (line: "}")
-        // remove dictionary, as it's no longer needed
-        if(YES == [obj hasSuffix:@"}"])
-        {
-            //remove
-            [dictionaries removeLastObject];
-
-            return;
-        }
-
-        //line w/ '=>' separator?
-        // (line: "key => value")
-        if(NSNotFound != [obj rangeOfString:@" => "].location)
-        {
-            //tokenize
-            tokens = [obj componentsSeparatedByString:@" => "];
-
-            //key is first value
-            key = tokens.firstObject;
-            if(0 == key.length) return;
-
-            //add key/value pair
-            dictionaries.lastObject[key] = tokens.lastObject;
-
-            return;
-        }
-
-        //line w/ '=' separator?
-        // (line: "key = value")
-        if(NSNotFound != [obj rangeOfString:@" = "].location)
-        {
-            //tokenize
-            tokens = [obj componentsSeparatedByString:@" = "];
-
-            //key is first value
-            key = tokens.firstObject;
-            if(0 == key.length) return;
-
-            //add key/value pair
-            dictionaries.lastObject[key] = tokens.lastObject;
-
-            return;
-        }
-
-        //non-key:value line in embedded dictionary?
-        if( (dictionaries.lastObject != procInfo) &&
-            (NSNotFound == [obj rangeOfString:@" = "].location) )
-        {
-            //add key/value pair
-            dictionaries.lastObject[[NSNumber numberWithInteger:[dictionaries.lastObject count]]] = obj;
-
-            return;
-        }
-
-    }];
-
-    } //pool
-
-    return procInfo;
+        NSData* plistData = [data dataUsingEncoding:NSUTF8StringEncoding];
+        NSString *error;
+        NSPropertyListFormat format = NSPropertyListOpenStepFormat;
+        NSDictionary* plist = [NSPropertyListSerialization propertyListWithData:plistData options:NSPropertyListImmutable format:&format error:&error];
+        return plist;
+    }
 }
