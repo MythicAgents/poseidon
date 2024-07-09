@@ -265,6 +265,15 @@ func (c *C2HTTPx) GetSleepTime() int {
 		return c.Interval
 	}
 }
+func (c *C2HTTPx) GetSleepInterval() int {
+	return c.Interval
+}
+func (c *C2HTTPx) GetSleepJitter() int {
+	return c.Jitter
+}
+func (c *C2HTTPx) GetKillDate() time.Time {
+	return c.Killdate
+}
 func (c *C2HTTPx) SetSleepInterval(interval int) string {
 	if interval >= 0 {
 		c.Interval = interval

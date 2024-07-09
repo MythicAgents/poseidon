@@ -357,6 +357,15 @@ func (c *C2Websockets) GetSleepTime() int {
 		return c.Interval
 	}
 }
+func (c *C2Websockets) GetSleepInterval() int {
+	return c.Interval
+}
+func (c *C2Websockets) GetSleepJitter() int {
+	return c.Jitter
+}
+func (c *C2Websockets) GetKillDate() time.Time {
+	return c.Killdate
+}
 func (c *C2Websockets) SetSleepInterval(interval int) string {
 	if c.TaskingType == TaskingTypePush {
 		return fmt.Sprintf("Sleep interval not used for Push style C2 Profile\n")
