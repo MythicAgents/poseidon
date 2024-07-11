@@ -77,6 +77,7 @@ func SSHLogin(host string, port int, cred Credential, debug bool, command string
 	res := SSHResult{
 		Host:     host,
 		Username: cred.Username,
+		Success:  true,
 	}
 	var sshConfig *ssh.ClientConfig
 	if cred.PrivateKey == "" {
@@ -118,6 +119,7 @@ func SSHLogin(host string, port int, cred Credential, debug bool, command string
 			fmt.Println(errStr)
 		}
 		res.Success = false
+		res.Status = err.Error()
 		sshResultChan <- res
 		return
 	}
@@ -132,6 +134,8 @@ func SSHLogin(host string, port int, cred Credential, debug bool, command string
 	if source != "" && destination != "" {
 		err = scp.CopyPath(source, destination, session)
 		if err != nil {
+			res.Success = false
+			res.Status = err.Error()
 			res.CopyStatus = "Failed to copy: " + err.Error()
 		} else {
 			res.CopyStatus = "Successfully copied"
@@ -153,14 +157,16 @@ func SSHLogin(host string, port int, cred Credential, debug bool, command string
 		}
 		output, err := session.Output(command)
 		if err != nil {
-
+			res.Success = false
+			res.Status = err.Error()
+		} else {
+			res.Output = string(output)
 		}
-		res.Output = string(output)
+
 	} else {
 		res.Output = ""
 	}
 	//session.Close()
-	res.Success = true
 	sshResultChan <- res
 }
 
