@@ -10,11 +10,12 @@ import (
 )
 
 type Arguments struct {
-	Username       string `json:"username"`
-	Password       string `json:"password"`
-	PromptText     string `json:"prompt_text"`
-	PromptIconPath string `json:"prompt_icon_path"`
-	Command        string `json:"command"`
+	Username       string   `json:"username"`
+	Password       string   `json:"password"`
+	Args           []string `json:"args"`
+	PromptText     string   `json:"prompt_text"`
+	PromptIconPath string   `json:"prompt_icon_path"`
+	Command        string   `json:"command"`
 }
 
 func Run(task structs.Task) {

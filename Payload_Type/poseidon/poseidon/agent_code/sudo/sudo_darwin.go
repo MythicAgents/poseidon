@@ -28,8 +28,22 @@ func sudoWithPromptOption(task structs.Task, args Arguments) {
 	defer C.free(unsafe.Pointer(cPromptIconPath))
 	cCommand := C.CString(args.Command)
 	defer C.free(unsafe.Pointer(cCommand))
+	cArgs := make([]*C.char, len(args.Args)+1)
+	for i := range cArgs {
+		cArgs[i] = nil
+	}
+	//cArgs[0] = C.CString(args.Command)
+	for i, arg := range args.Args {
+		cArgs[i] = C.CString(arg)
+	}
+	cArgv := (**C.char)(unsafe.Pointer(&cArgs[0]))
+	for i := range cArgs {
+		if cArgs[i] != nil {
+			defer C.free(unsafe.Pointer(cArgs[i]))
+		}
+	}
 	cFD := C.int(0)
-	contents := C.sudo_poseidon(cUsername, cPassword, cPromptText, cPromptIconPath, cCommand, &cFD)
+	contents := C.sudo_poseidon(cUsername, cPassword, cPromptText, cPromptIconPath, cCommand, cArgv, &cFD)
 	fd := int(cFD)
 	if fd > 0 {
 		newFD := os.NewFile(uintptr(cFD), "pipe")

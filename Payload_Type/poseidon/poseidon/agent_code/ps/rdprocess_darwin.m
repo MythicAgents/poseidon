@@ -503,7 +503,7 @@ static const CFStringRef kLaunchServicesBundleID = CFSTR("com.apple.LaunchServic
 			i++;
 		}
 		const char *arg = (const char *)(arguments+i);
-		if (strlen(arg) > 0) {
+		if (arg != nil && strlen(arg) > 0) {
 			if (counter < argc) {
 				[tmp_argv addObject: [NSString stringWithUTF8String: arg]];
 

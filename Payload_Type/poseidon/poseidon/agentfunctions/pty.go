@@ -23,6 +23,19 @@ var pty = agentstructs.Command{
 			Description:      "What program to spawn with a PTY",
 			DefaultValue:     "/bin/bash",
 		},
+		{
+			Name:             "open_port",
+			CLIName:          "openPort",
+			ModalDisplayName: "Open Port",
+			ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_BOOLEAN,
+			Description:      "Whether to open a local port for additional PTY access",
+			DefaultValue:     false,
+			ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+				{
+					ParameterIsRequired: false,
+				},
+			},
+		},
 	},
 	TaskCompletionFunctions: map[string]agentstructs.PTTaskCompletionFunction{
 		"close_ports": func(taskData *agentstructs.PTTaskMessageAllData, subtaskData *agentstructs.PTTaskMessageAllData, subtaskName *agentstructs.SubtaskGroupName) agentstructs.PTTaskCompletionFunctionMessageResponse {
@@ -71,32 +84,42 @@ func ptyCreateTasking(taskData *agentstructs.PTTaskMessageAllData) agentstructs.
 		response.Success = false
 		return response
 	}
-	if _, err := mythicrpc.SendMythicRPCArtifactCreate(mythicrpc.MythicRPCArtifactCreateMessage{
+	_, err = mythicrpc.SendMythicRPCArtifactCreate(mythicrpc.MythicRPCArtifactCreateMessage{
 		BaseArtifactType: "ProcessCreate",
 		ArtifactMessage:  programPath,
 		TaskID:           taskData.Task.ID,
-	}); err != nil {
+	})
+	if err != nil {
 		logging.LogError(err, "Failed to send mythicrpc artifact create")
 	}
-	if socksResponse, err := mythicrpc.SendMythicRPCProxyStart(mythicrpc.MythicRPCProxyStartMessage{
-		PortType:  rabbitmq.CALLBACK_PORT_TYPE_INTERACTIVE,
-		LocalPort: 0,
-		TaskID:    taskData.Task.ID,
-	}); err != nil {
-		logging.LogError(err, "Failed to start socks")
+	openPort, err := taskData.Args.GetBooleanArg("open_port")
+	if err != nil {
 		response.Error = err.Error()
 		response.Success = false
 		return response
-	} else if !socksResponse.Success {
-		response.Error = socksResponse.Error
-		response.Success = false
-		return response
-	} else {
+	}
+	if openPort {
+		socksResponse, err := mythicrpc.SendMythicRPCProxyStart(mythicrpc.MythicRPCProxyStartMessage{
+			PortType:  rabbitmq.CALLBACK_PORT_TYPE_INTERACTIVE,
+			LocalPort: 0,
+			TaskID:    taskData.Task.ID,
+		})
+		if err != nil {
+			logging.LogError(err, "Failed to start socks")
+			response.Error = err.Error()
+			response.Success = false
+			return response
+		}
+		if !socksResponse.Success {
+			response.Error = socksResponse.Error
+			response.Success = false
+			return response
+		}
 		stdout := fmt.Sprintf("Opened port: %d\n", socksResponse.LocalPort)
 		response.Stdout = &stdout
 		completionName := "close_ports"
 		response.CompletionFunctionName = &completionName
-		response.DisplayParams = &programPath
-		return response
 	}
+	response.DisplayParams = &programPath
+	return response
 }
