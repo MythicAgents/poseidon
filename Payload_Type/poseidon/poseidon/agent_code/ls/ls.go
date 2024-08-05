@@ -108,8 +108,12 @@ func Run(task structs.Task) {
 		e.Files = fileEntries
 	}
 	msg.Completed = true
+	tmpData := e
 	msg.FileBrowser = &e
-	temp, _ := json.Marshal(msg.FileBrowser)
+	if !tmpData.IsFile {
+		tmpData.Filename = "."
+	}
+	temp, _ := json.Marshal(tmpData)
 	msg.UserOutput = string(temp)
 	task.Job.SendResponses <- msg
 	return

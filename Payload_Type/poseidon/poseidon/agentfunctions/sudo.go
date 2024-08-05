@@ -58,6 +58,19 @@ func init() {
 				Description: "Command to execute with privileges",
 			},
 			{
+				Name:             "args",
+				ModalDisplayName: "Args",
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_ARRAY,
+				Description:      "Any args you want to pass to the program specified by command",
+				DefaultValue:     []string{},
+				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+					{
+						ParameterIsRequired: false,
+						UIModalPosition:     4,
+					},
+				},
+			},
+			{
 				Name:             "prompt_text",
 				ModalDisplayName: "Prompt Text",
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
@@ -65,7 +78,7 @@ func init() {
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: false,
-						UIModalPosition:     4,
+						UIModalPosition:     5,
 					},
 				},
 				Description: "Text to display to the user when prompting to execute as root",
@@ -78,7 +91,7 @@ func init() {
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: false,
-						UIModalPosition:     5,
+						UIModalPosition:     6,
 					},
 				},
 				Description: "Path to the icon to use as part of a popup dialog asking the user to authenticate",
