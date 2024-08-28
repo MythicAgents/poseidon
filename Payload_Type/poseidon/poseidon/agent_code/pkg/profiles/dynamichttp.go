@@ -224,6 +224,15 @@ func (c *C2DynamicHTTP) GetSleepTime() int {
 		return c.Interval
 	}
 }
+func (c *C2DynamicHTTP) GetSleepInterval() int {
+	return c.Interval
+}
+func (c *C2DynamicHTTP) GetSleepJitter() int {
+	return c.Jitter
+}
+func (c *C2DynamicHTTP) GetKillDate() time.Time {
+	return c.Killdate
+}
 func (c *C2DynamicHTTP) SetSleepInterval(interval int) string {
 	if interval >= 0 {
 		c.Interval = interval

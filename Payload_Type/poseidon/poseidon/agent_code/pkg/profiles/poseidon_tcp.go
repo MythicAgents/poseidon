@@ -467,3 +467,12 @@ func (c *C2PoseidonTCP) GetSleepTime() int {
 	}
 	return 0
 }
+func (c *C2PoseidonTCP) GetSleepInterval() int {
+	return 0
+}
+func (c *C2PoseidonTCP) GetSleepJitter() int {
+	return 0
+}
+func (c *C2PoseidonTCP) GetKillDate() time.Time {
+	return c.Killdate
+}

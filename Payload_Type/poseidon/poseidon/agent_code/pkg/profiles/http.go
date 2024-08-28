@@ -245,6 +245,15 @@ func (c *C2HTTP) UpdateConfig(parameter string, value string) {
 		}
 	}
 }
+func (c *C2HTTP) GetSleepInterval() int {
+	return c.Interval
+}
+func (c *C2HTTP) GetSleepJitter() int {
+	return c.Jitter
+}
+func (c *C2HTTP) GetKillDate() time.Time {
+	return c.Killdate
+}
 func (c *C2HTTP) GetSleepTime() int {
 	if c.ShouldStop {
 		return -1

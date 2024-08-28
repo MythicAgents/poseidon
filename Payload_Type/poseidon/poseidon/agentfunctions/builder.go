@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
+	"github.com/MythicMeta/MythicContainer/logging"
 	"github.com/MythicMeta/MythicContainer/mythicrpc"
 	"github.com/google/uuid"
 	"github.com/pelletier/go-toml"
@@ -17,9 +18,16 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
-const version = "2.0.37"
+const version = "2.1.3"
+
+type sleepInfoStruct struct {
+	Interval int       `json:"interval"`
+	Jitter   int       `json:"jitter"`
+	KillDate time.Time `json:"killdate"`
+}
 
 var payloadDefinition = agentstructs.PayloadType{
 	Name:                                   "poseidon",
@@ -29,7 +37,7 @@ var payloadDefinition = agentstructs.PayloadType{
 	Wrapper:                                false,
 	CanBeWrappedByTheFollowingPayloadTypes: []string{},
 	SupportsDynamicLoading:                 false,
-	Description:                            fmt.Sprintf("A fully featured macOS and Linux Golang agent.\nVersion %s\nNeeds Mythic 3.1.0+", version),
+	Description:                            fmt.Sprintf("A fully featured macOS and Linux Golang agent.\nVersion %s\nNeeds Mythic 3.3.0+", version),
 	SupportedC2Profiles:                    []string{"http", "websocket", "poseidon_tcp", "dynamichttp", "webshell", "httpx"},
 	MythicEncryptsData:                     true,
 	BuildParameters: []agentstructs.BuildParameter{
@@ -113,6 +121,49 @@ var payloadDefinition = agentstructs.PayloadType{
 			Name:        "Compiling",
 			Description: "Compiling the golang agent",
 		},
+	},
+	CheckIfCallbacksAliveFunction: func(message agentstructs.PTCheckIfCallbacksAliveMessage) agentstructs.PTCheckIfCallbacksAliveMessageResponse {
+		response := agentstructs.PTCheckIfCallbacksAliveMessageResponse{Success: true, Callbacks: make([]agentstructs.PTCallbacksToCheckResponse, 0)}
+		for _, callback := range message.Callbacks {
+			logging.LogInfo("callback info", "callback", callback)
+			if callback.SleepInfo == "" {
+				continue // can't do anything if we don't know the expected sleep info of the agent
+			}
+			sleepInfo := map[string]sleepInfoStruct{}
+			err := json.Unmarshal([]byte(callback.SleepInfo), &sleepInfo)
+			if err != nil {
+				logging.LogError(err, "failed to parse sleep info struct")
+				continue
+			}
+			atLeastOneCallbackWithinRange := false
+			for activeC2, _ := range sleepInfo {
+				if activeC2 == "websocket" && callback.LastCheckin.Unix() == 0 {
+					atLeastOneCallbackWithinRange = true
+					continue
+				}
+				checkinRangeResponse, err := mythicrpc.SendMythicRPCCallbackNextCheckinRange(mythicrpc.MythicRPCCallbackNextCheckinRangeMessage{
+					LastCheckin:   callback.LastCheckin,
+					SleepJitter:   sleepInfo[activeC2].Jitter,
+					SleepInterval: sleepInfo[activeC2].Interval,
+				})
+				if err != nil {
+					logging.LogError(err, "failed to get checkin ranges")
+					continue
+				}
+				if !checkinRangeResponse.Success {
+					logging.LogError(nil, "Failed to get checkin range", "error", checkinRangeResponse.Error)
+					continue
+				}
+				if callback.LastCheckin.After(checkinRangeResponse.Min) && callback.LastCheckin.Before(checkinRangeResponse.Max) {
+					atLeastOneCallbackWithinRange = true
+				}
+			}
+			response.Callbacks = append(response.Callbacks, agentstructs.PTCallbacksToCheckResponse{
+				ID:    callback.ID,
+				Alive: atLeastOneCallbackWithinRange,
+			})
+		}
+		return response
 	},
 }
 

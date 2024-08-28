@@ -22,7 +22,7 @@ function(task, response){
 				"status": {"plaintext": data[j]["status"]},
 				"output": {"plaintext": data[j]["output"]},
 				"copy_status": {"plaintext": data[j]["copy_status"]},
-				"rowStyle": {backgroundColor: data[j]["success"] ?  "green" : ""},
+				"rowStyle": {backgroundColor: data[j]["success"] ? "green" : ""},
 			});
 		}
 		return {"table": [{

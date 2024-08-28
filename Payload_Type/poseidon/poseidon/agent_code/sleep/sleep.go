@@ -34,7 +34,8 @@ func Run(task structs.Task) {
 	}
 	msg := task.NewResponse()
 	msg.UserOutput = output
-	msg.ProcessResponse = &output
+	sleepString := profiles.GetSleepString()
+	msg.ProcessResponse = &sleepString
 	msg.Completed = true
 	task.Job.SendResponses <- msg
 	return

@@ -332,6 +332,18 @@ func SetMythicID(newMythicID string) {
 	MythicID = newMythicID
 }
 
+func GetSleepString() string {
+	sleepInfoJSON := map[string]interface{}{}
+	for c2, _ := range availableC2Profiles {
+		sleepInfoJSON[c2] = map[string]interface{}{
+			"interval": availableC2Profiles[c2].GetSleepInterval(),
+			"jitter":   availableC2Profiles[c2].GetSleepJitter(),
+			"killdate": availableC2Profiles[c2].GetKillDate(),
+		}
+	}
+	sleepBytes, _ := json.MarshalIndent(sleepInfoJSON, "", "\t")
+	return string(sleepBytes)
+}
 func CreateCheckinMessage() structs.CheckInMessage {
 	currentUser := functions.GetUser()
 	hostname := functions.GetHostname()
@@ -352,6 +364,7 @@ func CreateCheckinMessage() structs.CheckInMessage {
 		Architecture: arch,
 		Domain:       domain,
 		ProcessName:  processName,
+		SleepInfo:    GetSleepString(),
 	}
 
 	if functions.IsElevated() {

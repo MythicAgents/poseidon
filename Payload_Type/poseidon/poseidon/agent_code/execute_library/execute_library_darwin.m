@@ -5,9 +5,9 @@
 
 char* executeLibrary(char* filePath, char* functionName, int argc, char** argv){
     void* handle = dlopen(filePath, RTLD_NOW);
-    if(handle){
+    if(handle != 0){
         char*(*function)(int c, char** argv) = dlsym(handle, functionName);
-        if(function){
+        if(function != 0){
             char* output = function(argc, argv);
             dlclose(handle);
             return output;

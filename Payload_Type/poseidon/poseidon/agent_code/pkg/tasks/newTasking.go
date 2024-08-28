@@ -5,6 +5,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/cd"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/clipboard"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/clipboard_monitor"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/config"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/cp"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/curl"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/download"
@@ -184,6 +185,10 @@ func listenForNewTask() {
 			go link_webshell.Run(task)
 		case "unlink_webshell":
 			go unlink_webshell.Run(task)
+		case "shell_config":
+			go shell.RunConfig(task)
+		case "config":
+			go config.Run(task)
 		default:
 			// No tasks, do nothing
 			break
