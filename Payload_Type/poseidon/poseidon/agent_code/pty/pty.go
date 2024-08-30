@@ -62,7 +62,7 @@ func Run(task structs.Task) {
 
 	*/
 
-	doneChannel := make(chan bool)
+	doneChannel := make(chan bool, 2)
 	doneTimeDelayChannel := make(chan bool)
 	sendTimeDelayChannel := make(chan bool)
 	go func() {
@@ -133,13 +133,18 @@ func Run(task structs.Task) {
 					if len(data) > 0 {
 						_, err = io.Copy(StdinStdoutPTY, bytes.NewReader(data))
 					}
+				case InteractiveTask.Exit:
+					StdinStdoutPTY.Close()
+					command.Process.Kill()
+					doneChannel <- true
+					return
 				default:
 					task.Job.InteractiveTaskOutputChannel <- structs.InteractiveTaskMessage{
 						TaskUUID:    task.TaskID,
 						Data:        base64.StdEncoding.EncodeToString([]byte("Unknown control code")),
 						MessageType: InteractiveTask.Error,
 					}
-					return
+					continue
 				}
 				if err != nil {
 					task.Job.InteractiveTaskOutputChannel <- structs.InteractiveTaskMessage{

@@ -3,10 +3,10 @@ function(task, response){
 	let headers = [
 		{"plaintext": "name", "type": "string", "fillWidth": true},
 		{"plaintext": "size", "type": "size", "width": 150},
-		{"plaintext": "user", "type": "string", "width": 200},
-		{"plaintext": "group", "type": "string", "width": 200},
+		{"plaintext": "user", "type": "string", "fillWidth": true},
+		{"plaintext": "group", "type": "string", "fillWidth": true},
 		{"plaintext": "permissions", "type": "string", "width": 150},
-		{"plaintext": "modified", "type": "date", "width": 300},
+		{"plaintext": "modified", "type": "date", "width": 250},
 		{"plaintext": "ls", "type": "button", "width": 100},
 		{"plaintext": "download", "type": "button", "width": 100},
 	];
@@ -22,37 +22,40 @@ function(task, response){
 		ls_path = data["parent_path"] + "/" + data["name"];
 	}
 	let perms = data['permissions'];
-	rows.push({
-		"name": {"plaintext": data['name'],
-			"startIcon": data["is_file"] ? "file":"openFolder",
-			"startIconColor": data["is_file"] ? "": "gold",
-			"copyIcon": true },
-		"size": {"plaintext": data['size']},
-		"modified": {"plaintext": (new Date(data["modify_time"])).toISOString(),
-			"plaintextHoverText":  (new Date(data["modify_time"])).toDateString()},
-		"user": {"plaintext": perms['user']},
-		"group": {"plaintext": perms['group']},
-		"permissions": {"plaintext": perms["permissions"]},
-		"ls": {"button": {
-				"name": "",
-				"type": "task",
-				"ui_feature": "file_browser:list",
-				"parameters": ls_path,
-				"hoverText": "Issue ls for this entry",
-				"startIcon": "list",
+	if(data["is_file"]){
+		rows.push({
+			"name": {"plaintext": data['name'],
+				"startIcon": data["is_file"] ? "file":"openFolder",
+				"startIconColor": data["is_file"] ? "": "gold",
+				"copyIcon": true },
+			"size": {"plaintext": data['size']},
+			"modified": {"plaintext": (new Date(data["modify_time"])).toISOString(),
+				"plaintextHoverText":  (new Date(data["modify_time"])).toDateString()},
+			"user": {"plaintext": perms['user']},
+			"group": {"plaintext": perms['group']},
+			"permissions": {"plaintext": perms["permissions"]},
+			"ls": {"button": {
+					"name": "",
+					"type": "task",
+					"ui_feature": "file_browser:list",
+					"parameters": ls_path,
+					"hoverText": "Issue ls for this entry",
+					"startIcon": "list",
+				}
+			},
+			"download": {"button": {
+					"name": "",
+					"type": "task",
+					"ui_feature": "file_browser:download",
+					"parameters": ls_path,
+					"hoverText": "Download this file",
+					"startIcon": "download",
+					"disabled": !data["is_file"],
+				}
 			}
-		},
-		"download": {"button": {
-				"name": "",
-				"type": "task",
-				"ui_feature": "file_browser:download",
-				"parameters": ls_path,
-				"hoverText": "Download this file",
-				"startIcon": "download",
-				"disabled": !data["is_file"],
-			}
-		}
-	});
+		});
+	}
+
 	let files = data['files'];
 	for (let j = 0; j < files.length; j++)
 	{

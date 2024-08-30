@@ -1,3 +1,6 @@
+/**
+    https://github.com/rodionovd/RDProcess
+*/
 #import <Foundation/Foundation.h>
 #import <AppKit/AppKit.h>
 

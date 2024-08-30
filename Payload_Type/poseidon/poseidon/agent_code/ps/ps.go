@@ -111,9 +111,9 @@ func Run(task structs.Task) {
 			}
 		}
 	}
-	jsonProcs, er := json.MarshalIndent(slice, "", "	")
+	jsonProcs, err := json.MarshalIndent(slice, "", "	")
 
-	if er != nil {
+	if err != nil {
 		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return

@@ -3,7 +3,7 @@
 #import "sudo_darwin.h"
 
 
-const char* sudo_poseidon(char* username, char* password, char* promptText, char* promptIcon, char* command, int* fd){
+const char* sudo_poseidon(char* username, char* password, char* promptText, char* promptIcon, char* command, char** args, int* fd){
     AuthorizationRef authRef = 0;
     OSStatus status = 0;
     char* rightName = "allow";
@@ -48,7 +48,7 @@ const char* sudo_poseidon(char* username, char* password, char* promptText, char
         }
         return [[[NSString alloc] initWithFormat:@"Error: %d. Cannot copy authorization reference.", status] UTF8String];
     }
-    char *args[] = {NULL};
+    //char *args[] = {NULL};
     FILE *pipe = NULL;
 
     status = AuthorizationExecuteWithPrivileges(authRef, command, kAuthorizationFlagDefaults, args, &pipe);

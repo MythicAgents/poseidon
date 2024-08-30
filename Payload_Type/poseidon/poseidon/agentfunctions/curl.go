@@ -39,7 +39,7 @@ func init() {
 				ModalDisplayName: "HTTP Method",
 				DefaultValue:     "GET",
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_CHOOSE_ONE,
-				Choices:          []string{"GET", "POST"},
+				Choices:          []string{"GET", "POST", "PUT", "DELETE"},
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: true,

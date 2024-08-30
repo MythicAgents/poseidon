@@ -3,7 +3,7 @@
 package functions
 
 /*
-#include <unistd.h>;
+#include <unistd.h>
 int UpdateEUID();
 int UpdateEUID(){
     uid_t euid = geteuid();

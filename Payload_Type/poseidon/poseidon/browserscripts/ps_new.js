@@ -35,7 +35,7 @@ function(task, response){
 							"sandboxpath": data[j]["sandboxpath"],
 							"scripting properties": data[j]["scripting_properties"],
 							"bundle ID": data[j]["bundleid"],
-							"additional_info": data[j]["additional_info"],
+							"additional_info": data[j]["additional_information"],
 						},
 						"hoverText": "view data for this entry",
 						"startIcon": "list",

