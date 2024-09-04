@@ -16,7 +16,7 @@ char* runjsimport(char *s) {
                 NSString *result = runError[@"OSAScriptErrorMessageKey"];
                 return [result UTF8String];
             }
-            NSString* fmtString = [NSString stringWithFormat:@"%@", res];
+            NSString* fmtString = [NSString stringWithFormat:@"%@", res.stringValue];
             char* output = [fmtString UTF8String];
             return output;
     } @catch (NSException *exception) {

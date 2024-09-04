@@ -22,13 +22,9 @@ function(task, responses){
         	if(errors.length > 0){
         		responseData["plaintext"] = "Errors downloading:\n" + JSON.stringify(errors, null, 2);
 			}else if(screenshots.length > 0){
-        		responseData["screenshot"] = [
-					{
-						"agent_file_id": screenshots,
-						"variant": "contained",
-						"name": "View Screenshots"
-					}
-				]
+				responseData["media"] = screenshots.map( s => {
+					return {agent_file_id: s, filename: "monitor.png"}
+				})
 			}
         	return responseData;
         }else{

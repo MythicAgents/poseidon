@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-const version = "2.1.3"
+const version = "2.1.4"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`
@@ -444,6 +444,8 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	} else {
 		if goarch == "arm64" {
 			command += "CC=aarch64-linux-gnu-gcc "
+		} else {
+			command += "CC=x86_64-linux-gnu-gcc"
 		}
 	}
 	command += "GOGARBLE=* "
@@ -650,6 +652,6 @@ func onNewCallback(data agentstructs.PTOnNewCallbackAllData) agentstructs.PTOnNe
 func Initialize() {
 	agentstructs.AllPayloadData.Get("poseidon").AddPayloadDefinition(payloadDefinition)
 	agentstructs.AllPayloadData.Get("poseidon").AddBuildFunction(build)
-	agentstructs.AllPayloadData.Get("poseidon").AddOnNewCallbackFunction(onNewCallback)
+	//agentstructs.AllPayloadData.Get("poseidon").AddOnNewCallbackFunction(onNewCallback)
 	agentstructs.AllPayloadData.Get("poseidon").AddIcon(filepath.Join(".", "poseidon", "agentfunctions", "poseidon.svg"))
 }
