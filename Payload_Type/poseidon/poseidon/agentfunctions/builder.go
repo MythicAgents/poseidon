@@ -445,7 +445,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		if goarch == "arm64" {
 			command += "CC=aarch64-linux-gnu-gcc "
 		} else {
-			command += "CC=x86_64-linux-gnu-gcc"
+			command += "CC=x86_64-linux-gnu-gcc "
 		}
 	}
 	command += "GOGARBLE=* "
