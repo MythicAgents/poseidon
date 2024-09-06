@@ -123,6 +123,7 @@ func SSHLogin(host string, port int, cred Credential, debug bool, command string
 		sshResultChan <- res
 		return
 	}
+	defer connection.Close()
 	session, err := connection.NewSession()
 	defer session.Close()
 	if err != nil {
@@ -292,7 +293,7 @@ func Run(task structs.Task) {
 		}
 	} else {
 		// log.Println("No successful auths.")
-		msg.UserOutput = "No successful authenication attempts"
+		msg.UserOutput = "No successful authentication attempts"
 		msg.Completed = true
 		task.Job.SendResponses <- msg
 		return

@@ -49,7 +49,7 @@ func PublicKeyFile(file string) (goSSH.AuthMethod, error) {
 	return goSSH.PublicKeys(key), nil
 }
 
-func SSHLogin(host string, port int, cred Credential) (*goSSH.Session, io.Reader, io.Reader, io.Writer, error) {
+func SSHLogin(host string, port int, cred Credential) (*goSSH.Session, *goSSH.Client, io.Reader, io.Reader, io.Writer, error) {
 	var sshConfig *goSSH.ClientConfig
 	if cred.PrivateKey == "" {
 		sshConfig = &goSSH.ClientConfig{
@@ -61,7 +61,7 @@ func SSHLogin(host string, port int, cred Credential) (*goSSH.Session, io.Reader
 	} else {
 		sshAuthMethodPrivateKey, err := PublicKeyFile(cred.PrivateKey)
 		if err != nil {
-			return nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, err
 		}
 		sshConfig = &goSSH.ClientConfig{
 			User:            cred.Username,
@@ -74,12 +74,12 @@ func SSHLogin(host string, port int, cred Credential) (*goSSH.Session, io.Reader
 	connectionStr := fmt.Sprintf("%s:%d", host, port)
 	connection, err := goSSH.Dial("tcp", connectionStr, sshConfig)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 	session, err := connection.NewSession()
 	if err != nil {
 		connection.Close()
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 	modes := goSSH.TerminalModes{
 		goSSH.ECHO:          0,
@@ -89,29 +89,37 @@ func SSHLogin(host string, port int, cred Credential) (*goSSH.Session, io.Reader
 	err = session.RequestPty("xterm-256color", 80, 80, modes)
 	if err != nil {
 		session.Close()
-		return nil, nil, nil, nil, err
+		connection.Close()
+		return nil, nil, nil, nil, nil, err
 	}
 	stdErrPipe, err := session.StderrPipe()
 	if err != nil {
+		session.Close()
+		connection.Close()
 		utils.PrintDebug("failed to get stdErrPipe")
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 	stdOutPipe, err := session.StdoutPipe()
 	if err != nil {
+		session.Close()
+		connection.Close()
 		utils.PrintDebug("failed to get stdOutPipe")
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 	stdInPipe, err := session.StdinPipe()
 	if err != nil {
+		session.Close()
+		connection.Close()
 		utils.PrintDebug("failed to get stdInPipe")
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 	err = session.Shell()
 	if err != nil {
 		session.Close()
-		return nil, nil, nil, nil, err
+		connection.Close()
+		return nil, nil, nil, nil, nil, err
 	}
-	return session, stdOutPipe, stdErrPipe, stdInPipe, nil
+	return session, connection, stdOutPipe, stdErrPipe, stdInPipe, nil
 }
 
 func Run(task structs.Task) {
@@ -147,14 +155,13 @@ func Run(task structs.Task) {
 		Password:   params.Password,
 		PrivateKey: params.PrivateKey,
 	}
-	session, stdOutPipe, stdErrPipe, stdInPipe, err := SSHLogin(params.Host, params.Port, cred)
+	session, client, stdOutPipe, stdErrPipe, stdInPipe, err := SSHLogin(params.Host, params.Port, cred)
 	if err != nil {
 		utils.PrintDebug("failed to login")
 		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}
-	defer session.Close()
 
 	// start processing the new ssh pty
 	outputChannel := make(chan string, 1)
@@ -165,6 +172,9 @@ func Run(task structs.Task) {
 	go func() {
 		// wait for stdin data and pass that along
 		for {
+			if *task.Job.Stop == 1 {
+				return
+			}
 			select {
 			case inputMsg := <-task.Job.InteractiveTaskInputChannel:
 				data, err := base64.StdEncoding.DecodeString(inputMsg.Data)
@@ -303,6 +313,11 @@ func Run(task structs.Task) {
 	}()
 	go func() {
 		for {
+			if *task.Job.Stop == 1 {
+				session.Close()
+				doneChannel <- true
+				return
+			}
 			select {
 			case <-doneTimeDelayChannel:
 				return
@@ -351,10 +366,16 @@ func Run(task structs.Task) {
 	}()
 	err = session.Wait()
 	if err != nil {
+		session.Close()
+		client.Close()
 		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
+		doneTimeDelayChannel <- true
+		doneChannel <- true
 		return
 	}
+	session.Close()
+	client.Close()
 	outputMsg := structs.Response{}
 	outputMsg.TaskID = task.TaskID
 	outputMsg.Completed = true

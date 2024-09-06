@@ -20,7 +20,7 @@ func listenForRemoveRunningTask() {
 
 // getJobListing is the 'jobs' command and prints the `ToStub` call on each task
 func getJobListing(task structs.Task) {
-	msg := structs.Response{}
+	msg := task.NewResponse()
 	msg.TaskID = task.TaskID
 	msg.Completed = true
 	// For graceful error handling server-side when zero jobs are processing.
@@ -30,24 +30,29 @@ func getJobListing(task structs.Task) {
 		var jobList []structs.TaskStub
 		runningTaskMutex.Lock()
 		for _, x := range runningTasks {
-			jobList = append(jobList, x.ToStub())
+			if x.Command != "jobs" {
+				jobList = append(jobList, x.ToStub())
+			}
 		}
 		runningTaskMutex.Unlock()
-		jsonSlices, err := json.MarshalIndent(jobList, "", "	")
-		if err != nil {
-			msg.UserOutput = err.Error()
-			msg.Status = "error"
+		if len(jobList) > 0 {
+			jsonSlices, err := json.MarshalIndent(jobList, "", "	")
+			if err != nil {
+				msg.UserOutput = err.Error()
+				msg.Status = "error"
+			} else {
+				msg.UserOutput = string(jsonSlices)
+			}
 		} else {
-			msg.UserOutput = string(jsonSlices)
+			msg.UserOutput = "0 jobs"
 		}
-
 	}
 	task.Job.SendResponses <- msg
 }
 
 // killJob is the 'jobkill' command which sets a Stop flag for the associated task to check
 func killJob(task structs.Task) {
-	msg := structs.Response{}
+	msg := task.NewResponse()
 	msg.TaskID = task.TaskID
 
 	foundTask := false
