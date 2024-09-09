@@ -3,7 +3,6 @@ package ls
 import (
 	// Standard
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -41,7 +40,12 @@ func GetPermission(finfo os.FileInfo) structs.FilePermission {
 func Run(task structs.Task) {
 	msg := task.NewResponse()
 	args := structs.FileBrowserArguments{}
-	json.Unmarshal([]byte(task.Params), &args)
+	err := json.Unmarshal([]byte(task.Params), &args)
+	if err != nil {
+		msg.SetError(err.Error())
+		task.Job.SendResponses <- msg
+		return
+	}
 	var e structs.FileBrowser
 	fixedPath := args.Path
 	if strings.HasPrefix(fixedPath, "~/") {
@@ -51,9 +55,7 @@ func Run(task structs.Task) {
 	abspath, _ := filepath.Abs(fixedPath)
 	dirInfo, err := os.Stat(abspath)
 	if err != nil {
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}
@@ -76,11 +78,9 @@ func Run(task structs.Task) {
 	e.Success = true
 	e.UpdateDeleted = true
 	if dirInfo.IsDir() {
-		files, err := ioutil.ReadDir(abspath)
+		files, err := os.ReadDir(abspath)
 		if err != nil {
-			msg.UserOutput = err.Error()
-			msg.Completed = true
-			msg.Status = "error"
+			msg.SetError(err.Error())
 			e.Success = false
 			msg.FileBrowser = &e
 			task.Job.SendResponses <- msg
@@ -90,11 +90,18 @@ func Run(task structs.Task) {
 		fileEntries := make([]structs.FileData, len(files))
 		for i := 0; i < len(files); i++ {
 			fileEntries[i].IsFile = !files[i].IsDir()
-			fileEntries[i].Permissions = GetPermission(files[i])
+			fileInfo, err := files[i].Info()
+			if err != nil {
+				fileEntries[i].Permissions = structs.FilePermission{}
+				fileEntries[i].FileSize = -1
+				fileEntries[i].LastModified = 0
+			} else {
+				fileEntries[i].Permissions = GetPermission(fileInfo)
+				fileEntries[i].FileSize = fileInfo.Size()
+				fileEntries[i].LastModified = fileInfo.ModTime().Unix() * 1000
+			}
 			fileEntries[i].Name = files[i].Name()
 			fileEntries[i].FullName = filepath.Join(abspath, files[i].Name())
-			fileEntries[i].FileSize = files[i].Size()
-			fileEntries[i].LastModified = files[i].ModTime().Unix() * 1000
 			at, err := atime.Stat(abspath)
 			if err != nil {
 				fileEntries[i].LastAccess = 0

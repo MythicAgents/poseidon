@@ -86,6 +86,10 @@ func init() {
 	} else if initialConfig.CallbackPort == 80 && strings.Contains(initialConfig.CallbackHost, "http://") {
 		final_url = initialConfig.CallbackHost
 	} else {
+		if len(initialConfig.CallbackHost) < 9 {
+			utils.PrintDebug(fmt.Sprintf("callbackhost length is wrong, exiting: %s\n", initialConfig.CallbackHost))
+			os.Exit(1)
+		}
 		last_slash = strings.Index(initialConfig.CallbackHost[8:], "/")
 		if last_slash == -1 {
 			//there is no 3rd slash

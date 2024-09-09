@@ -64,10 +64,12 @@ func init() {
 				response.Error = err.Error()
 				return response
 			} else if search, err := mythicrpc.SendMythicRPCFileSearch(mythicrpc.MythicRPCFileSearchMessage{
-				Filename:        filename,
-				LimitByCallback: true,
-				CallbackID:      taskData.Callback.ID,
-				MaxResults:      1,
+				Filename:            filename,
+				LimitByCallback:     true,
+				CallbackID:          taskData.Callback.ID,
+				MaxResults:          1,
+				IsPayload:           false,
+				IsDownloadFromAgent: false,
 			}); err != nil {
 				response.Success = false
 				response.Error = "Error trying to search for files: " + err.Error()

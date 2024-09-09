@@ -16,11 +16,11 @@ function(task, response){
 		let rows = [];
 		for(let j = 0; j < data.length; j++) {
 			rows.push({
-				"host": {"plaintext": data[j]["host"]},
-				"username": {"plaintext": data[j]["username"]},
+				"host": {"plaintext": data[j]["host"], "copyIcon": true},
+				"username": {"plaintext": data[j]["username"], "copyIcon": true},
 				"secret": {"plaintext": data[j]["secret"]},
 				"status": {"plaintext": data[j]["status"]},
-				"output": {"plaintext": data[j]["output"]},
+				"output": {"plaintext": data[j]["output"], "copyIcon": true},
 				"copy_status": {"plaintext": data[j]["copy_status"]},
 				"rowStyle": {backgroundColor: data[j]["success"] ? "green" : ""},
 			});
