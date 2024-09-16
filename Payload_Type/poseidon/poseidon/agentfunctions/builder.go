@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
-	"github.com/MythicMeta/MythicContainer/logging"
 	"github.com/MythicMeta/MythicContainer/mythicrpc"
 	"github.com/google/uuid"
 	"github.com/pelletier/go-toml"
@@ -21,7 +20,7 @@ import (
 	"time"
 )
 
-const version = "2.1.6"
+const version = "2.1.7"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`
@@ -125,14 +124,14 @@ var payloadDefinition = agentstructs.PayloadType{
 	CheckIfCallbacksAliveFunction: func(message agentstructs.PTCheckIfCallbacksAliveMessage) agentstructs.PTCheckIfCallbacksAliveMessageResponse {
 		response := agentstructs.PTCheckIfCallbacksAliveMessageResponse{Success: true, Callbacks: make([]agentstructs.PTCallbacksToCheckResponse, 0)}
 		for _, callback := range message.Callbacks {
-			logging.LogInfo("callback info", "callback", callback)
+			//logging.LogInfo("callback info", "callback", callback)
 			if callback.SleepInfo == "" {
 				continue // can't do anything if we don't know the expected sleep info of the agent
 			}
 			sleepInfo := map[string]sleepInfoStruct{}
 			err := json.Unmarshal([]byte(callback.SleepInfo), &sleepInfo)
 			if err != nil {
-				logging.LogError(err, "failed to parse sleep info struct")
+				//logging.LogError(err, "failed to parse sleep info struct")
 				continue
 			}
 			atLeastOneCallbackWithinRange := false
@@ -141,20 +140,19 @@ var payloadDefinition = agentstructs.PayloadType{
 					atLeastOneCallbackWithinRange = true
 					continue
 				}
-				checkinRangeResponse, err := mythicrpc.SendMythicRPCCallbackNextCheckinRange(mythicrpc.MythicRPCCallbackNextCheckinRangeMessage{
-					LastCheckin:   callback.LastCheckin,
-					SleepJitter:   sleepInfo[activeC2].Jitter,
-					SleepInterval: sleepInfo[activeC2].Interval,
-				})
-				if err != nil {
-					logging.LogError(err, "failed to get checkin ranges")
-					continue
+				minAdd := sleepInfo[activeC2].Interval
+				maxAdd := sleepInfo[activeC2].Interval
+				if sleepInfo[activeC2].Jitter > 0 {
+					// minimum would be sleep_interval - (sleep_jitter % of sleep_interval)
+					minAdd = minAdd - ((sleepInfo[activeC2].Jitter / 100) * (sleepInfo[activeC2].Interval))
+					// maximum would be sleep_interval + (sleep_jitter % of sleep_interval)
+					maxAdd = maxAdd + ((sleepInfo[activeC2].Jitter / 100) * (sleepInfo[activeC2].Interval))
 				}
-				if !checkinRangeResponse.Success {
-					logging.LogError(nil, "Failed to get checkin range", "error", checkinRangeResponse.Error)
-					continue
-				}
-				if callback.LastCheckin.After(checkinRangeResponse.Min) && callback.LastCheckin.Before(checkinRangeResponse.Max) {
+				maxAdd *= 2 // double the high end in case we're on a close boundary
+				earliest := callback.LastCheckin.Add(time.Duration(minAdd) * time.Second)
+				latest := callback.LastCheckin.Add(time.Duration(maxAdd) * time.Second)
+
+				if callback.LastCheckin.After(earliest) && callback.LastCheckin.Before(latest) {
 					atLeastOneCallbackWithinRange = true
 				}
 			}

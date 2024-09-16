@@ -2,6 +2,7 @@ package agentfunctions
 
 import (
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
+	"path/filepath"
 )
 
 func init() {
@@ -15,6 +16,10 @@ func init() {
 		Author:              "@xorrior",
 		CommandAttributes: agentstructs.CommandAttribute{
 			SupportedOS: []string{},
+		},
+		AssociatedBrowserScript: &agentstructs.BrowserScript{
+			ScriptPath: filepath.Join(".", "poseidon", "browserscripts", "jobs.js"),
+			Author:     "@its_a_feature_",
 		},
 		TaskFunctionParseArgString: func(args *agentstructs.PTTaskMessageArgsData, input string) error {
 			return nil
