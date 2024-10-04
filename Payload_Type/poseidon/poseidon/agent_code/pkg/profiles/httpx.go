@@ -768,6 +768,7 @@ func (c *C2HTTPx) CreateDynamicMessage(content []byte, isGetTaskingRequest bool)
 		utils.PrintDebug(fmt.Sprintf("Error creating new http request: %s", err.Error()))
 		return nil, err
 	}
+	q := req.URL.Query()
 	switch variation.Client.Message.Location {
 	case "cookie":
 		req.AddCookie(&http.Cookie{
@@ -775,7 +776,7 @@ func (c *C2HTTPx) CreateDynamicMessage(content []byte, isGetTaskingRequest bool)
 			Value: string(agentMessageBytes),
 		})
 	case "query":
-		req.Form.Set(variation.Client.Message.Name, string(agentMessageBytes))
+		q.Add(variation.Client.Message.Name, string(agentMessageBytes))
 	case "header":
 		req.Header.Set(variation.Client.Message.Name, string(agentMessageBytes))
 	default:
@@ -795,13 +796,11 @@ func (c *C2HTTPx) CreateDynamicMessage(content []byte, isGetTaskingRequest bool)
 		}
 	}
 	// adding query parameters is a little weird in go
-	q := req.URL.Query()
+
 	for key, _ := range variation.Client.Parameters {
 		q.Add(key, variation.Client.Parameters[key])
 	}
-	if len(variation.Client.Parameters) > 0 {
-		req.URL.RawQuery = q.Encode()
-	}
+	req.URL.RawQuery = q.Encode()
 	return req, nil
 }
 func (c *C2HTTPx) GetDynamicMessageResponse(resp *http.Response, isGetTaskingRequest bool) ([]byte, error) {
