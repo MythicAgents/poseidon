@@ -14,7 +14,7 @@ DYNAMICHTTP_UUID=fbd34459-f783-4b78-9d4c-fd26a5289fee
 DYNAMICHTTP_AGENT_CONFIG_FILE=test_agent_config_dynamichttp.json
 DYNAMICHTTP_CONFIG=$(shell base64 -i ${DYNAMICHTTP_AGENT_CONFIG_FILE})
 
-HTTPX_UUID=215a0336-420e-4845-93c8-2fc194637185
+HTTPX_UUID=7f0ce672-1e98-4954-8068-511baec50d69
 HTTPX_AGENT_CONFIG_FILE=test_agent_config_httpx.json
 HTTPX_CONFIG=$(shell base64 -i ${HTTPX_AGENT_CONFIG_FILE})
 
@@ -126,6 +126,8 @@ build_and_run_tcp: build_tcp run_tcp
 build_and_run_dynamichttp: build_dynamichttp run_dynamichttp
 
 build_and_run_websocket_http: build_websocket_http run_websocket_http
+
+build_and_run_httpx: build_httpx run_httpx
 
 build_all: build_http build_tcp build_websocket
 
