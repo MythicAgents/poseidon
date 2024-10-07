@@ -4,9 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/library"
 	"io"
 	"os"
 )
+
+func init() {
+	library.RegisterTask("tail", Run)
+}
 
 type tailArgs struct {
 	FilePath string `json:"path"`

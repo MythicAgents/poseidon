@@ -7,7 +7,13 @@ import (
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/library"
 )
+
+
+func init() {
+	library.RegisterTask("cd", Run)
+}
 
 // Run - package function to run cd
 func Run(task structs.Task) {

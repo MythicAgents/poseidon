@@ -6,8 +6,13 @@ import (
 
 	// Poseidon
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/library"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	library.RegisterTask("persist_loginitem", Run)
+}
 
 type Arguments struct {
 	Path   string `json:"path"`

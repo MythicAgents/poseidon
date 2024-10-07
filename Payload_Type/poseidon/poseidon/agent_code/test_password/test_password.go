@@ -3,7 +3,12 @@ package test_password
 import (
 	"encoding/json"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/library"
 )
+
+func init() {
+	library.RegisterTask("test_password", Run)
+}
 
 var args Arguments
 

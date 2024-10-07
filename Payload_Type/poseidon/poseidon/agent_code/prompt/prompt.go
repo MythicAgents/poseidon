@@ -3,7 +3,18 @@ package prompt
 import (
 	"encoding/json"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/library"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/runtimeMainThread"
 )
+
+
+func runWrapper(task structs.Task) {
+	runtimeMainThread.DoOnMainThread(Run, task)
+}
+
+func init() {
+	library.RegisterTask("prompt", runWrapper)
+}
 
 type Arguments struct {
 	Icon        string `json:"icon"`

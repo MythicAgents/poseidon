@@ -1,6 +1,6 @@
-HTTP_UUID=80844d19-9bfc-47f9-b9af-c6b9144c0fdc
+HTTP_UUID=abd41870-7d6a-47ee-a11e-be026be4a005
 HTTP_AGENT_CONFIG_FILE=test_agent_config_http.json
-HTTP_CONFIG=$(shell base64 -i ${HTTP_AGENT_CONFIG_FILE})
+HTTP_CONFIG=$(shell base64 -w0 -i ${HTTP_AGENT_CONFIG_FILE})
 
 WEBSOCKET_UUID=80844d19-9bfc-47f9-b9af-c6b9144c0fdc
 WEBSOCKET_AGENT_CONFIG_FILE=test_agent_config_websocket.json
