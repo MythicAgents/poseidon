@@ -9,11 +9,16 @@ import (
 	"fmt"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/library"
 	"io"
 	"net"
 	"strconv"
 	"strings"
 )
+
+func init() {
+	library.RegisterTask("socks", Run)
+}
 
 // ****** The following is from https://github.com/armon/go-socks5 *****
 const (

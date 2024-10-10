@@ -5,7 +5,12 @@ import (
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/library"
 )
+
+func init() {
+	library.RegisterTask("persist_launchd", Run)
+}
 
 type Arguments struct {
 	Label       string   `json:"Label"`

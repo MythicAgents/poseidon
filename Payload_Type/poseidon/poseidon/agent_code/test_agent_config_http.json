@@ -1,16 +1,19 @@
 {
-  "callback_host": "http://127.0.0.1",
-  "callback_port": 80,
-  "killdate": "2024-12-31",
-  "callback_interval": 2,
-  "callback_jitter": 0,
-  "post_uri": "data",
-  "encrypted_exchange_check": true,
-  "headers": {},
-  "AESPSK": "hfN9Nk29S8LsjrE9ffbT9KONue4uozk+/TVMyrxDvvM=",
-  "proxy_port": 0,
-  "proxy_user": "",
-  "proxy_pass": "",
-  "proxy_host": "",
-  "proxy_bypass": false
+				"AESPSK": "1aELoVWIIJURvhIPyk6g+e5aVp4jdj5YBejAN6TGcHc=",
+				"callback_host": "http://192.168.66.213",
+				"callback_interval": 10,
+				"callback_jitter": 23,
+				"callback_port": 19999,
+				"encrypted_exchange_check": true,
+				"get_uri": "index",
+				"headers": {
+					"User-Agent": "Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko"
+				},
+				"killdate": "2025-10-07",
+				"post_uri": "data",
+				"proxy_host": "",
+				"proxy_pass": "",
+				"proxy_port": 0,
+				"proxy_user": "",
+				"query_path_name": "q"
 }

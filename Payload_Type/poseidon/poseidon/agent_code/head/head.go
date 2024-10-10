@@ -6,7 +6,12 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 	"io"
 	"os"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/library"
 )
+
+func init() {
+	library.RegisterTask("head", Run)
+}
 
 type headArgs struct {
 	FilePath string `json:"path"`
