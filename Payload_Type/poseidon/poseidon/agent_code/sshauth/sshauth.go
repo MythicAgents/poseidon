@@ -18,8 +18,13 @@ import (
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/library"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/portscan"
 )
+
+func init() {
+	library.RegisterTask("sshauth", Run)
+}
 
 var (
 	sshResultChan = make(chan SSHResult)

@@ -11,7 +11,12 @@ import (
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/library"
 )
+
+func init() {
+	library.RegisterTask("link_webshell", Run)
+}
 
 type Arguments struct {
 	CookieValue string `json:"cookie_value"`
@@ -21,6 +26,7 @@ type Arguments struct {
 	QueryParam  string `json:"query_param"`
 	TargetUUID  string `json:"target_uuid"`
 }
+
 
 // Run - package function to run link_tcp
 func Run(task structs.Task) {
