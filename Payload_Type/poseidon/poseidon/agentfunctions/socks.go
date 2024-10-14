@@ -48,11 +48,49 @@ func init() {
 				},
 				Description: "Port number on Mythic server to open for SOCKS5",
 			},
+			{
+				Name:             "username",
+				ModalDisplayName: "Username",
+				DefaultValue:     "",
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
+				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+					{
+						ParameterIsRequired: false,
+						UIModalPosition:     4,
+					},
+				},
+				Description: "Optionally restrict access to SOCKS port via username/password",
+			},
+			{
+				Name:             "password",
+				ModalDisplayName: "Password",
+				DefaultValue:     "",
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
+				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+					{
+						ParameterIsRequired: false,
+						UIModalPosition:     5,
+					},
+				},
+				Description: "Optionally restrict access to SOCKS port via username/password",
+			},
 		},
 		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,
 				TaskID:  taskData.Task.ID,
+			}
+			username, err := taskData.Args.GetStringArg("username")
+			if err != nil {
+				response.Success = false
+				response.Error = err.Error()
+				return response
+			}
+			password, err := taskData.Args.GetStringArg("password")
+			if err != nil {
+				response.Success = false
+				response.Error = err.Error()
+				return response
 			}
 			if action, err := taskData.Args.GetStringArg("action"); err != nil {
 				response.Success = false
@@ -70,6 +108,8 @@ func init() {
 						PortType:  rabbitmq.CALLBACK_PORT_TYPE_SOCKS,
 						LocalPort: int(port),
 						TaskID:    taskData.Task.ID,
+						Username:  username,
+						Password:  password,
 					}); err != nil {
 						logging.LogError(err, "Failed to start socks")
 						response.Error = err.Error()
