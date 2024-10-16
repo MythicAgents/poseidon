@@ -5,10 +5,7 @@ go 1.21
 toolchain go1.22.2
 
 
-replace github.com/coolcoolnoworries/poseidon/Payload_Type/poseidon/agent_code/lsopen => ./lsopen/
-
 require (
-        github.com/coolcoolnoworries/poseidon/Payload_Type/poseidon/agent_code/lsopen v0.0.0-00010101000000-000000000000
 	github.com/creack/pty v1.1.21
 	github.com/djherbis/atime v1.1.0
 	github.com/google/uuid v1.6.0
