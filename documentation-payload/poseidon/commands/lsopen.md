@@ -35,7 +35,7 @@ Use LaunchServices API to run applications and binaries out of PID 1 (launchd). 
 ## Usage
 
 ```
-lsopen {"application":[path],"hideApp":[boolean],"appArgs":[[arg1],[arg2],[arg3]...]}
+lsopen -application "/sbin/ping" -hideApp false -appArgs 8.8.8.8 -t 47
 ```
 
 ## MITRE ATT&CK Mapping
