@@ -4,7 +4,6 @@ go 1.21
 
 toolchain go1.22.2
 
-
 require (
 	github.com/creack/pty v1.1.21
 	github.com/djherbis/atime v1.1.0
