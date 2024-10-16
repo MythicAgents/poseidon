@@ -39,15 +39,15 @@ func Run(task structs.Task) {
 		return
 	}
 
-	if r.Successful {
-		msg.UserOutput = "Successfully spawned process."
-		msg.Completed = true
-		task.Job.SendResponses <- msg
-	} else {
-		msg.UserOutput = "Failed to spawn process."
-		msg.Completed = true
-		task.Job.SendResponses <- msg
-	}
+        if r.Successful {
+                msg.UserOutput = "Successfully spawned application."
+                msg.Completed = true
+                task.Job.SendResponses <- msg
+        } else {
+                msg := task.NewResponse()
+                msg.SetError("Failed to spawn application.")
+                task.Job.SendResponses <- msg
+        }
 
 	return
 }
