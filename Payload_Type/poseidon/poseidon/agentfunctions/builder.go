@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-const version = "2.1.8"
+const version = "2.1.9"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`
@@ -137,6 +137,10 @@ var payloadDefinition = agentstructs.PayloadType{
 			atLeastOneCallbackWithinRange := false
 			for activeC2, _ := range sleepInfo {
 				if activeC2 == "websocket" && callback.LastCheckin.Unix() == 0 {
+					atLeastOneCallbackWithinRange = true
+					continue
+				}
+				if activeC2 == "poseidon_tcp" {
 					atLeastOneCallbackWithinRange = true
 					continue
 				}

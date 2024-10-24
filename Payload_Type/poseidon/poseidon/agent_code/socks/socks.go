@@ -158,9 +158,10 @@ func handleMutexMapModifications() {
 				default:
 					//fmt.Printf("dropping data because channel is full")
 				}
+				continue
 			}
 			if msg.Exit {
-
+				continue
 			}
 			// got a message from mythic, we don't know that serverID and the message isn't exit, try to open a new connection
 			data, err := base64.StdEncoding.DecodeString(msg.Data)
@@ -394,7 +395,7 @@ func readFromProxy(conn net.Conn, toMythicSocksChannel chan structs.SocksMsg, ch
 func writeToProxy(recvChan chan structs.SocksMsg, conn net.Conn, channelId uint32, toMythicSocksChannel chan structs.SocksMsg) {
 	w := bufio.NewWriter(conn)
 	for bufOut := range recvChan {
-		fmt.Printf("got recv message from mythic to udp proxy")
+		//fmt.Printf("got recv message from mythic to proxy\n")
 		// Send a response back to person contacting us.
 		if bufOut.Exit {
 			w.Flush()
@@ -404,7 +405,7 @@ func writeToProxy(recvChan chan structs.SocksMsg, conn net.Conn, channelId uint3
 		data, err := base64.StdEncoding.DecodeString(bufOut.Data)
 		if err != nil {
 			w.Flush()
-			fmt.Printf("telling udp proxy to exit\n")
+			//fmt.Printf("telling proxy to exit\n")
 			msg := structs.SocksMsg{}
 			msg.ServerId = channelId
 			msg.Data = ""
@@ -415,7 +416,7 @@ func writeToProxy(recvChan chan structs.SocksMsg, conn net.Conn, channelId uint3
 		}
 		_, err = w.Write(data)
 		if err != nil {
-			fmt.Println("channel (%d) Error writing to proxy: ", channelId, err.Error())
+			//fmt.Println("channel (%d) Error writing to proxy: ", channelId, err.Error())
 			msg := structs.SocksMsg{}
 			msg.ServerId = channelId
 			msg.Data = ""
@@ -429,7 +430,7 @@ func writeToProxy(recvChan chan structs.SocksMsg, conn net.Conn, channelId uint3
 		w.Flush()
 	}
 	w.Flush()
-	fmt.Printf("telling udp proxy to exit\n")
+	//fmt.Printf("telling proxy to exit\n")
 	msg := structs.SocksMsg{}
 	msg.ServerId = channelId
 	msg.Data = ""
@@ -457,7 +458,7 @@ func writeToUDPProxy(recvChan chan structs.SocksMsg, conn net.Conn, channelId ui
 		r := bytes.NewReader(data)
 		header := []byte{0, 0, 0}
 		if _, err := r.Read(header); err != nil {
-			fmt.Printf("failed to connect to read header: %v\n", err)
+			//fmt.Printf("failed to connect to read header: %v\n", err)
 			msg := structs.SocksMsg{
 				ServerId: channelId,
 				Exit:     true,
@@ -467,7 +468,7 @@ func writeToUDPProxy(recvChan chan structs.SocksMsg, conn net.Conn, channelId ui
 		}
 		_, err = ReadAddrSpec(r)
 		if err != nil {
-			fmt.Printf("failed to read remote address: %v\n", err)
+			//fmt.Printf("failed to read remote address: %v\n", err)
 			msg := structs.SocksMsg{
 				ServerId: channelId,
 				Exit:     true,
