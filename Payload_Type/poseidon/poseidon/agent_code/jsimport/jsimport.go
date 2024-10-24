@@ -8,7 +8,12 @@ import (
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/library"
 )
+
+func init() {
+	library.RegisterTask("jsimport", Run)
+}
 
 // initial .m code pulled from https://github.com/its-a-feature/macos_execute_from_memory
 // and https://github.com/opensource-apple/dyld/tree/master/unit-tests/test-cases/bundle-memory-load
