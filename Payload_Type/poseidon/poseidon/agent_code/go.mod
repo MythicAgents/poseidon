@@ -24,4 +24,5 @@ require (
 	github.com/jezek/xgb v1.1.1 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e // indirect
+	github.com/traefik/yaegi v0.16.1 // indirect
 )
