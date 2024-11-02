@@ -2,7 +2,7 @@ function(task, response){
 	let tables = [];
 	let headers = [
             {"plaintext": "hostname", "type": "string", "fillWidth": true, "disableSort": true},
-			{"plaintext": "ipv4", "type": "string", "fillWidth": true, "disableSort": true},
+			{"plaintext": "ip", "type": "string", "fillWidth": true, "disableSort": true},
             {"plaintext": "pretty name", "type": "string", "fillWidth": true, "disableSort": true},
 			{"plaintext": "open ports", "type": "string", "fillWidth": true,"disableSort": true}
 
@@ -18,7 +18,7 @@ function(task, response){
 				for(let k = 0; k < data[j]["hosts"].length; k++){
 					rows.push({
 						"hostname": {"plaintext": data[j]["hosts"][k]['hostname']},
-						"ipv4": {"plaintext": data[j]["hosts"][k]["ipv4"]},
+						"ip": {"plaintext": data[j]["hosts"][k]["ip"]},
 						"pretty name": {"plaintext":data[j]["hosts"][k]["pretty_name"]},
 						"open ports": {"plaintext": JSON.stringify(data[j]["hosts"][k]["open_ports"])}
 					});
