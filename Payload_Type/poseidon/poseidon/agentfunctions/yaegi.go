@@ -13,11 +13,13 @@ import (
 Missing 1-1:
 
 argument_class: https://github.com/github-red-tea/poseidon-redtea/blob/829a46d33f2de9bb3ee6ef1ca981e6c718904c11/Payload_Type/poseidon/mythic/agent_functions/yaegi.py#L50
+	|- this doesn't seem to be used for go builds?
 
 create_tasking: https://github.com/github-red-tea/poseidon-redtea/blob/829a46d33f2de9bb3ee6ef1ca981e6c718904c11/Payload_Type/poseidon/mythic/agent_functions/yaegi.py#L53-L67
+	|- believe to have created this with TaskFunctionCreateTasking
 
 process_response: https://github.com/github-red-tea/poseidon-redtea/blob/829a46d33f2de9bb3ee6ef1ca981e6c718904c11/Payload_Type/poseidon/mythic/agent_functions/yaegi.py#L69-L70
-
+	|- this doesn't seem like it's needed from other cmds?
 */
 
 func init() {
