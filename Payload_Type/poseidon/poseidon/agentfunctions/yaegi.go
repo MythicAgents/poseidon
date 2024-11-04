@@ -77,6 +77,7 @@ func init() {
 					TaskID:  taskData.Task.ID,
 				}
 				return response
+			}
 		}
 	})
 }
