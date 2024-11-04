@@ -57,7 +57,7 @@ func init() {
 			ParameterGroupInfo: []agentstructs.ParameterGroupInfo{
 				ParameterIsRequired: false,
 				UIModalPosition: 2,
-			}
+			},
 		},
 
 		// UNSURE IS THIS IS NEEDED?
