@@ -29,7 +29,7 @@ type sleepInfoStruct struct {
 }
 
 var payloadDefinition = agentstructs.PayloadType{
-	Name:                                   "poseidon",
+	Name:                                   "poseidon_redtea",
 	FileExtension:                          "bin",
 	Author:                                 "@xorrior, @djhohnstein, @Ne0nd0g, @its_a_feature_",
 	SupportedOS:                            []string{agentstructs.SUPPORTED_OS_LINUX, agentstructs.SUPPORTED_OS_MACOS},
@@ -651,5 +651,5 @@ func Initialize() {
 	agentstructs.AllPayloadData.Get("poseidon").AddPayloadDefinition(payloadDefinition)
 	agentstructs.AllPayloadData.Get("poseidon").AddBuildFunction(build)
 	//agentstructs.AllPayloadData.Get("poseidon").AddOnNewCallbackFunction(onNewCallback)
-	agentstructs.AllPayloadData.Get("poseidon").AddIcon(filepath.Join(".", "poseidon", "agentfunctions", "poseidon.svg"))
+	agentstructs.AllPayloadData.Get("poseidon").AddIcon(filepath.Join(".", "poseidon", "agentfunctions", "poseidon-redtea.svg"))
 }
