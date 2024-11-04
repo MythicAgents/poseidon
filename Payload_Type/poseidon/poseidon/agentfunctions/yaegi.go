@@ -2,9 +2,6 @@ package agentfunctions
 
 import (
 	"errors"
-	"fmt"
-	"github.com/MythicMeta/MythicContainer/logging"
-	"github.com/MythicMeta/MythicContainer/mythicrpc"
 
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 )
@@ -29,34 +26,36 @@ func init() {
 		HelpString:          "yaegi",
 		Version:             1,
 		Author:              "@rookuu",
-		MitreAttackMappings: []string{},
 		SupportedUIFeatures: []string{"file_browser:upload"},
-		MitreAttackMappings: []string("T1620"),
+		MitreAttackMappings: []string{"T1620"},
 		CommandAttributes: agentstructs.CommandAttribute{
 			SupportedOS: []string{},
 		},
 		CommandParameters: []agentstructs.CommandParameter{
 			{
 				Name:          "file_id",
-				CLIName:       "File to Execute",
-				ParameterType: agentstructs.File, // UNSURE what to place?
+				ModalDisplayName:       "File to Execute",
+				Description: "File to Execute",
+				ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_FILE,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: true,
 						UIModalPosition:     1,
 					},
 				},
-				Description: "File to Execute",
 			},
-		},
-		CommandParameters: []agentstructs.CommandParameters{
-			Name: "args",
-			CLIName: "args",
-			Description: "Array of arguments to pass through the program",
-			ParameterType: agemtstructs.Array,
-			ParameterGroupInfo: []agentstructs.ParameterGroupInfo{
-				ParameterIsRequired: false,
-				UIModalPosition: 2,
+			{
+				Name: "args",
+				ModalDisplayName: "args",
+				Description: "Array of arguments to pass through the program",
+				ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_STRING,
+				DefaultValue:     "",
+				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+					{
+						ParameterIsRequired: false,
+						UIModalPosition: 2,
+					},
+				},
 			},
 		},
 
@@ -72,11 +71,11 @@ func init() {
 			}
 		},
 
-		TaskFunctionCreateTasking: func(task *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskOPSECPostTaskMessageResponse {
+		TaskFunctionCreateTasking: func(task *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			{
 				response := agentstructs.PTTaskCreateTaskingMessageResponse{
 					Success: true,
-					TaskID:  taskData.Task.ID,
+					TaskID:  task.Task.ID,
 				}
 				return response
 			}
