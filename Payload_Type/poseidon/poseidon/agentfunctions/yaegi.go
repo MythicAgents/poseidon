@@ -69,5 +69,14 @@ func init() {
 				return errors.New("Must supply arguments")
 			}
 		},
+
+		TaskFunctionCreateTasking: func(task *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskOPSECPostTaskMessageResponse {
+			{
+				response := agentstructs.PTTaskCreateTaskingMessageResponse{
+					Success: true,
+					TaskID:  taskData.Task.ID,
+				}
+				return response
+		}
 	})
 }
