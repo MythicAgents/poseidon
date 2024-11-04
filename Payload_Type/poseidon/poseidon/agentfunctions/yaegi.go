@@ -80,6 +80,6 @@ func init() {
 				}
 				return response
 			}
-		}
+		},
 	})
 }
