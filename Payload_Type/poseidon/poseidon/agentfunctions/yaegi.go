@@ -4,6 +4,8 @@ import (
 	"errors"
 
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
+	"github.com/MythicMeta/MythicContainer/logging"
+	"github.com/MythicMeta/MythicContainer/mythicrpc"
 )
 
 /**
@@ -33,10 +35,10 @@ func init() {
 		},
 		CommandParameters: []agentstructs.CommandParameter{
 			{
-				Name:          "file_id",
-				ModalDisplayName:       "File to Execute",
-				Description: "File to Execute",
-				ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_FILE,
+				Name:             "file_id",
+				ModalDisplayName: "File to Execute",
+				Description:      "File to Execute",
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_FILE,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: true,
@@ -45,15 +47,15 @@ func init() {
 				},
 			},
 			{
-				Name: "args",
+				Name:             "args",
 				ModalDisplayName: "args",
-				Description: "Array of arguments to pass through the program",
-				ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_STRING,
+				Description:      "Array of arguments to pass through the program",
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_ARRAY,
 				DefaultValue:     "",
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: false,
-						UIModalPosition: 2,
+						UIModalPosition:     2,
 					},
 				},
 			},
@@ -77,6 +79,31 @@ func init() {
 					Success: true,
 					TaskID:  task.Task.ID,
 				}
+
+				fileID, err := task.Args.GetStringArg("file_id")
+				if err != nil {
+					logging.LogError(err, "Failed to get file_id")
+					response.Success = false
+					response.Error = err.Error()
+					return response
+				}
+
+				fileResponse, err := mythicrpc.SendMythicRPCFileGetContent(mythicrpc.MythicRPCFileGetContentMessage{
+					AgentFileID: fileID,
+				})
+				if err != nil {
+					logging.LogError(err, "Failed to load file")
+					fileResponse.Success = false
+					response.Error = err.Error()
+					return response
+				}
+				if !fileResponse.Success {
+					logging.LogError(err, "Failed to load file")
+					fileResponse.Success = false
+					response.Error = err.Error()
+					return response
+				}
+
 				return response
 			}
 		},
