@@ -28,6 +28,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/list_entitlements"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/listtasks"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/ls"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/lsopen"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/mkdir"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/mv"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/persist_launchd"
@@ -62,7 +63,6 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/update_c2"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/upload"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/xpc"
-  "github.com/coolcoolnoworries/poseidon/Payload_Type/poseidon/agent_code/lsopen"
 	"os"
 )
 
