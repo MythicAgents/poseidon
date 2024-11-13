@@ -10,44 +10,37 @@ import (
 )
 
 type Arguments struct {
-	Application string `json:"application"`
-	HideApp     bool   `json:"hideApp"`
-	AppArgs     []string   `json:"appArgs"`
+	Application string   `json:"application"`
+	HideApp     bool     `json:"hideApp"`
+	AppArgs     []string `json:"appArgs"`
 }
 
 func Run(task structs.Task) {
-	msg := structs.Response{}
-	msg.TaskID = task.TaskID
+	msg := task.NewResponse()
 
 	args := Arguments{}
 	err := json.Unmarshal([]byte(task.Params), &args)
 
 	if err != nil {
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}
 
 	r, err := runCommand(args.Application, args.HideApp, args.AppArgs)
 	if err != nil {
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}
 
-        if r.Successful {
-                msg.UserOutput = "Successfully spawned application."
-                msg.Completed = true
-                task.Job.SendResponses <- msg
-        } else {
-                msg := task.NewResponse()
-                msg.SetError("Failed to spawn application.")
-                task.Job.SendResponses <- msg
-        }
-
+	if r.Successful {
+		msg.UserOutput = "Successfully spawned application."
+		msg.Completed = true
+		task.Job.SendResponses <- msg
+	} else {
+		msg.SetError("Failed to spawn application.")
+		task.Job.SendResponses <- msg
+	}
 	return
 }

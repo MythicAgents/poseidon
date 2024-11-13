@@ -1,4 +1,4 @@
-// +build darwin
+//go:build darwin
 
 package lsopen
 
@@ -47,7 +47,6 @@ func runCommand(app string, hide bool, args []string) (LSOpenDarwin, error) {
 		cArgs[i+1] = C.CString(arg)
 	}
 	c_argv = (**C.char)(unsafe.Pointer(&cArgs[0]))
-
 
 	res := C.lsopen_init(capp, ihide, c_argv, c_argc)
 
