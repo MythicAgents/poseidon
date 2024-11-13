@@ -3,6 +3,7 @@ package portscan
 import (
 	// Standard
 	"encoding/json"
+	"errors"
 	"strconv"
 	"strings"
 	"time"
@@ -17,14 +18,14 @@ type PortScanParams struct {
 	Ports []string `json:"ports"`
 }
 
-func doScan(hostList []string, portListStrs []string, job *structs.Job) []CIDR {
+func doScan(hostList []string, portListStrs []string, job *structs.Job) ([]CIDR, error) {
 	// Variable declarations
 	timeout := time.Duration(500) * time.Millisecond
 	var portList []PortRange
 
 	// populate the portList
 	for i := 0; i < len(portListStrs); i++ {
-		if strings.Contains(portListStrs[i], "-") && len(portListStrs) == 1 {
+		if strings.Contains(portListStrs[i], "-") && len(portListStrs[i]) == 1 {
 			// They want all the ports
 			allPorts := PortRange{1, 65535}
 			var newList []PortRange
@@ -58,6 +59,11 @@ func doScan(hostList []string, portListStrs []string, job *structs.Job) []CIDR {
 		}
 	}
 
+	if len(portList) == 0 {
+		err := errors.New("no ports to scan")
+		return nil, err
+	}
+
 	// var cidrs []*CIDR
 
 	var results []CIDR
@@ -73,8 +79,7 @@ func doScan(hostList []string, portListStrs []string, job *structs.Job) []CIDR {
 			// cidrs = append(cidrs, newCidr)
 		}
 	}
-
-	return results
+	return results, nil
 }
 
 func Run(task structs.Task) {
@@ -87,29 +92,30 @@ func Run(task structs.Task) {
 		task.Job.SendResponses <- msg
 		return
 	}
-	if len(params.Hosts) == 0 {
-		msg.UserOutput = "No hosts given to scan"
-		msg.Completed = true
-		msg.Status = "error"
+	if len(params.Hosts) == 0 || len(params.Hosts) == 1 && params.Hosts[0] == "" {
+		msg.SetError("No hosts given to scan")
 		task.Job.SendResponses <- msg
 		return
 	}
 	if len(params.Ports) == 0 {
-		msg.UserOutput = "No ports given to scan"
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError("No ports given to scan")
 		task.Job.SendResponses <- msg
 		return
 	}
+
 	//log.Println("Beginning portscan...")
-	results := doScan(params.Hosts, params.Ports, task.Job)
+	results, err := doScan(params.Hosts, params.Ports, task.Job)
+	if err != nil {
+		msg.SetError(err.Error())
+		task.Job.SendResponses <- msg
+		return
+	}
+
 	// log.Println("Finished!")
 	data, err := json.MarshalIndent(results, "", "    ")
 	// // fmt.Println("Data:", string(data))
 	if err != nil {
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}

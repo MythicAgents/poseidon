@@ -23,7 +23,7 @@ type PortRange struct {
 }
 
 type host struct {
-	IPv4       string `json:"ipv4"`
+	IP         string `json:"ip"`
 	Hostname   string `json:"hostname"`
 	PrettyName string `json:"pretty_name"`
 	OpenPorts  []int  `json:"open_ports"`
@@ -36,46 +36,27 @@ type CIDR struct {
 	Hosts []*host `json:"hosts"`
 }
 
-// Helper function to validate IPv4
-func ValidIPv4(host string) bool {
-	parts := strings.Split(host, ".")
-
-	if len(parts) < 4 {
-		return false
-	}
-
-	for _, x := range parts {
-		if i, err := strconv.Atoi(x); err == nil {
-			if i < 0 || i > 255 {
-				return false
-			}
-		} else {
-			return false
-		}
-
-	}
-	return true
-}
-
 // Validates that a new host can be created based on hostName
 func NewHost(hostName string) (*host, error) {
 	mtx := sync.Mutex{}
-	if ValidIPv4(hostName) {
+	// chek if hostname is IP address
+	if net.ParseIP(hostName) != nil {
 		return &host{
-			IPv4:       hostName,
+			IP:         hostName,
 			PrettyName: hostName,
 			mutex:      mtx,
 			lock:       semaphore.NewWeighted(100), // yeah i hardcoded don't @me
 		}, nil
 	} else {
 		// Try and lookup the hostname
-		ips, err := net.LookupIP(hostName)
+		ips, err := net.LookupHost(hostName)
 		if err != nil {
 			return nil, err
 		}
-		hostStr := fmt.Sprintf("%s (%s)", ips[0].String(), hostName)
+		hostStr := fmt.Sprintf("%s (%s)", ips[0], hostName)
+
 		return &host{
-			IPv4:       ips[0].String(),
+			IP:         ips[0],
 			Hostname:   hostName,
 			PrettyName: hostStr,
 			mutex:      mtx,
@@ -115,7 +96,7 @@ func NewCIDR(cidrStr string) (*CIDR, error) {
 	}, nil
 }
 
-//  http://play.golang.org/p/m8TNTtygK0
+// http://play.golang.org/p/m8TNTtygK0
 func inc(ip net.IP) {
 	for j := len(ip) - 1; j >= 0; j-- {
 		ip[j]++
@@ -126,9 +107,14 @@ func inc(ip net.IP) {
 }
 
 // Scan a single port!
-//export
+// export
 func (server *host) ScanPort(port int, timeout time.Duration) {
-	target := fmt.Sprintf("%s:%d", server.IPv4, port)
+	var target string
+	if strings.Contains(server.IP, ":") {
+		target = fmt.Sprintf("[%s]:%d", server.IP, port)
+	} else {
+		target = fmt.Sprintf("%s:%d", server.IP, port)
+	}
 	conn, err := net.DialTimeout("tcp", target, timeout)
 
 	if conn != nil {
