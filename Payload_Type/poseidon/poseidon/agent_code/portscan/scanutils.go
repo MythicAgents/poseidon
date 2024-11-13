@@ -43,6 +43,7 @@ func NewHost(hostName string) (*host, error) {
 	if net.ParseIP(hostName) != nil {
 		return &host{
 			IP:         hostName,
+			Hostname:   hostName,
 			PrettyName: hostName,
 			mutex:      mtx,
 			lock:       semaphore.NewWeighted(100), // yeah i hardcoded don't @me
@@ -53,8 +54,7 @@ func NewHost(hostName string) (*host, error) {
 		if err != nil {
 			return nil, err
 		}
-		hostStr := fmt.Sprintf("%s (%s)", ips[0], hostName)
-
+		hostStr := strings.Join(ips, "\n")
 		return &host{
 			IP:         ips[0],
 			Hostname:   hostName,

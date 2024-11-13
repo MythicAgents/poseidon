@@ -1,9 +1,8 @@
 function(task, response){
 	let tables = [];
 	let headers = [
+			{"plaintext": "ips", "type": "button", "width": 80, "disableSort": true},
             {"plaintext": "hostname", "type": "string", "fillWidth": true, "disableSort": true},
-			{"plaintext": "ip", "type": "string", "fillWidth": true, "disableSort": true},
-            {"plaintext": "pretty name", "type": "string", "fillWidth": true, "disableSort": true},
 			{"plaintext": "open ports", "type": "string", "fillWidth": true,"disableSort": true}
 
         ];
@@ -16,9 +15,18 @@ function(task, response){
 			for(let j = 0; j < data.length; j++){
 				let rows = [];
 				for(let k = 0; k < data[j]["hosts"].length; k++){
+					if(data[j]["hosts"][k]["open_ports"] === null){continue}
 					rows.push({
 						"hostname": {"plaintext": data[j]["hosts"][k]['hostname']},
-						"ip": {"plaintext": data[j]["hosts"][k]["ip"]},
+						"ips": {
+							"button": {
+								"name": "View IPs",
+								"type": "string",
+								"value": data[j]["hosts"][k]["pretty_name"],
+								"hoverText": "View all IPs",
+								"title": "All IPs associated with this host",
+							}
+						},
 						"pretty name": {"plaintext":data[j]["hosts"][k]["pretty_name"]},
 						"open ports": {"plaintext": JSON.stringify(data[j]["hosts"][k]["open_ports"])}
 					});
