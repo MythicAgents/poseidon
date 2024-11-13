@@ -42,7 +42,7 @@ func init() {
 				Description:   "Arguments to pass to application/binary",
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
-						ParameterIsRequired: true,
+						ParameterIsRequired: false,
 						UIModalPosition:     3,
 					},
 				},
