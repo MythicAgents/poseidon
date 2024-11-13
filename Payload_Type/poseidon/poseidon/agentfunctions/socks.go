@@ -92,60 +92,63 @@ func init() {
 				response.Error = err.Error()
 				return response
 			}
-			if action, err := taskData.Args.GetStringArg("action"); err != nil {
+			action, err := taskData.Args.GetStringArg("action")
+			if err != nil {
 				response.Success = false
 				response.Error = err.Error()
 				return response
-			} else if port, err := taskData.Args.GetNumberArg("port"); err != nil {
+			}
+			port, err := taskData.Args.GetNumberArg("port")
+			if err != nil {
 				response.Success = false
 				response.Error = err.Error()
 				return response
-			} else {
-				displayString := fmt.Sprintf("%s on port %.0f", action, port)
-				response.DisplayParams = &displayString
-				if action == "start" {
-					if socksResponse, err := mythicrpc.SendMythicRPCProxyStart(mythicrpc.MythicRPCProxyStartMessage{
-						PortType:  rabbitmq.CALLBACK_PORT_TYPE_SOCKS,
-						LocalPort: int(port),
-						TaskID:    taskData.Task.ID,
-						Username:  username,
-						Password:  password,
-					}); err != nil {
-						logging.LogError(err, "Failed to start socks")
-						response.Error = err.Error()
-						response.Success = false
-						return response
-					} else if !socksResponse.Success {
-						response.Error = socksResponse.Error
-						response.Success = false
-						return response
-					} else {
-						return response
-					}
-				} else if action == "stop" {
-					if socksResponse, err := mythicrpc.SendMythicRPCProxyStop(mythicrpc.MythicRPCProxyStopMessage{
-						PortType: rabbitmq.CALLBACK_PORT_TYPE_SOCKS,
-						Port:     int(port),
-						TaskID:   taskData.Task.ID,
-					}); err != nil {
-						logging.LogError(err, "Failed to stop socks")
-						response.Error = err.Error()
-						response.Success = false
-						return response
-					} else if !socksResponse.Success {
-						response.Error = socksResponse.Error
-						response.Success = false
-						return response
-					} else {
-						return response
-					}
+			}
+			displayString := fmt.Sprintf("%s on port %.0f", action, port)
+			response.DisplayParams = &displayString
+			if action == "start" {
+				if socksResponse, err := mythicrpc.SendMythicRPCProxyStart(mythicrpc.MythicRPCProxyStartMessage{
+					PortType:  rabbitmq.CALLBACK_PORT_TYPE_SOCKS,
+					LocalPort: int(port),
+					TaskID:    taskData.Task.ID,
+					Username:  username,
+					Password:  password,
+				}); err != nil {
+					logging.LogError(err, "Failed to start socks")
+					response.Error = err.Error()
+					response.Success = false
+					return response
+				} else if !socksResponse.Success {
+					response.Error = socksResponse.Error
+					response.Success = false
+					return response
 				} else {
-					response.Success = true
-					output := "reset all connections and flush data"
-					response.DisplayParams = &output
 					return response
 				}
-
+			} else if action == "stop" {
+				if socksResponse, err := mythicrpc.SendMythicRPCProxyStop(mythicrpc.MythicRPCProxyStopMessage{
+					PortType: rabbitmq.CALLBACK_PORT_TYPE_SOCKS,
+					Port:     int(port),
+					TaskID:   taskData.Task.ID,
+					Username: username,
+					Password: password,
+				}); err != nil {
+					logging.LogError(err, "Failed to stop socks")
+					response.Error = err.Error()
+					response.Success = false
+					return response
+				} else if !socksResponse.Success {
+					response.Error = socksResponse.Error
+					response.Success = false
+					return response
+				} else {
+					return response
+				}
+			} else {
+				response.Success = true
+				output := "reset all connections and flush data"
+				response.DisplayParams = &output
+				return response
 			}
 		},
 		TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
