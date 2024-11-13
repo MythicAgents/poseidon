@@ -10,6 +10,6 @@
   "architectures": ["x86_64", "arm_64"],
   "c2": ["http", "websocket", "dynamichttp", "poseidon_tcp"],
   "mythic_version": "3.3.0",
-  "agent_version": "2.1.9",
+  "agent_version": "2.1.10",
   "supported_wrappers": []
 }
