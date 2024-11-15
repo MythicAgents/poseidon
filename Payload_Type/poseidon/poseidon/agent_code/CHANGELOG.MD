@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 2.1.11 - 2024-11-15
+
+### Changed
+
+- Refactored the egress profiles to use a custom .Sleep() function that can be interrupted
+  - this allows changing sleep times to take effect immediately instead of waiting another sleep interval
+- Updated the checkAlive function to be more accurate
+
 ## 2.1.10 - 2024-11-13
 
 ### Changed

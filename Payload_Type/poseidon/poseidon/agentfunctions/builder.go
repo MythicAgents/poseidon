@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-const version = "2.1.10"
+const version = "2.1.11"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`
@@ -144,19 +144,14 @@ var payloadDefinition = agentstructs.PayloadType{
 					atLeastOneCallbackWithinRange = true
 					continue
 				}
-				minAdd := sleepInfo[activeC2].Interval
 				maxAdd := sleepInfo[activeC2].Interval
 				if sleepInfo[activeC2].Jitter > 0 {
-					// minimum would be sleep_interval - (sleep_jitter % of sleep_interval)
-					minAdd = minAdd - ((sleepInfo[activeC2].Jitter / 100) * (sleepInfo[activeC2].Interval))
 					// maximum would be sleep_interval + (sleep_jitter % of sleep_interval)
 					maxAdd = maxAdd + ((sleepInfo[activeC2].Jitter / 100) * (sleepInfo[activeC2].Interval))
 				}
 				maxAdd *= 2 // double the high end in case we're on a close boundary
-				earliest := callback.LastCheckin.Add(time.Duration(minAdd) * time.Second)
 				latest := callback.LastCheckin.Add(time.Duration(maxAdd) * time.Second)
-
-				if callback.LastCheckin.After(earliest) && callback.LastCheckin.Before(latest) {
+				if time.Now().UTC().Before(latest) {
 					atLeastOneCallbackWithinRange = true
 				}
 			}

