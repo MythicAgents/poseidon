@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-const version = "2.1.11"
+const version = "2.1.13"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`
@@ -82,7 +82,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			Description:   "Prioritize the order in which egress connections are made (if including multiple egress c2 profiles)",
 			Required:      false,
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_ARRAY,
-			DefaultValue:  []string{"http", "websocket", "dynamichttp"},
+			DefaultValue:  []string{"http", "websocket", "dynamichttp", "httpx"},
 		},
 		{
 			Name:          "egress_failover",
