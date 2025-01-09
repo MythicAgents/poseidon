@@ -32,7 +32,7 @@ var payloadDefinition = agentstructs.PayloadType{
 	Name:                                   "poseidon",
 	FileExtension:                          "bin",
 	Author:                                 "@xorrior, @djhohnstein, @Ne0nd0g, @its_a_feature_",
-	SupportedOS:                            []string{agentstructs.SUPPORTED_OS_LINUX, agentstructs.SUPPORTED_OS_MACOS},
+	SupportedOS:                            []string{agentstructs.SUPPORTED_OS_LINUX, agentstructs.SUPPORTED_OS_MACOS, agentstructs.SUPPORTED_OS_WINDOWS},
 	Wrapper:                                false,
 	CanBeWrappedByTheFollowingPayloadTypes: []string{},
 	SupportsDynamicLoading:                 false,
@@ -432,7 +432,11 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	if mode == "c-shared" {
 		tags = append(tags, "shared")
 	}
-	command := fmt.Sprintf("CGO_ENABLED=1 GOOS=%s GOARCH=%s ", targetOs, goarch)
+	command := fmt.Sprintf("GOOS=%s GOARCH=%s ", targetOs, goarch)
+	if targetOs != "windows" {
+		command += "CGO_ENABLED=1 "
+	}
+
 	goCmd := fmt.Sprintf("-tags %s -buildmode %s -ldflags \"%s\"", strings.Join(tags, ","), mode, ldflags)
 	if targetOs == "darwin" {
 		command += "CC=o64-clang CXX=o64-clang++ "
