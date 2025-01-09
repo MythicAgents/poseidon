@@ -432,11 +432,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	if mode == "c-shared" {
 		tags = append(tags, "shared")
 	}
-	command := fmt.Sprintf("GOOS=%s GOARCH=%s ", targetOs, goarch)
-	if targetOs != "windows" {
-		command += "CGO_ENABLED=1 "
-	}
-
+	command := fmt.Sprintf("CGO_ENABLED=1 GOOS=%s GOARCH=%s ", targetOs, goarch)
 	goCmd := fmt.Sprintf("-tags %s -buildmode %s -ldflags \"%s\"", strings.Join(tags, ","), mode, ldflags)
 	if targetOs == "darwin" {
 		command += "CC=o64-clang CXX=o64-clang++ "

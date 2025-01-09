@@ -1,4 +1,4 @@
-//go:build (linux || darwin) && poseidon_tcp
+//go:build poseidon_tcp
 
 package profiles
 

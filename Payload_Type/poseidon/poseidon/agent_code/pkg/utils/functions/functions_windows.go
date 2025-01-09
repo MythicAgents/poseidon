@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"unicode/utf16"
-
+	"golang.org/x/sys/windows"
 )
 
 func isElevated() bool {
@@ -25,6 +24,7 @@ func getProcessName() string {
 	}
 }
 func getDomain() string {
+	// TODO: implement me
 	return ""
 }
 func getStringFromBytes(data [65]byte) string {
@@ -39,13 +39,20 @@ func getStringFromBytes(data [65]byte) string {
 	return string(stringData[:])
 }
 func getOS() string {
-	// TODO: fixme
-	return "Windows"
+	verInfo := windows.RtlGetVersion()
+	return fmt.Sprintf("%d.%d (Build %d)", verInfo.MajorVersion, verInfo.MinorVersion, verInfo.BuildNumber) 
 }
+
 func getUser() string {
-	// TODO: fixme
-	return ""
+	name := make([]uint16, 128)
+	nameSize := uint32(len(name))
+	err := windows.GetUserNameEx(windows.NameSamCompatible, &name[0], &nameSize)
+	if err != nil {
+		return ""
+	}
+	return windows.UTF16ToString(name)
 }
+
 func getPID() int {
 	return os.Getpid()
 }
@@ -56,53 +63,4 @@ func getHostname() string {
 	} else {
 		return hostname
 	}
-}
-
-// Helper function to convert DWORD byte counts to
-// human readable sizes.
-func UINT32ByteCountDecimal(b uint32) string {
-	const unit = 1024
-	if b < unit {
-		return fmt.Sprintf("%d B", b)
-	}
-	div, exp := uint32(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB", float32(b)/float32(div), "kMGTPE"[exp])
-}
-
-// Helper function to convert LARGE_INTEGER byte
-//
-//	counts to human readable sizes.
-func UINT64ByteCountDecimal(b uint64) string {
-	const unit = 1024
-	if b < unit {
-		return fmt.Sprintf("%d B", b)
-	}
-	div, exp := uint64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "kMGTPE"[exp])
-}
-
-// Helper function to build a string from a WCHAR string
-func UTF16ToString(s []uint16) []string {
-	var results []string
-	cut := 0
-	for i, v := range s {
-		if v == 0 {
-			if i-cut > 0 {
-				results = append(results, string(utf16.Decode(s[cut:i])))
-			}
-			cut = i + 1
-		}
-	}
-	if cut < len(s) {
-		results = append(results, string(utf16.Decode(s[cut:])))
-	}
-	return results
 }
