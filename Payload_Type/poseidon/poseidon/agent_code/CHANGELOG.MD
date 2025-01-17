@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 2.1.15 - 2025-01-17
+
+### Changed
+
+- Updated the `ls` command to not double return output and leverage the new SetAsUserOutput flag in file browser data
+- Updated the `socks` command to continue on UDP timeouts and accept responses from different source UDP ports
+
 ## 2.1.14 - 2024-12-08
 
 ### Changed

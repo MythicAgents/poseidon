@@ -1,3 +1,4 @@
+github.com/MythicMeta/MythicContainer v1.4.9 h1:1RTY2xkKMahMjvTx1D0ScIgvxJLOV93nfnydbUw5AjM=
 github.com/MythicMeta/MythicContainer v1.4.9/go.mod h1:BnUYftqQ9KsGxBd6RlyRcAHBrqV1CUcrRCjktWwc2Do=
 github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

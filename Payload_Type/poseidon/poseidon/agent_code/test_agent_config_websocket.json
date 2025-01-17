@@ -8,6 +8,6 @@
   "encrypted_exchange_check": true,
   "domain_front": "",
   "callback_jitter": 0,
-  "killdate": "2024-12-31",
+  "killdate": "2025-12-31",
   "tasking_type": "Push"
 }

@@ -41,19 +41,18 @@ func sendFileMessagesToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 			sendFileToMythic.Task.Job.SendResponses <- errResponse
 			sendFileToMythic.FinishedTransfer <- 1
 			return
-		} else {
-			fi, err := sendFileToMythic.File.Stat()
-			if err != nil {
-				errResponse := structs.Response{}
-				errResponse.Completed = true
-				errResponse.TaskID = sendFileToMythic.Task.TaskID
-				errResponse.UserOutput = fmt.Sprintf("Error getting file size: %s", err.Error())
-				sendFileToMythic.Task.Job.SendResponses <- errResponse
-				sendFileToMythic.FinishedTransfer <- 1
-				return
-			}
-			size = fi.Size()
 		}
+		fi, err := sendFileToMythic.File.Stat()
+		if err != nil {
+			errResponse := structs.Response{}
+			errResponse.Completed = true
+			errResponse.TaskID = sendFileToMythic.Task.TaskID
+			errResponse.UserOutput = fmt.Sprintf("Error getting file size: %s", err.Error())
+			sendFileToMythic.Task.Job.SendResponses <- errResponse
+			sendFileToMythic.FinishedTransfer <- 1
+			return
+		}
+		size = fi.Size()
 	} else {
 		size = int64(len(*sendFileToMythic.Data))
 	}
@@ -100,16 +99,11 @@ func sendFileMessagesToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 
 		//log.Printf("Receive file download registration response %s\n", resp)
 		if _, ok := fileDetails["file_id"]; ok {
-			if ok {
-				updateUserOutput := structs.Response{}
-				updateUserOutput.TaskID = sendFileToMythic.Task.TaskID
-				updateUserOutput.UserOutput = "{\"file_id\": \"" + fmt.Sprintf("%v", fileDetails["file_id"]) + "\", \"total_chunks\": \"" + strconv.Itoa(int(chunks)) + "\"}\n"
-				sendFileToMythic.Task.Job.SendResponses <- updateUserOutput
-				break
-			} else {
-				//log.Println("Didn't find response with file_id key")
-				continue
-			}
+			updateUserOutput := structs.Response{}
+			updateUserOutput.TaskID = sendFileToMythic.Task.TaskID
+			updateUserOutput.UserOutput = "{\"file_id\": \"" + fmt.Sprintf("%v", fileDetails["file_id"]) + "\", \"total_chunks\": \"" + strconv.Itoa(int(chunks)) + "\"}\n"
+			sendFileToMythic.Task.Job.SendResponses <- updateUserOutput
+			break
 		}
 	}
 	var r *bytes.Buffer = nil
@@ -153,12 +147,12 @@ func sendFileMessagesToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 
 		fileDownloadData = structs.FileDownloadMessage{}
 		fileDownloadData.ChunkNum = int(i) + 1
-		//fileDownloadData.TotalChunks = -1
 		fileDownloadData.FileID = fileDetails["file_id"].(string)
 		fileDownloadData.ChunkData = base64.StdEncoding.EncodeToString(partBuffer)
 		fileDownloadMsg.Download = &fileDownloadData
 		sendFileToMythic.Task.Job.SendResponses <- fileDownloadMsg
 		newPercentComplete := ((fileDownloadData.ChunkNum * 100) / int(chunks))
+
 		if newPercentComplete/10 > lastPercentCompleteNotified && sendFileToMythic.SendUserStatusUpdates {
 			response := sendFileToMythic.Task.NewResponse()
 			response.Completed = false
@@ -180,12 +174,12 @@ func sendFileMessagesToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 				sendFileToMythic.FinishedTransfer <- 1
 				return
 			}
-			break
-		}
 
-		if strings.Contains(postResp["status"].(string), "success") {
-			// only go to the next chunk if this one was successful
-			i++
+			if strings.Contains(postResp["status"].(string), "success") {
+				// only go to the next chunk if this one was successful
+				i++
+				break
+			}
 		}
 	}
 	sendFileToMythic.FinishedTransfer <- 1

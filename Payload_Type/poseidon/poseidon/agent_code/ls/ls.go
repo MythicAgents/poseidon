@@ -47,6 +47,7 @@ func Run(task structs.Task) {
 		return
 	}
 	var e structs.FileBrowser
+	e.SetAsUserOutput = true
 	fixedPath := args.Path
 	if strings.HasPrefix(fixedPath, "~/") {
 		dirname, _ := os.UserHomeDir()
@@ -116,8 +117,8 @@ func Run(task structs.Task) {
 	}
 	msg.Completed = true
 	msg.FileBrowser = &e
-	temp, _ := json.Marshal(msg.FileBrowser)
-	msg.UserOutput = string(temp)
+	//temp, _ := json.Marshal(msg.FileBrowser)
+	//msg.UserOutput = string(temp)
 	task.Job.SendResponses <- msg
 	return
 }
