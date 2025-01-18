@@ -32,7 +32,7 @@ var payloadDefinition = agentstructs.PayloadType{
 	Name:                                   "poseidon",
 	FileExtension:                          "bin",
 	Author:                                 "@xorrior, @djhohnstein, @Ne0nd0g, @its_a_feature_",
-	SupportedOS:                            []string{agentstructs.SUPPORTED_OS_LINUX, agentstructs.SUPPORTED_OS_MACOS},
+	SupportedOS:                            []string{agentstructs.SUPPORTED_OS_LINUX, agentstructs.SUPPORTED_OS_MACOS, agentstructs.SUPPORTED_OS_WINDOWS},
 	Wrapper:                                false,
 	CanBeWrappedByTheFollowingPayloadTypes: []string{},
 	SupportsDynamicLoading:                 false,

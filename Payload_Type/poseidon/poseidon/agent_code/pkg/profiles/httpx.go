@@ -1,4 +1,4 @@
-//go:build (linux || darwin) && httpx
+//go:build httpx
 
 package profiles
 

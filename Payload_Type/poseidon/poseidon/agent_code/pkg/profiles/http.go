@@ -1,4 +1,4 @@
-//go:build (linux || darwin) && http
+//go:build http
 
 package profiles
 
