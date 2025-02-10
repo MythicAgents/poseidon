@@ -5,6 +5,6 @@
   "exclude_documentation_c2": false,
   "exclude_agent_icons": false,
   "remote_images": {
-    "poseidon": "ghcr.io/mythicagents/poseidon:v0.0.2.0"
+    "poseidon": "ghcr.io/mythicagents/poseidon:v0.0.2.1"
   }
 }
