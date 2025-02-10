@@ -22,6 +22,11 @@ var pty = agentstructs.Command{
 			ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
 			Description:      "What program to spawn with a PTY",
 			DefaultValue:     "/bin/bash",
+			ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+				{
+					ParameterIsRequired: false,
+				},
+			},
 		},
 		{
 			Name:             "open_port",

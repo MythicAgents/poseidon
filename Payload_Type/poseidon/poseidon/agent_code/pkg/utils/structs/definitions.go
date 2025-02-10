@@ -52,6 +52,7 @@ type P2PProcessor interface {
 	RemoveInternalConnection(connectionUUID string) bool
 	AddInternalConnection(connection interface{})
 	GetInternalP2PMap() string
+	GetChunkSize() uint32
 }
 
 // Struct definition for CheckIn messages
@@ -274,6 +275,9 @@ type FilePermission struct {
 	UID         int    `json:"uid"`
 	GID         int    `json:"gid"`
 	Permissions string `json:"permissions"`
+	SetUID      bool   `json:"setuid"`
+	SetGID      bool   `json:"setgid"`
+	Sticky      bool   `json:"sticky"`
 	User        string `json:"user,omitempty"`
 	Group       string `json:"group,omitempty"`
 }

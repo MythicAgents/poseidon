@@ -21,6 +21,26 @@ import (
 func GetPermission(finfo os.FileInfo) structs.FilePermission {
 	perms := structs.FilePermission{}
 	perms.Permissions = finfo.Mode().Perm().String()
+	if finfo.Mode()&os.ModeSetuid != 0 {
+		perms.SetUID = true
+		if perms.Permissions[3] == 'x' {
+			perms.Permissions = perms.Permissions[0:3] + "s" + perms.Permissions[4:]
+		} else {
+			perms.Permissions = perms.Permissions[0:3] + "S" + perms.Permissions[4:]
+		}
+	}
+	if finfo.Mode()&os.ModeSetgid != 0 {
+		perms.SetGID = true
+		if perms.Permissions[6] == 'x' {
+			perms.Permissions = perms.Permissions[0:6] + "s" + perms.Permissions[7:]
+		} else {
+			perms.Permissions = perms.Permissions[0:6] + "S" + perms.Permissions[7:]
+		}
+	}
+	if finfo.Mode()&os.ModeSticky != 0 {
+		perms.Sticky = true
+		perms.Permissions = perms.Permissions[0:8] + "t"
+	}
 	systat := finfo.Sys().(*syscall.Stat_t)
 	if systat != nil {
 		perms.UID = int(systat.Uid)

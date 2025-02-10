@@ -12,7 +12,7 @@ import (
 func init() {
 	agentstructs.AllPayloadData.Get("poseidon").AddCommand(agentstructs.Command{
 		Name:                "link_tcp",
-		Description:         "Link one poseidon agent to another over poseidon_tcp.",
+		Description:         "Link to another agent over tcp.",
 		HelpString:          "link_tcp {IP | Host} {port}",
 		Version:             1,
 		Author:              "@its_a_feature_",

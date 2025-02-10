@@ -95,6 +95,9 @@ func (c webshell) GetInternalP2PMap() string {
 	output += fmt.Sprintf("---- done -----\n")
 	return output
 }
+func (c webshell) GetChunkSize() uint32 {
+	return 0
+}
 func init() {
 	registerAvailableP2P(webshell{})
 }

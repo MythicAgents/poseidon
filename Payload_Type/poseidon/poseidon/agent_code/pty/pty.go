@@ -201,7 +201,11 @@ func Run(task structs.Task) {
 					}
 					bufferedError = ""
 				}
-
+				if task.Job.Stop != nil && *task.Job.Stop == 1 {
+					StdinStdoutPTY.Close()
+					command.Process.Kill()
+					return
+				}
 			}
 		}
 	}()

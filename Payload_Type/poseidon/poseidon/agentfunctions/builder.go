@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-const version = "2.1.15"
+const version = "2.2.0"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`
@@ -36,8 +36,8 @@ var payloadDefinition = agentstructs.PayloadType{
 	Wrapper:                                false,
 	CanBeWrappedByTheFollowingPayloadTypes: []string{},
 	SupportsDynamicLoading:                 false,
-	Description:                            fmt.Sprintf("A fully featured macOS and Linux Golang agent.\nVersion %s\nNeeds Mythic 3.3.0+", version),
-	SupportedC2Profiles:                    []string{"http", "websocket", "poseidon_tcp", "dynamichttp", "webshell", "httpx"},
+	Description:                            fmt.Sprintf("A fully featured macOS and Linux Golang agent.\nVersion %s\nNeeds Mythic 3.3.0+\nNOTE: P2P not compatible with v2.1 agents!", version),
+	SupportedC2Profiles:                    []string{"http", "websocket", "tcp", "dynamichttp", "webshell", "httpx"},
 	MythicEncryptsData:                     true,
 	BuildParameters: []agentstructs.BuildParameter{
 		{
@@ -140,7 +140,7 @@ var payloadDefinition = agentstructs.PayloadType{
 					atLeastOneCallbackWithinRange = true
 					continue
 				}
-				if activeC2 == "poseidon_tcp" {
+				if activeC2 == "tcp" {
 					atLeastOneCallbackWithinRange = true
 					continue
 				}
@@ -153,6 +153,7 @@ var payloadDefinition = agentstructs.PayloadType{
 				latest := callback.LastCheckin.Add(time.Duration(maxAdd) * time.Second)
 				if time.Now().UTC().Before(latest) {
 					atLeastOneCallbackWithinRange = true
+					break
 				}
 			}
 			response.Callbacks = append(response.Callbacks, agentstructs.PTCallbacksToCheckResponse{
@@ -264,18 +265,6 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 					return payloadBuildResponse
 				}
 				initialConfig[key] = headers
-				/*
-					if jsonBytes, err := json.Marshal(headers); err != nil {
-						payloadBuildResponse.Success = false
-						payloadBuildResponse.BuildStdErr = err.Error()
-						return payloadBuildResponse
-					} else {
-						stringBytes := string(jsonBytes)
-						stringBytes = strings.ReplaceAll(stringBytes, "\"", "\\\"")
-						ldflags += fmt.Sprintf(" -X '%s.%s_%s=%s'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, stringBytes)
-					}
-
-				*/
 			} else if key == "raw_c2_config" {
 				agentConfigString, err := payloadBuildMsg.C2Profiles[index].GetStringArg(key)
 				if err != nil {
@@ -307,12 +296,6 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 					}
 				}
 				initialConfig[key] = tomlConfig
-				/*
-					agentConfigString = strings.ReplaceAll(string(configData.Content), "\\", "\\\\")
-					agentConfigString = strings.ReplaceAll(agentConfigString, "\"", "\\\"")
-					agentConfigString = strings.ReplaceAll(agentConfigString, "\n", "")
-					ldflags += fmt.Sprintf(" -X '%s.%s_%s=%s'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, agentConfigString)
-				*/
 			} else if slices.Contains([]string{"callback_jitter", "callback_interval", "callback_port", "port", "callback_port", "failover_threshold"}, key) {
 
 				val, err := payloadBuildMsg.C2Profiles[index].GetNumberArg(key)

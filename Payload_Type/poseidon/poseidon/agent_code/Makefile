@@ -6,7 +6,7 @@ WEBSOCKET_UUID=80844d19-9bfc-47f9-b9af-c6b9144c0fdc
 WEBSOCKET_AGENT_CONFIG_FILE=test_agent_config_websocket.json
 WEBSOCKET_CONFIG=$(shell base64 -i ${WEBSOCKET_AGENT_CONFIG_FILE})
 
-TCP_UUID=80844d19-9bfc-47f9-b9af-c6b9144c0fdc
+TCP_UUID=e053199c-3be8-4901-b8d2-fecb444fcd9e
 TCP_AGENT_CONFIG_FILE=test_agent_config_tcp.json
 TCP_CONFIG=$(shell base64 -i ${TCP_AGENT_CONFIG_FILE})
 
@@ -14,14 +14,14 @@ DYNAMICHTTP_UUID=fbd34459-f783-4b78-9d4c-fd26a5289fee
 DYNAMICHTTP_AGENT_CONFIG_FILE=test_agent_config_dynamichttp.json
 DYNAMICHTTP_CONFIG=$(shell base64 -i ${DYNAMICHTTP_AGENT_CONFIG_FILE})
 
-HTTPX_UUID=7f0ce672-1e98-4954-8068-511baec50d69
+HTTPX_UUID=6d1dce05-6f50-4043-9dd0-231f771b20ce
 HTTPX_AGENT_CONFIG_FILE=test_agent_config_httpx.json
 HTTPX_CONFIG=$(shell base64 -i ${HTTPX_AGENT_CONFIG_FILE})
 
 BINARY_NAME=poseidon
 C2_HTTP=http
 C2_WEBSOCKET=websocket
-C2_TCP=poseidon_tcp
+C2_TCP=tcp
 C2_DYNAMICHTTP=dynamichttp
 C2_HTTPX=httpx
 
@@ -43,7 +43,7 @@ build_http:
 " .
 
 build_tcp:
-	go build -o ${BINARY_NAME}_${C2_TCP}.bin -tags="${C2_TCP}" -ldflags=" \
+	go build -o ${BINARY_NAME}_${C2_TCP} -tags="${C2_TCP}" -ldflags=" \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.UUID=${TCP_UUID}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_order=${EGRESS_ORDER}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_failover=${EGRESS_FAILOVER}' \
@@ -53,7 +53,7 @@ build_tcp:
 " .
 
 build_http_tcp:
-	go build -o ${BINARY_NAME}_${C2_HTTP}_${C2_TCP}.bin -tags="${C2_HTTP},${C2_TCP}" -ldflags=" \
+	go build -o ${BINARY_NAME}_${C2_HTTP}_${C2_TCP} -tags="${C2_HTTP},${C2_TCP}" -ldflags=" \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.UUID=${HTTP_UUID}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_order=${EGRESS_ORDER}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_failover=${EGRESS_FAILOVER}' \
@@ -108,7 +108,7 @@ run_http:
 	./${BINARY_NAME}_${C2_HTTP}.bin
 
 run_tcp:
-	./${BINARY_NAME}_${C2_TCP}.bin
+	./${BINARY_NAME}_${C2_TCP}
 
 run_dynamichttp:
 	./${BINARY_NAME}_${C2_DYNAMICHTTP}.bin
@@ -134,5 +134,5 @@ build_all: build_http build_tcp build_websocket
 clean_http:
 	go clean
 	rm ${BINARY_NAME}_${C2_HTTP}.bin
-	rm ${BINARY_NAME}_${C2_TCP}.bin
+	rm ${BINARY_NAME}_${C2_TCP}
 	rm ${BINARY_NAME}_${C2_WEBSOCKET}.bin
