@@ -255,6 +255,8 @@ type Response struct {
 	Artifacts         *[]Artifact          `json:"artifacts,omitempty"`
 	Alerts            *[]Alert             `json:"alerts,omitempty"`
 	ProcessResponse   *string              `json:"process_response,omitempty"`
+	Stdout            *string              `json:"stdout"`
+	Stderr            *string              `json:"stder"`
 	removeRunningTask chan string
 }
 
@@ -280,6 +282,7 @@ type FilePermission struct {
 	Sticky      bool   `json:"sticky"`
 	User        string `json:"user,omitempty"`
 	Group       string `json:"group,omitempty"`
+	Symlink     string `json:"symlink,omitempty"`
 }
 type FileBrowser struct {
 	Files           []FileData     `json:"files"`
@@ -356,6 +359,7 @@ type FileBrowserArguments struct {
 	Path        string `json:"path"`
 	Host        string `json:"host"`
 	FileBrowser bool   `json:"file_browser"`
+	Depth       int    `json:"depth"`
 }
 
 // SocksMsg struct for dealing with Socks and rpfwd messages

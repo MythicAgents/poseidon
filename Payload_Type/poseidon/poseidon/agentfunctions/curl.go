@@ -42,7 +42,7 @@ func init() {
 				Choices:          []string{"GET", "POST", "PUT", "DELETE"},
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
-						ParameterIsRequired: true,
+						ParameterIsRequired: false,
 						UIModalPosition:     2,
 					},
 				},
@@ -74,30 +74,60 @@ func init() {
 				},
 				Description: "Body contents to send in request",
 			},
+			{
+				Name:             "socketPath",
+				ModalDisplayName: "Unix Socket Path",
+				CLIName:          "socketPath",
+				DefaultValue:     "",
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
+				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+					{
+						ParameterIsRequired: false,
+						UIModalPosition:     5,
+					},
+				},
+				Description: "Path to UNIX Socket if you want to use that instead of a remote host",
+			},
 		},
 		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,
 				TaskID:  taskData.Task.ID,
 			}
-			if url, err := taskData.Args.GetStringArg("url"); err != nil {
+			url, err := taskData.Args.GetStringArg("url")
+			if err != nil {
 				logging.LogError(err, "Failed to get url string")
 				response.Success = false
 				response.Error = err.Error()
-			} else if method, err := taskData.Args.GetStringArg("method"); err != nil {
+				return response
+			}
+			method, err := taskData.Args.GetStringArg("method")
+			if err != nil {
 				logging.LogError(err, "Failed to get method string")
 				response.Success = false
 				response.Error = err.Error()
-			} else if bodyString, err := taskData.Args.GetStringArg("body"); err != nil {
+				return response
+			}
+			bodyString, err := taskData.Args.GetStringArg("body")
+			if err != nil {
 				logging.LogError(err, "Failed to get body string")
 				response.Success = false
 				response.Error = err.Error()
-			} else {
-				taskData.Args.SetArgValue("body", base64.StdEncoding.EncodeToString([]byte(bodyString)))
-				displayParams := fmt.Sprintf("%s via HTTP %s", url, method)
-				response.DisplayParams = &displayParams
+				return response
 			}
-
+			taskData.Args.SetArgValue("body", base64.StdEncoding.EncodeToString([]byte(bodyString)))
+			displayParams := fmt.Sprintf("%s via HTTP %s", url, method)
+			socketPath, err := taskData.Args.GetStringArg("socketPath")
+			if err != nil {
+				logging.LogError(err, "Failed to get socketPath")
+				response.Success = false
+				response.Error = err.Error()
+				return response
+			}
+			if socketPath != "" {
+				displayParams += fmt.Sprintf(" to %s", socketPath)
+			}
+			response.DisplayParams = &displayParams
 			return response
 		},
 		TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {

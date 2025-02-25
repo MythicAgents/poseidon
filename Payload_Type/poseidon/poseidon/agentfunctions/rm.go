@@ -19,7 +19,8 @@ func init() {
 				Success: true,
 				TaskID:  taskData.Task.ID,
 			}
-			if path, err := taskData.Args.GetFinalArgs(); err != nil {
+			path, err := taskData.Args.GetStringArg("file")
+			if err != nil {
 				logging.LogError(err, "Failed to get final args")
 				response.Error = err.Error()
 				response.Success = false

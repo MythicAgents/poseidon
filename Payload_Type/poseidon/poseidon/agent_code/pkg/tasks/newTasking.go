@@ -4,6 +4,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/caffeinate"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/cat"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/cd"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/chmod"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/clipboard"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/clipboard_monitor"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/config"
@@ -201,6 +202,8 @@ func listenForNewTask() {
 			go caffeinate.Run(task)
 		case "lsopen":
 			go lsopen.Run(task)
+		case "chmod":
+			go chmod.Run(task)
 		default:
 			// No tasks, do nothing
 			break

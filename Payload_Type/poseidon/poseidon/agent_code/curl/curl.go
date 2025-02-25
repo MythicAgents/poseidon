@@ -3,11 +3,13 @@ package curl
 import (
 	// Standard
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -27,14 +29,12 @@ type Arguments struct {
 	ClearEnv    []string `json:"clearEnv"`
 	ClearAllEnv bool     `json:"clearAllEnv"`
 	GetEnv      bool     `json:"getEnv"`
+	SocketPath  string   `json:"socketPath"`
 }
 
 // env are substitution environment variables to apply in the Arguments.Url and Arguments.Headers fields
 var env = make(map[string]string, 0)
 var envMtx = sync.RWMutex{}
-var tr = &http.Transport{
-	TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-}
 
 // Run - Function that executes a curl command with Golang APIs
 func Run(task structs.Task) {
@@ -103,7 +103,20 @@ func Run(task structs.Task) {
 			return
 		}
 	}
-
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	if args.SocketPath != "" {
+		dialer := &net.Dialer{
+			Timeout: 5 * time.Second,
+		}
+		tr = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				return dialer.DialContext(ctx, "unix", args.SocketPath)
+			},
+		}
+	}
 	client := &http.Client{
 		Timeout:   30 * time.Second,
 		Transport: tr,
@@ -134,6 +147,9 @@ func Run(task structs.Task) {
 	finalHeaders := ""
 	for _, h := range args.Headers {
 		headerPieces := strings.SplitN(h, ":", 2)
+		if len(headerPieces) != 2 {
+			continue
+		}
 		envMtx.Lock()
 		for key, val := range env {
 			headerPieces[1] = strings.ReplaceAll(headerPieces[1], fmt.Sprintf("$%s", key), val)
@@ -155,7 +171,7 @@ func Run(task structs.Task) {
 	defer resp.Body.Close()
 	initialHeaders := strings.Join(args.Headers, "\n")
 	output := fmt.Sprintf("Initial URL: %s\nInitial Headers:\n%s\n", args.Url, initialHeaders)
-	output += fmt.Sprintf("Final URL: %s\nFinal Headers:\n%s\nOutput:\n", url, finalHeaders)
+	output += fmt.Sprintf("Final URL: %s\nFinal Headers:\n%s\n", url, finalHeaders)
 	respBody, err = io.ReadAll(resp.Body)
 	if err != nil {
 		msg.UserOutput = output
@@ -164,7 +180,8 @@ func Run(task structs.Task) {
 		return
 	}
 	msg.Completed = true
-	msg.UserOutput = output + string(respBody)
+	msg.UserOutput = string(respBody)
+	msg.Stdout = &output
 	task.Job.SendResponses <- msg
 	return
 }

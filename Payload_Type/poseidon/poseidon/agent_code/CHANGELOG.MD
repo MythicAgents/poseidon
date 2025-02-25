@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 2.2.2 - 2025-02-24
+
+### Changed
+
+- Updated `upload` to allow specifying existing filename to upload
+- Updated `ls` to report back symlink data to browser script outputs
+- Added `chmod` command
+- Updated `rm` display parameters
+- Updated `ls` browser script to support new features
+- Updated `ls` to allow a `depth` parameter for recursively doing file listings
+- Fixed a bug with `persist_launchd` if no path was specified
+
 ## 2.2.0 - 2025-02-10
 
 ### Changed

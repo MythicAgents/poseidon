@@ -1,4 +1,3 @@
-github.com/MythicMeta/MythicContainer v1.4.16/go.mod h1:BnUYftqQ9KsGxBd6RlyRcAHBrqV1CUcrRCjktWwc2Do=
 github.com/MythicMeta/MythicContainer v1.4.17 h1:t5B2RWUGLxzoJGnI3zy9w7lS7NYfWmGNv2vcF7GWZKY=
 github.com/MythicMeta/MythicContainer v1.4.17/go.mod h1:BnUYftqQ9KsGxBd6RlyRcAHBrqV1CUcrRCjktWwc2Do=
 github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=

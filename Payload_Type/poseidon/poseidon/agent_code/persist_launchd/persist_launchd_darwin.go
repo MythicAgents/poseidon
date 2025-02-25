@@ -27,6 +27,11 @@ func runCommand(task structs.Task) {
 		task.Job.SendResponses <- msg
 		return
 	}
+	if len(args.Path) == 0 {
+		msg.SetError("No path supplied")
+		task.Job.SendResponses <- msg
+		return
+	}
 	if args.Path[0] == '~' {
 		if functions.GetUser() == "root" {
 			msg.SetError("Can't use ~ with root user. Please specify an absolute path.")

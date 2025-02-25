@@ -21,10 +21,7 @@ type uploadArgs struct {
 // Run - interface method that retrieves a process list
 func Run(task structs.Task) {
 	msg := task.NewResponse()
-
-	// File upload
 	args := uploadArgs{}
-
 	err := json.Unmarshal([]byte(task.Params), &args)
 	if err != nil {
 		msg.SetError(fmt.Sprintf("Failed to unmarshal parameters: %s", err.Error()))

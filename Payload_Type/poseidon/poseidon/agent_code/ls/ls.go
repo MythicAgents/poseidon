@@ -3,6 +3,7 @@ package ls
 import (
 	// Standard
 	"encoding/json"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -57,32 +58,28 @@ func GetPermission(finfo os.FileInfo) structs.FilePermission {
 	return perms
 }
 
-func Run(task structs.Task) {
-	msg := task.NewResponse()
-	args := structs.FileBrowserArguments{}
-	err := json.Unmarshal([]byte(task.Params), &args)
-	if err != nil {
-		msg.SetError(err.Error())
-		task.Job.SendResponses <- msg
-		return
-	}
+func ProcessPath(path string) (*structs.FileBrowser, error) {
 	var e structs.FileBrowser
 	e.SetAsUserOutput = true
-	fixedPath := args.Path
+	e.Files = make([]structs.FileData, 0)
+	fixedPath := path
 	if strings.HasPrefix(fixedPath, "~/") {
 		dirname, _ := os.UserHomeDir()
 		fixedPath = filepath.Join(dirname, fixedPath[2:])
 	}
 	abspath, _ := filepath.Abs(fixedPath)
+	//abspath, _ = filepath.EvalSymlinks(abspath)
 	dirInfo, err := os.Stat(abspath)
+	filepath.EvalSymlinks(abspath)
 	if err != nil {
-		msg.SetError(err.Error())
-		task.Job.SendResponses <- msg
-		return
+		return &e, err
 	}
 	e.IsFile = !dirInfo.IsDir()
-
 	e.Permissions = GetPermission(dirInfo)
+	symlinkPath, _ := filepath.EvalSymlinks(abspath)
+	if symlinkPath != abspath {
+		e.Permissions.Symlink = symlinkPath
+	}
 	e.Filename = dirInfo.Name()
 	e.ParentPath = filepath.Dir(abspath)
 	if strings.Compare(e.ParentPath, e.Filename) == 0 {
@@ -101,13 +98,9 @@ func Run(task structs.Task) {
 	if dirInfo.IsDir() {
 		files, err := os.ReadDir(abspath)
 		if err != nil {
-			msg.SetError(err.Error())
 			e.Success = false
-			msg.FileBrowser = &e
-			task.Job.SendResponses <- msg
-			return
+			return &e, err
 		}
-
 		fileEntries := make([]structs.FileData, len(files))
 		for i := 0; i < len(files); i++ {
 			fileEntries[i].IsFile = !files[i].IsDir()
@@ -123,7 +116,11 @@ func Run(task structs.Task) {
 			}
 			fileEntries[i].Name = files[i].Name()
 			fileEntries[i].FullName = filepath.Join(abspath, files[i].Name())
-			at, err := atime.Stat(abspath)
+			symlinkPath, _ = filepath.EvalSymlinks(fileEntries[i].FullName)
+			if symlinkPath != fileEntries[i].FullName {
+				fileEntries[i].Permissions.Symlink = symlinkPath
+			}
+			at, err = atime.Stat(fileEntries[i].FullName)
 			if err != nil {
 				fileEntries[i].LastAccess = 0
 			} else {
@@ -135,10 +132,55 @@ func Run(task structs.Task) {
 		fileEntries := make([]structs.FileData, 0)
 		e.Files = fileEntries
 	}
+	return &e, nil
+}
+func Run(task structs.Task) {
+	args := structs.FileBrowserArguments{}
+	err := json.Unmarshal([]byte(task.Params), &args)
+	if err != nil {
+		msg := task.NewResponse()
+		msg.SetError(err.Error())
+		task.Job.SendResponses <- msg
+		return
+	}
+	if args.Depth == 0 {
+		args.Depth = 1
+	}
+	if args.Host != "" {
+		if strings.ToLower(args.Host) != strings.ToLower(functions.GetHostname()) {
+			if args.Host != "127.0.0.1" && args.Host != "localhost" {
+				msg := task.NewResponse()
+				msg.SetError("can't currently list files on remote hosts")
+				task.Job.SendResponses <- msg
+				return
+			}
+		}
+	}
+	var paths = []string{args.Path}
+	for args.Depth >= 1 {
+		nextPaths := []string{}
+		for _, path := range paths {
+			msg := task.NewResponse()
+			fb, err := ProcessPath(path)
+			if err != nil {
+				msg.SetError(err.Error())
+			}
+			msg.FileBrowser = fb
+			task.Job.SendResponses <- msg
+			if fb == nil {
+				continue
+			}
+			for _, child := range fb.Files {
+				if !child.IsFile {
+					nextPaths = append(nextPaths, child.FullName)
+				}
+			}
+		}
+		paths = nextPaths
+		args.Depth--
+	}
+	msg := task.NewResponse()
 	msg.Completed = true
-	msg.FileBrowser = &e
-	//temp, _ := json.Marshal(msg.FileBrowser)
-	//msg.UserOutput = string(temp)
 	task.Job.SendResponses <- msg
 	return
 }
