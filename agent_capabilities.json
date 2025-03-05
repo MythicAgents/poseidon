@@ -9,7 +9,7 @@
   "payload_output": ["macho", "elf", "dylib", "so"],
   "architectures": ["x86_64", "arm_64"],
   "c2": ["http", "websocket", "dynamichttp", "tcp"],
-  "mythic_version": "3.3.1-rc42",
-  "agent_version": "2.2.0",
+  "mythic_version": "3.3.1-rc48",
+  "agent_version": "2.2.3",
   "supported_wrappers": []
 }
