@@ -40,6 +40,7 @@ func init() {
 				Name:          "appArgs",
 				ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_ARRAY,
 				Description:   "Arguments to pass to application/binary",
+				DefaultValue:  []string{},
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: false,

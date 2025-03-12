@@ -110,6 +110,9 @@ run_http:
 run_tcp:
 	./${BINARY_NAME}_${C2_TCP}
 
+run_websocket:
+	./${BINARY_NAME}_${C2_WEBSOCKET}.bin
+
 run_dynamichttp:
 	./${BINARY_NAME}_${C2_DYNAMICHTTP}.bin
 
@@ -126,6 +129,8 @@ build_and_run_tcp: build_tcp run_tcp
 build_and_run_dynamichttp: build_dynamichttp run_dynamichttp
 
 build_and_run_websocket_http: build_websocket_http run_websocket_http
+
+build_and_run_websocket: build_websocket run_websocket
 
 build_and_run_httpx: build_httpx run_httpx
 
