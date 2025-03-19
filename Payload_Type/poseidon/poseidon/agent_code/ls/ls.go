@@ -99,6 +99,7 @@ func ProcessPath(path string) (*structs.FileBrowser, error) {
 		files, err := os.ReadDir(abspath)
 		if err != nil {
 			e.Success = false
+			e.UpdateDeleted = false
 			return &e, err
 		}
 		fileEntries := make([]structs.FileData, len(files))
@@ -131,6 +132,7 @@ func ProcessPath(path string) (*structs.FileBrowser, error) {
 	} else {
 		fileEntries := make([]structs.FileData, 0)
 		e.Files = fileEntries
+		e.UpdateDeleted = false
 	}
 	return &e, nil
 }
