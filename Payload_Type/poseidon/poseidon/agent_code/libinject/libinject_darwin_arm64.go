@@ -2,8 +2,12 @@
 // +build darwin,arm64
 
 package libinject
-
-import "errors"
+/*
+#cgo CFLAGS: -Wno-error=implicit-function-declaration
+#cgo LDFLAGS: -framework Foundation -framework Security
+#include "libinject_darwin_arm64.h"
+*/
+import "C"
 
 type DarwinInjection struct {
 	Target      int
@@ -30,6 +34,13 @@ func (l *DarwinInjection) SharedLib() string {
 
 func injectLibrary(pid int, path string) (DarwinInjection, error) {
 	res := DarwinInjection{}
-	res.Successful = false
-	return res, errors.New("libinject not supported on ARM architecture")
+	i := C.int(pid)
+	cpath := C.CString(path)
+
+	r := C.inject(i, cpath)
+	res.Successful = true
+	if r != 0 {
+		res.Successful = false
+	}
+	return res, nil
 }

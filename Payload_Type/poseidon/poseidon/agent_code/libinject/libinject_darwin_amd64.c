@@ -2,7 +2,8 @@
 
 #define STACK_SIZE 65536
 #define CODE_SIZE 128
-char injectedCode[] =
+// 2025-03-19 T20:20:01 UTC: Changed to avoid reuse of existing dylib path
+char shellcode_template[] =
 "\x55"                            // push       rbp
 "\x48\x89\xE5"                    // mov        rbp, rsp
 "\x48\x83\xEC\x10"                // sub        rsp, 0x10
@@ -104,6 +105,16 @@ int inject(pid_t pid, char* lib)
     {
         return (-2);
     }
+
+    // 2025-03-19 T20:20:01 UTC: Updated to avoid reuse of dylab paths
+    size_t shellcode_size = sizeof(shellcode_template);
+    char *injectedCode = malloc(shellcode_size);                    // Allocate new injectedCode byte array
+    if (!injectedCode) {
+        perror("[-] Failed to allocate memory for shellcode\n");
+        return -1;
+    }
+    memcpy(injectedCode, shellcode_template, shellcode_size);       // Copy fresh shellcode for patching
+
     int i = 0;
     char *possiblePatchLocation = (injectedCode );
     for (i = 0 ; i < 0x100; i++)
