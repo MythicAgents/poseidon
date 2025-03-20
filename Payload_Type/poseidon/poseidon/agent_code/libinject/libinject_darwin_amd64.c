@@ -163,4 +163,3 @@ int inject(pid_t pid, char* lib)
     }
     return (0);
 }
-EOF
