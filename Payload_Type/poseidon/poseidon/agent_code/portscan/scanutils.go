@@ -38,14 +38,13 @@ type CIDR struct {
 
 // Validates that a new host can be created based on hostName
 func NewHost(hostName string) (*host, error) {
-	mtx := sync.Mutex{}
 	// chek if hostname is IP address
 	if net.ParseIP(hostName) != nil {
 		return &host{
 			IP:         hostName,
 			Hostname:   hostName,
 			PrettyName: hostName,
-			mutex:      mtx,
+			mutex:      sync.Mutex{},
 			lock:       semaphore.NewWeighted(100), // yeah i hardcoded don't @me
 		}, nil
 	} else {
@@ -59,7 +58,7 @@ func NewHost(hostName string) (*host, error) {
 			IP:         ips[0],
 			Hostname:   hostName,
 			PrettyName: hostStr,
-			mutex:      mtx,
+			mutex:      sync.Mutex{},
 			lock:       semaphore.NewWeighted(100),
 		}, nil
 	}
@@ -108,12 +107,15 @@ func inc(ip net.IP) {
 
 // Scan a single port!
 // export
-func (server *host) ScanPort(port int, timeout time.Duration) {
+func (server *host) ScanPort(port int, timeout time.Duration, job *structs.Job) error {
 	var target string
 	if strings.Contains(server.IP, ":") {
 		target = fmt.Sprintf("[%s]:%d", server.IP, port)
 	} else {
 		target = fmt.Sprintf("%s:%d", server.IP, port)
+	}
+	if *job.Stop > 0 {
+		return nil
 	}
 	conn, err := net.DialTimeout("tcp", target, timeout)
 
@@ -124,53 +126,76 @@ func (server *host) ScanPort(port int, timeout time.Duration) {
 	if err != nil {
 		if strings.Contains(err.Error(), "too many open files") || strings.Contains(err.Error(), "temporarily unavailable") {
 			time.Sleep(timeout)
-			server.ScanPort(port, timeout)
+			return err
 		}
-		return
+		return nil
 	}
 	server.mutex.Lock()
 	server.OpenPorts = append(server.OpenPorts, port)
 	server.mutex.Unlock()
+	return nil
 }
 
 // Scan a sequential range of ports
-func (server *host) ScanPortRange(pr PortRange, timeout time.Duration) {
+func (server *host) ScanPortRange(pr PortRange, timeout time.Duration, job *structs.Job) {
 	wg := sync.WaitGroup{}
 
 	for port := pr.Start; port <= pr.End; port++ {
 		server.lock.Acquire(context.TODO(), 1)
+		if *job.Stop > 0 {
+			break
+		}
 		wg.Add(1)
-		go func(port int) {
+		go func(port int, job *structs.Job) {
 			defer server.lock.Release(1)
 			defer wg.Done()
-			server.ScanPort(port, timeout)
-		}(port)
+			for {
+				// keep trying if we get an error
+				if *job.Stop > 0 {
+					return
+				}
+				err := server.ScanPort(port, timeout, job)
+				if err == nil {
+					return
+				}
+			}
+
+		}(port, job)
 	}
 	wg.Wait()
 }
 
 // Scan a smattering of ports based on the slice.
-func (server *host) ScanPortRanges(portList []PortRange, waitTime time.Duration) {
+func (server *host) ScanPortRanges(portList []PortRange, waitTime time.Duration, job *structs.Job) {
 	// maybe start threading scan here
 	// lim := Ulimit() / 2
-
 	for i := 0; i < len(portList); i++ {
-		server.ScanPortRange(portList[i], waitTime)
+		if *job.Stop > 0 {
+			return
+		}
+		server.ScanPortRange(portList[i], waitTime, job)
 	}
 }
 
-func (cidrRange *CIDR) ScanHosts(portList []PortRange, waitTime time.Duration, job *structs.Job) {
+func (cidrRange *CIDR) ScanHosts(portList []PortRange, waitTime time.Duration, job *structs.Job, throttler chan bool) {
 	wg := sync.WaitGroup{}
 	for i := 0; i < len(cidrRange.Hosts); i++ {
+		throttler <- true // blocking call if we're full
 		if *job.Stop > 0 {
 			break
 		}
 		server := cidrRange.Hosts[i]
 		wg.Add(1)
-		go func(server *host, portList []PortRange, waitTime time.Duration) {
-			defer wg.Done()
-			server.ScanPortRanges(portList, waitTime)
-		}(server, portList, waitTime)
+		go func(server *host, portList []PortRange, waitTime time.Duration, job *structs.Job) {
+			defer func() {
+				wg.Done()
+				<-throttler // when we're done, take one off the queue so somebody else can run
+			}()
+			if *job.Stop > 0 {
+				return
+			}
+			server.ScanPortRanges(portList, waitTime, job)
+		}(server, portList, waitTime, job)
 	}
 	wg.Wait()
 }

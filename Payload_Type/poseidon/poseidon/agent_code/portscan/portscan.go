@@ -68,13 +68,16 @@ func doScan(hostList []string, portListStrs []string, job *structs.Job) ([]CIDR,
 
 	var results []CIDR
 	// Scan the hosts
+	throttleRoutines := 10
+	throttler := make(chan bool, throttleRoutines)
+
 	for i := 0; i < len(hostList); i++ {
 		newCidr, err := NewCIDR(hostList[i])
 		if err != nil {
 			continue
 		} else {
 			// Iterate through every host in hostCidr
-			newCidr.ScanHosts(portList, timeout, job)
+			newCidr.ScanHosts(portList, timeout, job, throttler)
 			results = append(results, *newCidr)
 			// cidrs = append(cidrs, newCidr)
 		}

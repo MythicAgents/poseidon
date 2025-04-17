@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 2.2.6 - 2025-04-17
+
+### Changed
+
+- Updated the portscan command to throttle to 10 hosts at a time and respect kill commands quicker
+
 ## 2.2.5 - 2025-03-19
 
 ### Changed

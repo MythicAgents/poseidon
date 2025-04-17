@@ -105,25 +105,26 @@ func init() {
 }
 
 func getCallbackFiles(input agentstructs.PTRPCDynamicQueryFunctionMessage) []string {
-	if fileResp, err := mythicrpc.SendMythicRPCFileSearch(mythicrpc.MythicRPCFileSearchMessage{
+	fileResp, err := mythicrpc.SendMythicRPCFileSearch(mythicrpc.MythicRPCFileSearchMessage{
 		LimitByCallback:     true,
 		CallbackID:          input.Callback,
 		IsPayload:           false,
 		IsDownloadFromAgent: false,
 		Filename:            "",
-	}); err != nil {
+	})
+	if err != nil {
 		logging.LogError(err, "Failed to search for files in callback")
 		return []string{}
-	} else if !fileResp.Success {
+	}
+	if !fileResp.Success {
 		logging.LogError(err, "Failed to search for files in callback", "mythic error", fileResp.Error)
 		return []string{}
-	} else {
-		potentialFiles := []string{}
-		for _, file := range fileResp.Files {
-			if !helpers.StringSliceContains(potentialFiles, file.Filename) {
-				potentialFiles = append(potentialFiles, file.Filename)
-			}
-		}
-		return potentialFiles
 	}
+	potentialFiles := []string{}
+	for _, file := range fileResp.Files {
+		if !helpers.StringSliceContains(potentialFiles, file.Filename) {
+			potentialFiles = append(potentialFiles, file.Filename)
+		}
+	}
+	return potentialFiles
 }
