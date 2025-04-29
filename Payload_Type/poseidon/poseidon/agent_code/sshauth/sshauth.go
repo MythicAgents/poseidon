@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"sync"
 	"time"
 
@@ -73,6 +74,27 @@ func PublicKeyFile(file string) (ssh.AuthMethod, error) {
 	return ssh.PublicKeys(key), nil
 }
 
+func PublicKeyFileOrContent(input string) (ssh.AuthMethod, error) {
+	var key []byte
+	var err error
+
+	// Check if the input contains the typical private key marker 
+	if strings.Contains(input, "-----") {
+		key = []byte(input) // Treat input as private key content
+	} else {
+		key, err = ioutil.ReadFile(input) // Treat input as a file path
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	parsedKey, err := ssh.ParsePrivateKey(key)
+	if err != nil {
+		return nil, err
+	}
+	return ssh.PublicKeys(parsedKey), nil
+}
+
 func SSHLogin(host string, port int, cred Credential, debug bool, command string, source string, destination string) {
 	res := SSHResult{
 		Host:     host,
@@ -80,15 +102,8 @@ func SSHLogin(host string, port int, cred Credential, debug bool, command string
 		Success:  true,
 	}
 	var sshConfig *ssh.ClientConfig
-	if cred.PrivateKey == "" {
-		sshConfig = &ssh.ClientConfig{
-			User:            cred.Username,
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-			Timeout:         500 * time.Millisecond,
-			Auth:            []ssh.AuthMethod{ssh.Password(cred.Password)},
-		}
-	} else {
-		sshAuthMethodPrivateKey, err := PublicKeyFile(cred.PrivateKey)
+	if cred.PrivateKey != "" {
+		sshAuthMethodPrivateKey, err := PublicKeyFileOrContent(cred.PrivateKey)
 		if err != nil {
 			res.Success = false
 			res.Status = err.Error()
@@ -101,16 +116,15 @@ func SSHLogin(host string, port int, cred Credential, debug bool, command string
 			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 			Auth:            []ssh.AuthMethod{sshAuthMethodPrivateKey},
 		}
-	}
-	// log.Println("Dialing:", host)
-
-	if cred.PrivateKey == "" {
-		res.Secret = cred.Password
-		// successStr = fmt.Sprintf("[SSH] Hostname: %s\tUsername: %s\tPassword: %s", host, cred.Username, cred.Password)
 	} else {
-		res.Secret = cred.PrivateKey
-		// successStr = fmt.Sprintf("[SSH] Hostname: %s\tUsername: %s\tPassword: %s", host, cred.Username, cred.PrivateKey)
+		sshConfig = &ssh.ClientConfig{
+			User:            cred.Username,
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			Timeout:         500 * time.Millisecond,
+			Auth:            []ssh.AuthMethod{ssh.Password(cred.Password)},
+		}
 	}
+
 	connectionStr := fmt.Sprintf("%s:%d", host, port)
 	connection, err := ssh.Dial("tcp", connectionStr, sshConfig)
 	if err != nil {
@@ -124,6 +138,7 @@ func SSHLogin(host string, port int, cred Credential, debug bool, command string
 		return
 	}
 	defer connection.Close()
+
 	session, err := connection.NewSession()
 	defer session.Close()
 	if err != nil {
@@ -163,11 +178,9 @@ func SSHLogin(host string, port int, cred Credential, debug bool, command string
 		} else {
 			res.Output = string(output)
 		}
-
 	} else {
 		res.Output = ""
 	}
-	//session.Close()
 	sshResultChan <- res
 }
 

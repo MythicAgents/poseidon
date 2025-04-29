@@ -91,8 +91,8 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 			},
 			{
 				Name:             "private_key",
-				ModalDisplayName: "Path to Private key on disk",
-				Description:      "Authenticate to the designated hosts using this private key",
+				ModalDisplayName: "Private Key",
+				Description:      "Authenticate to the designated hosts using this private key (key content or path on disk)",
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
