@@ -33,7 +33,7 @@ SSH to specified host(s) using the designated credentials. You can also use this
 
 #### private_key
 
-- Description: Authenticate to the designated hosts using this private key  
+- Description: Authenticate to the designated hosts using this private key (key content or path on disk) 
 - Required Value: False  
 - Default Value: None  
 
