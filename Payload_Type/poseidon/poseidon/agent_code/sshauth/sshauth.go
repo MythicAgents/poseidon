@@ -44,6 +44,7 @@ type SSHTestParams struct {
 	Port        int      `json:"port"`
 	Username    string   `json:"username"`
 	Password    string   `json:"password"`
+	Cred        string   `json:"cred"`
 	PrivateKey  string   `json:"private_key"`
 	Command     string   `json:"command"`
 	Source      string   `json:"source"`
@@ -79,9 +80,17 @@ func PublicKeyFileOrContent(input string) (ssh.AuthMethod, error) {
 	var err error
 
 	// Check if the input contains the typical private key marker 
-	if strings.Contains(input, "-----") {
-		key = []byte(input) // Treat input as private key content
-	} else {
+	//if strings.Contains(input, "-----") {
+	//	key = []byte(input) // Treat input as private key content
+	//} else if strings.Contains(input, "Credential: ") {
+	if strings.Contains(input, "Credential: ") {
+		// Handle the case where the input is a string with "Credential: " prefix
+		// such as returned by Mythic Credentials
+		parts := strings.Split(input, "Credential: ")
+		if len(parts) > 1 {
+			key = []byte(parts[1])
+			} 
+		} else {
 		key, err = ioutil.ReadFile(input) // Treat input as a file path
 		if err != nil {
 			return nil, err
@@ -246,7 +255,7 @@ func Run(task structs.Task) {
 		return
 	}
 
-	if params.Password == "" && params.PrivateKey == "" {
+	if params.Password == "" && params.PrivateKey == "" && params.Cred == "" {
 		msg.UserOutput = "Missing password parameter"
 		msg.Completed = true
 		msg.Status = "error"
@@ -280,12 +289,23 @@ func Run(task structs.Task) {
 		params.Port = 22
 	}
 
-	cred := Credential{
-		Username:   params.Username,
-		Password:   params.Password,
-		PrivateKey: params.PrivateKey,
+	// Handle Cred vs PrivateKey
+	var cred Credential 
+	if params.Cred != "" { // use Cred if provided
+		cred = Credential{
+			Username:   params.Username,
+			Password:   params.Password,
+			PrivateKey: params.Cred,
+		}
+	} else { // use PrivateKey if provided
+		cred = Credential{
+			Username:   params.Username,
+			Password:   params.Password,
+			PrivateKey: params.PrivateKey,
+		}
 	}
-	// log.Println("Beginning brute force...")
+
+  // log.Println("Beginning brute force...")
 	results := SSHBruteForce(totalHosts, params.Port, []Credential{cred}, false, params.Command, params.Source, params.Destination)
 	// log.Println("Finished!")
 	if len(results) > 0 {
