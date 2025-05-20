@@ -1,6 +1,6 @@
 {
-  "callback_host": "http://127.0.0.1",
-  "callback_port": 80,
+  "callback_host": "https://127.0.0.1",
+  "callback_port": 443,
   "killdate": "2025-12-31",
   "callback_interval": 2,
   "callback_jitter": 0,

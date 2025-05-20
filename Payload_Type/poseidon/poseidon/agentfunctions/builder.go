@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-const version = "2.2.6"
+const version = "2.2.7"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`

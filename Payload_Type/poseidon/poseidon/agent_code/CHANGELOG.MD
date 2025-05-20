@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 2.2.7 - 2025-05-19
+
+### Changed
+
+- Added some additional checks in the websocket code for failed connections
+- Added some http idle connection clearing code in other c2 profiles
+
 ## 2.2.6 - 2025-04-17
 
 ### Changed

