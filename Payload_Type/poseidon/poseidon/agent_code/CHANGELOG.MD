@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 2.2.8 - 2025-05-30
+
+### Changed
+
+- Updated the download browserscript to render as the download happens
+- Updated the download task to not report back periodic progress updates
+- Added the supported ui feature `task:job_kill` to `jobkill` for support through the UI
+
 ## 2.2.7 - 2025-05-19
 
 ### Changed

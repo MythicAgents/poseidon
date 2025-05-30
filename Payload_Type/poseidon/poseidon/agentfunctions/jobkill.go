@@ -11,7 +11,7 @@ func init() {
 		HelpString:          "jobkill SOME-GUID-GOES-HERE",
 		Version:             1,
 		MitreAttackMappings: []string{"T1033"},
-		SupportedUIFeatures: []string{"jobs:kill"},
+		SupportedUIFeatures: []string{"jobs:kill", "task:job_kill"},
 		Author:              "@xorrior",
 		CommandAttributes: agentstructs.CommandAttribute{
 			SupportedOS: []string{},
