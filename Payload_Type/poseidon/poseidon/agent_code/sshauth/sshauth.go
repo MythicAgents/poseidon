@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"sync"
 	"time"
 
@@ -43,6 +44,7 @@ type SSHTestParams struct {
 	Port        int      `json:"port"`
 	Username    string   `json:"username"`
 	Password    string   `json:"password"`
+	Cred        string   `json:"cred"`
 	PrivateKey  string   `json:"private_key"`
 	Command     string   `json:"command"`
 	Source      string   `json:"source"`
@@ -73,6 +75,35 @@ func PublicKeyFile(file string) (ssh.AuthMethod, error) {
 	return ssh.PublicKeys(key), nil
 }
 
+func PublicKeyFileOrContent(input string) (ssh.AuthMethod, error) {
+	var key []byte
+	var err error
+
+	// Check if the input contains the typical private key marker 
+	//if strings.Contains(input, "-----") {
+	//	key = []byte(input) // Treat input as private key content
+	//} else if strings.Contains(input, "Credential: ") {
+	if strings.Contains(input, "Credential: ") {
+		// Handle the case where the input is a string with "Credential: " prefix
+		// such as returned by Mythic Credentials
+		parts := strings.Split(input, "Credential: ")
+		if len(parts) > 1 {
+			key = []byte(parts[1])
+			} 
+		} else {
+		key, err = ioutil.ReadFile(input) // Treat input as a file path
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	parsedKey, err := ssh.ParsePrivateKey(key)
+	if err != nil {
+		return nil, err
+	}
+	return ssh.PublicKeys(parsedKey), nil
+}
+
 func SSHLogin(host string, port int, cred Credential, debug bool, command string, source string, destination string) {
 	res := SSHResult{
 		Host:     host,
@@ -80,15 +111,8 @@ func SSHLogin(host string, port int, cred Credential, debug bool, command string
 		Success:  true,
 	}
 	var sshConfig *ssh.ClientConfig
-	if cred.PrivateKey == "" {
-		sshConfig = &ssh.ClientConfig{
-			User:            cred.Username,
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-			Timeout:         500 * time.Millisecond,
-			Auth:            []ssh.AuthMethod{ssh.Password(cred.Password)},
-		}
-	} else {
-		sshAuthMethodPrivateKey, err := PublicKeyFile(cred.PrivateKey)
+	if cred.PrivateKey != "" {
+		sshAuthMethodPrivateKey, err := PublicKeyFileOrContent(cred.PrivateKey)
 		if err != nil {
 			res.Success = false
 			res.Status = err.Error()
@@ -101,16 +125,15 @@ func SSHLogin(host string, port int, cred Credential, debug bool, command string
 			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 			Auth:            []ssh.AuthMethod{sshAuthMethodPrivateKey},
 		}
-	}
-	// log.Println("Dialing:", host)
-
-	if cred.PrivateKey == "" {
-		res.Secret = cred.Password
-		// successStr = fmt.Sprintf("[SSH] Hostname: %s\tUsername: %s\tPassword: %s", host, cred.Username, cred.Password)
 	} else {
-		res.Secret = cred.PrivateKey
-		// successStr = fmt.Sprintf("[SSH] Hostname: %s\tUsername: %s\tPassword: %s", host, cred.Username, cred.PrivateKey)
+		sshConfig = &ssh.ClientConfig{
+			User:            cred.Username,
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			Timeout:         500 * time.Millisecond,
+			Auth:            []ssh.AuthMethod{ssh.Password(cred.Password)},
+		}
 	}
+
 	connectionStr := fmt.Sprintf("%s:%d", host, port)
 	connection, err := ssh.Dial("tcp", connectionStr, sshConfig)
 	if err != nil {
@@ -124,6 +147,7 @@ func SSHLogin(host string, port int, cred Credential, debug bool, command string
 		return
 	}
 	defer connection.Close()
+
 	session, err := connection.NewSession()
 	defer session.Close()
 	if err != nil {
@@ -163,11 +187,9 @@ func SSHLogin(host string, port int, cred Credential, debug bool, command string
 		} else {
 			res.Output = string(output)
 		}
-
 	} else {
 		res.Output = ""
 	}
-	//session.Close()
 	sshResultChan <- res
 }
 
@@ -233,7 +255,7 @@ func Run(task structs.Task) {
 		return
 	}
 
-	if params.Password == "" && params.PrivateKey == "" {
+	if params.Password == "" && params.PrivateKey == "" && params.Cred == "" {
 		msg.UserOutput = "Missing password parameter"
 		msg.Completed = true
 		msg.Status = "error"
@@ -267,12 +289,23 @@ func Run(task structs.Task) {
 		params.Port = 22
 	}
 
-	cred := Credential{
-		Username:   params.Username,
-		Password:   params.Password,
-		PrivateKey: params.PrivateKey,
+	// Handle Cred vs PrivateKey
+	var cred Credential 
+	if params.Cred != "" { // use Cred if provided
+		cred = Credential{
+			Username:   params.Username,
+			Password:   params.Password,
+			PrivateKey: params.Cred,
+		}
+	} else { // use PrivateKey if provided
+		cred = Credential{
+			Username:   params.Username,
+			Password:   params.Password,
+			PrivateKey: params.PrivateKey,
+		}
 	}
-	// log.Println("Beginning brute force...")
+
+  // log.Println("Beginning brute force...")
 	results := SSHBruteForce(totalHosts, params.Port, []Credential{cred}, false, params.Command, params.Source, params.Destination)
 	// log.Println("Finished!")
 	if len(results) > 0 {
