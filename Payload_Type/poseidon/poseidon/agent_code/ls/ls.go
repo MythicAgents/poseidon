@@ -42,6 +42,9 @@ func GetPermission(finfo os.FileInfo) structs.FilePermission {
 		perms.Sticky = true
 		perms.Permissions = perms.Permissions[0:8] + "t"
 	}
+	if finfo.IsDir() {
+		perms.Permissions = "d" + perms.Permissions[1:]
+	}
 	systat := finfo.Sys().(*syscall.Stat_t)
 	if systat != nil {
 		perms.UID = int(systat.Uid)

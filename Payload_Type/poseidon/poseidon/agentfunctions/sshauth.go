@@ -3,7 +3,6 @@ package agentfunctions
 import (
 	"fmt"
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
-	"github.com/MythicMeta/MythicContainer/mythicrpc"
 	"path/filepath"
 	"strings"
 )
@@ -112,8 +111,8 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 			},
 			{
 				Name:             "private_key",
-				ModalDisplayName: "Private Key",
-				ParameterType:        agentstructs.COMMAND_PARAMETER_TYPE_STRING,
+				ModalDisplayName: "Private Key Path On Target",
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: true,
@@ -128,12 +127,10 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 				},
 			},
 			{
-				Name:             "cred", // can't share `private_key` name
-				ModalDisplayName: "Credential",
-				ParameterType:        agentstructs.COMMAND_PARAMETER_TYPE_CHOOSE_ONE,
-				Choices:              []string{""},
-				DefaultValue:         "",
-				DynamicQueryFunction: getCreds,
+				Name:                   "cred", // can't share `private_key` name
+				ModalDisplayName:       "Credential",
+				ParameterType:          agentstructs.COMMAND_PARAMETER_TYPE_CREDENTIAL,
+				LimitCredentialsByType: []string{"plaintext", "key"},
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: true,
@@ -165,7 +162,7 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 						GroupName:           "run-command-private-key",
 					},
 					{
-						ParameterIsRequired: true,
+						ParameterIsRequired: false,
 						UIModalPosition:     5,
 						GroupName:           "scp-private-key-credstore",
 					},
@@ -180,7 +177,7 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 						GroupName:           "run-command-plaintext-password",
 					},
 					{
-						ParameterIsRequired: true,
+						ParameterIsRequired: false,
 						UIModalPosition:     5,
 						GroupName:           "run-command-private-key-credstore",
 					},
@@ -209,7 +206,7 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 				ModalDisplayName: "Array of CIDR notation for hosts",
 				Description:      "Hosts that you will auth to",
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_ARRAY,
-				DefaultValue:     []string{},
+				DefaultValue:     []string{"127.0.0.1/32"},
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: true,
@@ -273,28 +270,33 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 				TaskID:  taskData.Task.ID,
 			}
 			displayParams := ""
-			if username, err := taskData.Args.GetStringArg("username"); err != nil {
+			username, err := taskData.Args.GetStringArg("username")
+			if err != nil {
 				response.Success = false
 				response.Error = err.Error()
-			} else if groupName, err := taskData.Args.GetParameterGroupName(); err != nil {
-				response.Success = false
-				response.Error = err.Error()
-			} else {
-				displayParams += fmt.Sprintf("as %s ", username)
-				if strings.Contains(groupName, "private-key") {
-					// authing with private key
-					displayParams += fmt.Sprintf("with a private key")
-				} else {
-					// authing with plaintext password
-					displayParams += fmt.Sprintf("with a plaintext password")
-				}
-				if strings.Contains(groupName, "command") {
-					displayParams += fmt.Sprintf(" to run a command")
-				} else {
-					displayParams += fmt.Sprintf(" to copy a file")
-				}
-				response.DisplayParams = &displayParams
+				return response
 			}
+			groupName, err := taskData.Args.GetParameterGroupName()
+			if err != nil {
+				response.Success = false
+				response.Error = err.Error()
+				return response
+			}
+			displayParams += fmt.Sprintf("as %s ", username)
+			if strings.Contains(groupName, "private-key") {
+				// authing with private key
+				displayParams += fmt.Sprintf("with a private key")
+			} else {
+				// authing with plaintext password
+				displayParams += fmt.Sprintf("with a plaintext password")
+			}
+			if strings.Contains(groupName, "command") {
+				displayParams += fmt.Sprintf(" to run a command")
+			} else {
+				displayParams += fmt.Sprintf(" to copy a file")
+			}
+			response.DisplayParams = &displayParams
+
 			return response
 		},
 		TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
@@ -304,25 +306,4 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 			return args.LoadArgsFromJSONString(input)
 		},
 	})
-}
-
-// getCreds dynamically fetches available credentials from Mythic
-func getCreds(msg agentstructs.PTRPCDynamicQueryFunctionMessage) []string {
-	rpcMessage := mythicrpc.MythicRPCCredentialSearchMessage{
-		TaskID: msg.Callback,
-	}
-
-	rpcResponse, err := mythicrpc.SendMythicRPCCredentialSearch(rpcMessage)
-	if err != nil || !rpcResponse.Success {
-		return []string{"Error fetching credentials"}
-	}
-
-	choices := []string{}
-	for _, cred := range rpcResponse.Credentials {
-		if cred.Account != nil && cred.Realm != nil {
-			choices = append(choices, fmt.Sprintf("Account: %s, Realm: %s, Credential: %s", *cred.Account, *cred.Realm, *cred.Credential))
-		}
-	}
-
-	return choices
 }
