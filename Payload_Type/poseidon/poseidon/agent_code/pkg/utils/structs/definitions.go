@@ -256,7 +256,7 @@ type Response struct {
 	Alerts            *[]Alert             `json:"alerts,omitempty"`
 	ProcessResponse   *string              `json:"process_response,omitempty"`
 	Stdout            *string              `json:"stdout"`
-	Stderr            *string              `json:"stder"`
+	Stderr            *string              `json:"stderr"`
 	removeRunningTask chan string
 }
 

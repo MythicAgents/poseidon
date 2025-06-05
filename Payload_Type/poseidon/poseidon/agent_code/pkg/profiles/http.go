@@ -68,6 +68,35 @@ type C2HTTP struct {
 }
 
 // New creates a new HTTP C2 profile from the package's global variables and returns it
+func parseURLAndPort(host string, port uint) string {
+	var final_url string
+	var last_slash int
+	if port == 443 && strings.Contains(host, "https://") {
+		final_url = host
+	} else if port == 80 && strings.Contains(host, "http://") {
+		final_url = host
+	} else {
+		if len(host) < 9 {
+			utils.PrintDebug(fmt.Sprintf("callbackhost length is wrong, exiting: %s\n", host))
+			os.Exit(1)
+		}
+		last_slash = strings.Index(host[8:], "/")
+		if last_slash == -1 {
+			//there is no 3rd slash
+			final_url = fmt.Sprintf("%s:%d", host, port)
+		} else {
+			//there is a 3rd slash, so we need to splice in the port
+			last_slash += 8 // adjust this back to include our offset initially
+			//fmt.Printf("index of last slash: %d\n", last_slash)
+			//fmt.Printf("splitting into %s and %s\n", string(callback_host[0:last_slash]), string(callback_host[last_slash:]))
+			final_url = fmt.Sprintf("%s:%d%s", host[0:last_slash], port, host[last_slash:])
+		}
+	}
+	if final_url[len(final_url)-1:] != "/" {
+		final_url = final_url + "/"
+	}
+	return final_url
+}
 func init() {
 	initialConfigBytes, err := base64.StdEncoding.DecodeString(http_initial_config)
 	if err != nil {
@@ -80,32 +109,6 @@ func init() {
 		utils.PrintDebug(fmt.Sprintf("error trying to unmarshal initial http config, exiting: %v\n", err))
 		os.Exit(1)
 	}
-	var final_url string
-	var last_slash int
-	if initialConfig.CallbackPort == 443 && strings.Contains(initialConfig.CallbackHost, "https://") {
-		final_url = initialConfig.CallbackHost
-	} else if initialConfig.CallbackPort == 80 && strings.Contains(initialConfig.CallbackHost, "http://") {
-		final_url = initialConfig.CallbackHost
-	} else {
-		if len(initialConfig.CallbackHost) < 9 {
-			utils.PrintDebug(fmt.Sprintf("callbackhost length is wrong, exiting: %s\n", initialConfig.CallbackHost))
-			os.Exit(1)
-		}
-		last_slash = strings.Index(initialConfig.CallbackHost[8:], "/")
-		if last_slash == -1 {
-			//there is no 3rd slash
-			final_url = fmt.Sprintf("%s:%d", initialConfig.CallbackHost, initialConfig.CallbackPort)
-		} else {
-			//there is a 3rd slash, so we need to splice in the port
-			last_slash += 8 // adjust this back to include our offset initially
-			//fmt.Printf("index of last slash: %d\n", last_slash)
-			//fmt.Printf("splitting into %s and %s\n", string(callback_host[0:last_slash]), string(callback_host[last_slash:]))
-			final_url = fmt.Sprintf("%s:%d%s", initialConfig.CallbackHost[0:last_slash], initialConfig.CallbackPort, initialConfig.CallbackHost[last_slash:])
-		}
-	}
-	if final_url[len(final_url)-1:] != "/" {
-		final_url = final_url + "/"
-	}
 	//fmt.Printf("final url: %s\n", final_url)
 	killDateString := fmt.Sprintf("%sT00:00:00.000Z", initialConfig.Killdate)
 	killDateTime, err := time.Parse("2006-01-02T15:04:05.000Z", killDateString)
@@ -113,7 +116,7 @@ func init() {
 		os.Exit(1)
 	}
 	profile := C2HTTP{
-		BaseURL:               final_url,
+		BaseURL:               parseURLAndPort(initialConfig.CallbackHost, initialConfig.CallbackPort),
 		PostURI:               initialConfig.PostURI,
 		ProxyUser:             initialConfig.ProxyUser,
 		ProxyPass:             initialConfig.ProxyPass,
@@ -141,7 +144,7 @@ func init() {
 
 	// Add proxy info if set
 	if len(initialConfig.ProxyHost) > 3 {
-		profile.ProxyURL = fmt.Sprintf("%s:%d/", initialConfig.ProxyHost, initialConfig.ProxyPort)
+		profile.ProxyURL = parseURLAndPort(initialConfig.ProxyHost, initialConfig.ProxyPort)
 
 		if len(initialConfig.ProxyUser) > 0 && len(initialConfig.ProxyPass) > 0 {
 			profile.ProxyUser = initialConfig.ProxyUser
