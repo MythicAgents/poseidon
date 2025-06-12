@@ -111,7 +111,7 @@ func ProcessPath(path string) (*structs.FileBrowser, error) {
 			fileInfo, err := files[i].Info()
 			if err != nil {
 				fileEntries[i].Permissions = structs.FilePermission{}
-				fileEntries[i].FileSize = -1
+				fileEntries[i].FileSize = 0
 				fileEntries[i].LastModified = 0
 			} else {
 				fileEntries[i].Permissions = GetPermission(fileInfo)
