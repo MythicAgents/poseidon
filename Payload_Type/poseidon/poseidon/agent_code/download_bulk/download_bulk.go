@@ -1,4 +1,4 @@
-package bulk_download
+package download_bulk
 
 import (
 	"archive/zip"
@@ -118,17 +118,17 @@ func Run(task structs.Task) {
 		for _, path := range args.Paths {
 		        fullPath, err := filepath.Abs(path)
 		        if err != nil {
-		            msg.SetError(fmt.Sprintf("Error resolving path: %s", err.Error()))
+		            msg.UserOutput = fmt.Sprintf("Error resolving path: %s", err.Error())
 		            task.Job.SendResponses <- msg
-		            return
+								continue
 		        }
 		
 		        // Check if the provided path is a directory
 		        fi, err := os.Stat(fullPath)
 		        if err != nil {
-		            msg.SetError(fmt.Sprintf("Error accessing path: %s", err.Error()))
+		            msg.UserOutput = fmt.Sprintf("Error accessing path: %s", err.Error())
 		            task.Job.SendResponses <- msg
-		            return
+		            continue
 		        }
 		
 		        if fi.IsDir() {
@@ -180,7 +180,7 @@ func Run(task structs.Task) {
 		            if err != nil {
 		                msg.SetError(fmt.Sprintf("Error opening file: %s", err.Error()))
 		                task.Job.SendResponses <- msg
-		                return
+										return
 		            }
 		
 		            // Prepare the download message for the file

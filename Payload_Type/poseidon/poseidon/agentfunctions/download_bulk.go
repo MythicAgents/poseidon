@@ -7,8 +7,8 @@ import (
 
 func init() {
 	agentstructs.AllPayloadData.Get("poseidon").AddCommand(agentstructs.Command{
-		Name:                "bulk_download",
-		HelpString:          "bulk_download",
+		Name:                "download_bulk",
+		HelpString:          "download_bulk",
 		Description:         "Download file(s), optionally compressing into a Zip before download. Stored in memory prior to upload - may be resource intensive.",
 		Version:             1,
 		MitreAttackMappings: []string{"T1020", "T1030", "T1041"},
