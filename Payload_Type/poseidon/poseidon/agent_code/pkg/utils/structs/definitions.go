@@ -70,6 +70,7 @@ type CheckInMessage struct {
 	ExternalIP     string   `json:"external_ip"`
 	ProcessName    string   `json:"process_name"`
 	SleepInfo      string   `json:"sleep_info"`
+	Cwd            string   `json:"cwd"`
 }
 
 type CheckInMessageResponse struct {
@@ -240,6 +241,11 @@ type Alert struct {
 	SendWebhook  bool                    `json:"send_webhook"`
 }
 
+type CallbackUpdate struct {
+	Cwd                  *string `json:"cwd,omitempty"`
+	ImpersonationContext *string `json:"impersonation_context,omitempty"`
+}
+
 type Response struct {
 	TaskID            string               `json:"task_id"`
 	UserOutput        string               `json:"user_output,omitempty"`
@@ -254,6 +260,7 @@ type Response struct {
 	Keylogs           *[]Keylog            `json:"keylogs,omitempty"`
 	Artifacts         *[]Artifact          `json:"artifacts,omitempty"`
 	Alerts            *[]Alert             `json:"alerts,omitempty"`
+	CallbackUpdate    *CallbackUpdate      `json:"callback,omitempty"`
 	ProcessResponse   *string              `json:"process_response,omitempty"`
 	Stdout            *string              `json:"stdout"`
 	Stderr            *string              `json:"stderr"`

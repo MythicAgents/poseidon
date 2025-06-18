@@ -55,3 +55,5 @@ func GetPID() int {
 func GetHostname() string {
 	return getHostname()
 }
+func GetCwd() string           { return getCwd() }
+func GetEffectiveUser() string { return getEffectiveUser() }

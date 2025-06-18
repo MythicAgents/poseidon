@@ -19,6 +19,14 @@ int UpdateEUID(){
 	uid_t finalUID = getuid();
     return finalUID;
 }
+int GetUID();
+int GetUID(){
+	return getuid();
+}
+int GetEUID();
+int GetEUID(){
+	return geteuid();
+}
 */
 import "C"
 import (
@@ -79,6 +87,15 @@ func getUser() string {
 		return currentUser.Username
 	}
 }
+func getEffectiveUser() string {
+	uid := C.GetEUID()
+	currentUser, err := user.LookupId(strconv.Itoa(int(uid)))
+	if err != nil {
+		return ""
+	} else {
+		return currentUser.Username
+	}
+}
 func getPID() int {
 	return os.Getpid()
 }
@@ -89,6 +106,13 @@ func getHostname() string {
 	} else {
 		return hostname
 	}
+}
+func getCwd() string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	return cwd
 }
 
 // Helper function to convert DWORD byte counts to

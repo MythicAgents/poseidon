@@ -3,6 +3,7 @@ package getuser
 import (
 	// Standard
 	"encoding/json"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 	"os/user"
 
 	// Poseidon
@@ -63,6 +64,13 @@ func Run(task structs.Task) {
 	}
 	msg.UserOutput = string(res)
 	msg.Completed = true
+	effectiveUser := functions.GetEffectiveUser()
+	if effectiveUser != functions.GetUser() {
+		callbackUpdate := structs.CallbackUpdate{
+			ImpersonationContext: &effectiveUser,
+		}
+		msg.CallbackUpdate = &callbackUpdate
+	}
 	task.Job.SendResponses <- msg
 	return
 }
