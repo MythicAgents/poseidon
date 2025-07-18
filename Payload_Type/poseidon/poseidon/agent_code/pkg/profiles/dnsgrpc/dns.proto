@@ -1,0 +1,18 @@
+syntax = "proto3";
+option go_package = "github.com/MythicAgents/poseidon/Payload_Type/poseidon/poseidon/pkg/profiles/dnsgrpc";
+package dnsStructs;
+
+enum Actions {
+  AgentToServer = 0;
+  ServerToAgent = 1;
+  ReTransmit = 2;
+  MessageLost = 3;
+}
+message DnsPacket {
+  Actions  Action       = 1;
+  uint32 AgentSessionID = 2;
+  uint32 MessageID      = 3;
+  uint32 Size           = 4;
+  uint32 Begin          = 5;
+  string Data           = 6;
+}

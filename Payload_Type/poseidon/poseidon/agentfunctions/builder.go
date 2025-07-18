@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-const version = "2.2.12"
+const version = "2.2.13"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`
@@ -37,7 +37,7 @@ var payloadDefinition = agentstructs.PayloadType{
 	CanBeWrappedByTheFollowingPayloadTypes: []string{},
 	SupportsDynamicLoading:                 false,
 	Description:                            fmt.Sprintf("A fully featured macOS and Linux Golang agent.\nVersion %s\nNeeds Mythic 3.3.0+\nNOTE: P2P not compatible with v2.1 agents!", version),
-	SupportedC2Profiles:                    []string{"http", "websocket", "tcp", "dynamichttp", "webshell", "httpx"},
+	SupportedC2Profiles:                    []string{"http", "websocket", "tcp", "dynamichttp", "webshell", "httpx", "dns"},
 	MythicEncryptsData:                     true,
 	BuildParameters: []agentstructs.BuildParameter{
 		{

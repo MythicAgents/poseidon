@@ -18,18 +18,29 @@ HTTPX_UUID=6d1dce05-6f50-4043-9dd0-231f771b20ce
 HTTPX_AGENT_CONFIG_FILE=test_agent_config_httpx.json
 HTTPX_CONFIG=$(shell base64 -i ${HTTPX_AGENT_CONFIG_FILE})
 
+DNS_UUID=7461e218-d766-4937-87a1-957d9b718455
+DNS_AGENT_CONFIG_FILE=test_agent_config_dns.json
+DNS_CONFIG=$(shell base64 -i ${DNS_AGENT_CONFIG_FILE})
+
 BINARY_NAME=poseidon
 C2_HTTP=http
 C2_WEBSOCKET=websocket
 C2_TCP=tcp
 C2_DYNAMICHTTP=dynamichttp
 C2_HTTPX=httpx
+C2_DNS=dns
 
-EGRESS_ORDER=$(shell echo [\"http\",\"websocket\",\"dynamichttp\"] | base64 -i - )
+EGRESS_ORDER=$(shell echo [\"http\",\"websocket\",\"dynamichttp\",\"dns\"] | base64 -i - )
 EGRESS_FAILOVER="failover"
 DEBUG=true
 failedConnectionCountThresholdString=10
 
+
+build_protobuf_go:
+	protoc --go_out=`pwd`/pkg/profiles/dnsgrpc --go_opt=paths=source_relative \
+--go-grpc_out=`pwd`/pkg/profiles/dnsgrpc --go-grpc_opt=paths=source_relative \
+--proto_path=`pwd`/pkg/profiles/dnsgrpc \
+`pwd`/pkg/profiles/dnsgrpc/*.proto
 
 
 build_http:
@@ -104,6 +115,16 @@ build_httpx:
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.${C2_HTTPX}_initial_config=${HTTPX_CONFIG}'\
 " .
 
+build_dns:
+	go build -o ${BINARY_NAME}_${C2_DNS}.bin -tags="${C2_DNS}" -ldflags=" \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.UUID=${DNS_UUID}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_order=${EGRESS_ORDER}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_failover=${EGRESS_FAILOVER}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils.debugString=${DEBUG}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.failedConnectionCountThresholdString=${failedConnectionCountThresholdString}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.${C2_DNS}_initial_config=${DNS_CONFIG}'\
+" .
+
 run_http:
 	./${BINARY_NAME}_${C2_HTTP}.bin
 
@@ -122,6 +143,9 @@ run_websocket_http:
 run_httpx:
 	./${BINARY_NAME}_${C2_HTTPX}.bin
 
+run_dns:
+	./${BINARY_NAME}_${C2_DNS}.bin
+
 build_and_run_http: build_http run_http
 
 build_and_run_tcp: build_tcp run_tcp
@@ -133,6 +157,8 @@ build_and_run_websocket_http: build_websocket_http run_websocket_http
 build_and_run_websocket: build_websocket run_websocket
 
 build_and_run_httpx: build_httpx run_httpx
+
+build_and_run_dns: build_dns run_dns
 
 build_all: build_http build_tcp build_websocket
 
