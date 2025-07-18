@@ -331,7 +331,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 				} else {
 					initialConfig[key] = val
 				}
-			} else if slices.Contains([]string{"callback_domains"}, key) {
+			} else if slices.Contains([]string{"callback_domains", "domains"}, key) {
 				val, err := payloadBuildMsg.C2Profiles[index].GetArrayArg(key)
 				if err != nil {
 					payloadBuildResponse.Success = false
