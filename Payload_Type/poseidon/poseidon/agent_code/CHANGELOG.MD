@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.2.14] - 2025-07-21
+
+### Changed
+
+- Updated some processing for DNS requests to iterate over potential local addresses to find ones that work
+
 ## [2.2.13] - 2025-07-18
 
 ### Changed
