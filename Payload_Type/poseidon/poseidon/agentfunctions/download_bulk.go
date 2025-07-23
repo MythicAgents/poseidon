@@ -13,6 +13,10 @@ func init() {
 		Version:             1,
 		MitreAttackMappings: []string{"T1020", "T1030", "T1041"},
 		Author:              "@maclarel",
+		AssociatedBrowserScript: &agentstructs.BrowserScript{
+			ScriptPath: filepath.Join(".", "poseidon", "browserscripts", "download_bulk.js"), 
+			Author:     "@maclarel",
+		},
 		CommandParameters: []agentstructs.CommandParameter{
 			{
 				Name:             "paths",
