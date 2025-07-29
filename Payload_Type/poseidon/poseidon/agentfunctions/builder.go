@@ -434,7 +434,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	}
 	command += "GOGARBLE=* "
 	if garble {
-		command += "garble version && garble -tiny -literals -debug -seed random build "
+		command += "garble -tiny -literals -debug -seed random build "
 	} else {
 		command += "go build "
 	}
