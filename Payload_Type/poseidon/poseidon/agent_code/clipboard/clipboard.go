@@ -10,7 +10,24 @@ import (
 )
 
 type Arguments struct {
-	ReadTypes []string `json:"read"`
+	ReadTypes []string
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["read"]; ok {
+		interfaceArray := v.([]interface{})
+		interfaceStringArray := make([]string, len(interfaceArray))
+		for i, v := range interfaceArray {
+			interfaceStringArray[i] = v.(string)
+		}
+		e.ReadTypes = interfaceStringArray
+	}
+	return nil
 }
 
 func Run(task structs.Task) {

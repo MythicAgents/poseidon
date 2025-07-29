@@ -241,7 +241,7 @@ func SetAllEncryptionKeys(newKey string) {
 func StartC2Profile(profileName string) {
 	for c2, _ := range availableC2Profiles {
 		if c2 == profileName {
-			utils.PrintDebug(fmt.Sprintf("Starting C2 profile by name from tasking: %s\n", profileName))
+			utils.PrintDebug(fmt.Sprintf("Starting profile by name from tasking: %s\n", profileName))
 			go availableC2Profiles[c2].Start()
 		}
 	}
@@ -249,7 +249,7 @@ func StartC2Profile(profileName string) {
 
 // StopC2Profile stops a specific c2 profile by name (usually via tasking)
 func StopC2Profile(profileName string) {
-	utils.PrintDebug(fmt.Sprintf("Stopping C2 profile by name from tasking: %s\n", profileName))
+	utils.PrintDebug(fmt.Sprintf("Stopping profile by name from tasking: %s\n", profileName))
 	for c2, _ := range availableC2Profiles {
 		if c2 == profileName {
 			utils.PrintDebug(fmt.Sprintf("stopping: %s\n", c2))
@@ -328,7 +328,7 @@ func GetMythicID() string {
 }
 
 func SetMythicID(newMythicID string) {
-	utils.PrintDebug(fmt.Sprintf("Updating MythicID: %s -> %s\n", MythicID, newMythicID))
+	utils.PrintDebug(fmt.Sprintf("Updating ID: %s -> %s\n", MythicID, newMythicID))
 	MythicID = newMythicID
 }
 

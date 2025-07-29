@@ -77,9 +77,24 @@ type socksTracker struct {
 	Channel    chan structs.SocksMsg
 	Connection net.Conn
 }
-type Args struct {
-	Action string `json:"action"`
-	Port   int    `json:"port"`
+type Arguments struct {
+	Action string
+	Port   int
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["action"]; ok {
+		e.Action = v.(string)
+	}
+	if v, ok := alias["port"]; ok {
+		e.Port = int(v.(float64))
+	}
+	return nil
 }
 
 var client = &net.TCPAddr{IP: []byte{127, 0, 0, 1}, Port: 65432}
@@ -98,7 +113,7 @@ var closeAllChannelsChan = make(chan bool)
 var startedGoRoutines = false
 
 func Run(task structs.Task) {
-	args := Args{}
+	args := Arguments{}
 	err := json.Unmarshal([]byte(task.Params), &args)
 	if !startedGoRoutines {
 		go handleMutexMapModifications()
@@ -461,7 +476,7 @@ func writeToUDPProxy(recvChan chan structs.SocksMsg, conn net.Conn, channelId ui
 		data, err := base64.StdEncoding.DecodeString(bufOut.Data)
 		if err != nil {
 			w.Flush()
-			utils.PrintDebug(fmt.Sprintf("error decoding data from mythic: %v\n", err))
+			utils.PrintDebug(fmt.Sprintf("error decoding data received: %v\n", err))
 			removeFromMapChan <- channelId
 			return
 		}

@@ -21,15 +21,60 @@ import (
 )
 
 type Arguments struct {
-	Url         string   `json:"url"`
-	Method      string   `json:"method"`
-	Body        string   `json:"body"`
-	Headers     []string `json:"headers"`
-	SetEnv      []string `json:"setEnv"`
-	ClearEnv    []string `json:"clearEnv"`
-	ClearAllEnv bool     `json:"clearAllEnv"`
-	GetEnv      bool     `json:"getEnv"`
-	SocketPath  string   `json:"socketPath"`
+	Url         string
+	Method      string
+	Body        string
+	Headers     []string
+	SetEnv      []string
+	ClearEnv    []string
+	ClearAllEnv bool
+	GetEnv      bool
+	SocketPath  string
+}
+
+func (e *Arguments) parseStringArray(configArray []interface{}) []string {
+	urls := make([]string, len(configArray))
+	if configArray != nil {
+		for l, p := range configArray {
+			urls[l] = p.(string)
+		}
+	}
+	return urls
+}
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["url"]; ok {
+		e.Url = v.(string)
+	}
+	if v, ok := alias["method"]; ok {
+		e.Method = v.(string)
+	}
+	if v, ok := alias["body"]; ok {
+		e.Body = v.(string)
+	}
+	if v, ok := alias["headers"]; ok {
+		e.Headers = e.parseStringArray(v.([]interface{}))
+	}
+	if v, ok := alias["setEnv"]; ok {
+		e.SetEnv = e.parseStringArray(v.([]interface{}))
+	}
+	if v, ok := alias["clearEnv"]; ok {
+		e.ClearEnv = e.parseStringArray(v.([]interface{}))
+	}
+	if v, ok := alias["clearAllEnv"]; ok {
+		e.ClearAllEnv = v.(bool)
+	}
+	if v, ok := alias["getEnv"]; ok {
+		e.GetEnv = v.(bool)
+	}
+	if v, ok := alias["socketPath"]; ok {
+		e.SocketPath = v.(string)
+	}
+	return nil
 }
 
 // env are substitution environment variables to apply in the Arguments.Url and Arguments.Headers fields

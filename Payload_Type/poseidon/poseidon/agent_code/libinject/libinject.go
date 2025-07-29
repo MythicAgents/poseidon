@@ -19,8 +19,23 @@ type Injection interface {
 }
 
 type Arguments struct {
-	PID         int    `json:"pid"`
-	LibraryPath string `json:"library"`
+	PID         int
+	LibraryPath string
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["pid"]; ok {
+		e.PID = int(v.(float64))
+	}
+	if v, ok := alias["library"]; ok {
+		e.LibraryPath = v.(string)
+	}
+	return nil
 }
 
 func Run(task structs.Task) {
@@ -42,7 +57,7 @@ func Run(task structs.Task) {
 	}
 
 	if result.Success() {
-		msg.UserOutput = fmt.Sprintf("Successfully injected %s injection into pid: %d ", args.LibraryPath, args.PID)
+		msg.UserOutput = fmt.Sprintf("Successfully injected %s into pid: %d ", args.LibraryPath, args.PID)
 	} else {
 		msg.UserOutput = fmt.Sprintf("Failed to inject %s into pid: %d ", args.LibraryPath, args.PID)
 	}

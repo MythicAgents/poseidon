@@ -10,14 +10,29 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
-type Args struct {
-	Interval int `json:"interval"`
-	Jitter   int `json:"jitter"`
+type Arguments struct {
+	Interval int
+	Jitter   int
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["interval"]; ok {
+		e.Interval = int(v.(float64))
+	}
+	if v, ok := alias["jitter"]; ok {
+		e.Jitter = int(v.(float64))
+	}
+	return nil
 }
 
 // Run - interface method that retrieves a process list
 func Run(task structs.Task) {
-	args := Args{}
+	args := Arguments{}
 	err := json.Unmarshal([]byte(task.Params), &args)
 	if err != nil {
 		errResp := task.NewResponse()

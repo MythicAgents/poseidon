@@ -269,7 +269,6 @@ func CreateMythicPollMessage() *structs.MythicMessage {
 	responseMsg := structs.MythicMessage{}
 	responseMsg.Action = "get_tasking"
 	responseMsg.TaskingSize = -1
-	responseMsg.GetDelegateTasks = true
 	SocksArray := getSocksChannelData()
 	RpfwdArray := getRpfwdChannelData()
 	if len(TaskResponses) > 0 || len(DelegateResponses) > 0 ||

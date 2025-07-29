@@ -14,12 +14,39 @@ import (
 )
 
 type Arguments struct {
-	CookieValue string `json:"cookie_value"`
-	CookieName  string `json:"cookie_name"`
-	URL         string `json:"url"`
-	UserAgent   string `json:"user_agent"`
-	QueryParam  string `json:"query_param"`
-	TargetUUID  string `json:"target_uuid"`
+	CookieValue string
+	CookieName  string
+	URL         string
+	UserAgent   string
+	QueryParam  string
+	TargetUUID  string
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["cookie_value"]; ok {
+		e.CookieValue = v.(string)
+	}
+	if v, ok := alias["cookie_name"]; ok {
+		e.CookieName = v.(string)
+	}
+	if v, ok := alias["url"]; ok {
+		e.URL = v.(string)
+	}
+	if v, ok := alias["user_agent"]; ok {
+		e.UserAgent = v.(string)
+	}
+	if v, ok := alias["query_param"]; ok {
+		e.QueryParam = v.(string)
+	}
+	if v, ok := alias["target_uuid"]; ok {
+		e.TargetUUID = v.(string)
+	}
+	return nil
 }
 
 // Run - package function to run link_tcp

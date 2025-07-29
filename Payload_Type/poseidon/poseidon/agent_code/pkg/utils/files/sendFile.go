@@ -37,7 +37,7 @@ func sendFileMessagesToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 	if sendFileToMythic.Data == nil {
 		if sendFileToMythic.File == nil {
 			errResponse := sendFileToMythic.Task.NewResponse()
-			errResponse.UserOutput = fmt.Sprintf("No data and no file specified when trying to send a file to Mythic")
+			errResponse.UserOutput = fmt.Sprintf("No data and no file specified when trying to send a file")
 			sendFileToMythic.Task.Job.SendResponses <- errResponse
 			sendFileToMythic.FinishedTransfer <- 1
 			return

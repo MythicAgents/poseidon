@@ -11,7 +11,19 @@ import (
 )
 
 type Arguments struct {
-	RemoteUUID string `json:"connection"`
+	RemoteUUID string
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["connection"]; ok {
+		e.RemoteUUID = v.(string)
+	}
+	return nil
 }
 
 // Run - package function to run unlink_tcp

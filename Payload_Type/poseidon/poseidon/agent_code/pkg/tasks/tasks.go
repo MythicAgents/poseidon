@@ -32,12 +32,12 @@ func HandleMessageFromMythic(mythicMessage structs.MythicMessageResponse) {
 	//fmt.Printf("HandleMessageFromMythic:\n%v\n", mythicMessage)
 	// loop through each response and check to see if the file_id or task_id matches any existing background tasks
 	for i := 0; i < len(mythicMessage.Responses); i++ {
-		var r map[string]interface{}
-		err := json.Unmarshal(mythicMessage.Responses[i], &r)
-		if err != nil {
-			//log.Printf("Error unmarshal response to task response: %s", err.Error())
-			break
-		}
+		r := mythicMessage.Responses[i]
+		//err := json.Unmarshal(mythicMessage.Responses[i], &r)
+		//if err != nil {
+		//log.Printf("Error unmarshal response to task response: %s", err.Error())
+		//	break
+		//}
 		if taskid, ok := r["task_id"]; ok {
 			if task, exists := runningTasks[taskid.(string)]; exists {
 				// send data to the channel

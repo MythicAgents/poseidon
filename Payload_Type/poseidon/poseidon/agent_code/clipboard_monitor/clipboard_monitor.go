@@ -11,7 +11,19 @@ import (
 )
 
 type Arguments struct {
-	Duration int `json:"duration"`
+	Duration int
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["duration"]; ok {
+		e.Duration = int(v.(float64))
+	}
+	return nil
 }
 
 func Run(task structs.Task) {

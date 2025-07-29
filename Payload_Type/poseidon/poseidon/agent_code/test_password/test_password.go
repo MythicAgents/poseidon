@@ -8,8 +8,23 @@ import (
 var args Arguments
 
 type Arguments struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username string
+	Password string
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["username"]; ok {
+		e.Username = v.(string)
+	}
+	if v, ok := alias["password"]; ok {
+		e.Password = v.(string)
+	}
+	return nil
 }
 
 // Run - package function to run test_password

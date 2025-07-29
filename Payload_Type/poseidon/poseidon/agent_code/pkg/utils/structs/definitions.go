@@ -57,75 +57,253 @@ type P2PProcessor interface {
 
 // Struct definition for CheckIn messages
 type CheckInMessage struct {
-	Action         string   `json:"action"`
-	IPs            []string `json:"ips"`
-	OS             string   `json:"os"`
-	User           string   `json:"user"`
-	Host           string   `json:"host"`
-	Pid            int      `json:"pid"`
-	UUID           string   `json:"uuid"`
-	Architecture   string   `json:"architecture"`
-	Domain         string   `json:"domain"`
-	IntegrityLevel int      `json:"integrity_level"`
-	ExternalIP     string   `json:"external_ip"`
-	ProcessName    string   `json:"process_name"`
-	SleepInfo      string   `json:"sleep_info"`
-	Cwd            string   `json:"cwd"`
+	Action         string
+	IPs            []string
+	OS             string
+	User           string
+	Host           string
+	Pid            int
+	UUID           string
+	Architecture   string
+	Domain         string
+	IntegrityLevel int
+	ExternalIP     string
+	ProcessName    string
+	SleepInfo      string
+	Cwd            string
+}
+
+func (e CheckInMessage) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"action":          e.Action,
+		"ips":             e.IPs,
+		"os":              e.OS,
+		"user":            e.User,
+		"host":            e.Host,
+		"pid":             e.Pid,
+		"uuid":            e.UUID,
+		"architecture":    e.Architecture,
+		"domain":          e.Domain,
+		"integrity_level": e.IntegrityLevel,
+		"external_ip":     e.ExternalIP,
+		"process_name":    e.ProcessName,
+		"sleep_info":      e.SleepInfo,
+		"cwd":             e.Cwd,
+	}
+	return json.Marshal(alias)
 }
 
 type CheckInMessageResponse struct {
-	Action string `json:"action"`
-	ID     string `json:"id"`
-	Status string `json:"status"`
+	Action string
+	ID     string
+	Status string
+}
+
+func (e *CheckInMessageResponse) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["action"]; ok {
+		e.Action = v.(string)
+	}
+	if v, ok := alias["id"]; ok {
+		e.ID = v.(string)
+	}
+	if v, ok := alias["status"]; ok {
+		e.Status = v.(string)
+	}
+	return nil
 }
 
 // Struct definitions for EKE-RSA messages
 
 type EkeKeyExchangeMessage struct {
-	Action    string `json:"action"`
-	PubKey    string `json:"pub_key"`
-	SessionID string `json:"session_id"`
+	Action    string
+	PubKey    string
+	SessionID string
+}
+
+func (e EkeKeyExchangeMessage) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"action":     e.Action,
+		"pub_key":    e.PubKey,
+		"session_id": e.SessionID,
+	}
+	return json.Marshal(alias)
 }
 
 type EkeKeyExchangeMessageResponse struct {
-	Action     string `json:"action"`
-	UUID       string `json:"uuid"`
-	SessionKey string `json:"session_key"`
-	SessionId  string `json:"session_id"`
+	Action     string
+	UUID       string
+	SessionKey string
+	SessionId  string
+}
+
+func (e *EkeKeyExchangeMessageResponse) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["action"]; ok {
+		e.Action = v.(string)
+	}
+	if v, ok := alias["uuid"]; ok {
+		e.UUID = v.(string)
+	}
+	if v, ok := alias["session_id"]; ok {
+		e.SessionId = v.(string)
+	}
+	if v, ok := alias["session_key"]; ok {
+		e.SessionKey = v.(string)
+	}
+	return nil
 }
 
 // Struct definitions for Tasking request messages
 
 type MythicMessage struct {
-	Action           string                    `json:"action"`
-	TaskingSize      int                       `json:"tasking_size"`
-	GetDelegateTasks bool                      `json:"get_delegate_tasks"`
-	Delegates        *[]DelegateMessage        `json:"delegates,omitempty"`
-	Responses        *[]Response               `json:"responses,omitempty"`
-	Socks            *[]SocksMsg               `json:"socks,omitempty"`
-	Rpfwds           *[]SocksMsg               `json:"rpfwd,omitempty"`
-	Edges            *[]P2PConnectionMessage   `json:"edges,omitempty"`
-	InteractiveTasks *[]InteractiveTaskMessage `json:"interactive,omitempty"`
-	Alerts           *[]Alert                  `json:"alerts,omitempty"`
+	Action           string
+	TaskingSize      int
+	Delegates        *[]DelegateMessage
+	Responses        *[]Response
+	Socks            *[]SocksMsg
+	Rpfwds           *[]SocksMsg
+	Edges            *[]P2PConnectionMessage
+	InteractiveTasks *[]InteractiveTaskMessage
+	Alerts           *[]Alert
+}
+
+func (e MythicMessage) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"action":       e.Action,
+		"tasking_size": e.TaskingSize,
+	}
+	if e.Delegates != nil && len(*e.Delegates) > 0 {
+		alias["delegates"] = *e.Delegates
+	}
+	if e.Responses != nil && len(*e.Responses) > 0 {
+		alias["responses"] = *e.Responses
+	}
+	if e.Socks != nil && len(*e.Socks) > 0 {
+		alias["socks"] = *e.Socks
+	}
+	if e.Rpfwds != nil && len(*e.Rpfwds) > 0 {
+		alias["rpfwds"] = *e.Rpfwds
+	}
+	if e.Edges != nil && len(*e.Edges) > 0 {
+		alias["edges"] = *e.Edges
+	}
+	if e.InteractiveTasks != nil && len(*e.InteractiveTasks) > 0 {
+		alias["interactive"] = *e.InteractiveTasks
+	}
+	if e.Alerts != nil && len(*e.Alerts) > 0 {
+		alias["alerts"] = *e.Alerts
+	}
+	return json.Marshal(alias)
 }
 
 type MythicMessageResponse struct {
-	Action           string                   `json:"action"`
-	Tasks            []Task                   `json:"tasks"`
-	Delegates        []DelegateMessage        `json:"delegates"`
-	Socks            []SocksMsg               `json:"socks"`
-	Rpfwds           []SocksMsg               `json:"rpfwd"`
-	Responses        []json.RawMessage        `json:"responses"`
-	InteractiveTasks []InteractiveTaskMessage `json:"interactive"`
+	Action           string
+	Tasks            []Task
+	Delegates        []DelegateMessage
+	Socks            []SocksMsg
+	Rpfwds           []SocksMsg
+	Responses        []map[string]interface{}
+	InteractiveTasks []InteractiveTaskMessage
+}
+
+func (e *MythicMessageResponse) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["action"]; ok {
+		e.Action = v.(string)
+	}
+	if v, ok := alias["tasks"]; ok {
+		e.Tasks = make([]Task, len(v.([]interface{})))
+		for i, element := range v.([]interface{}) {
+			e.Tasks[i] = Task{
+				Command:   element.(map[string]interface{})["command"].(string),
+				Params:    element.(map[string]interface{})["parameters"].(string),
+				Timestamp: element.(map[string]interface{})["timestamp"].(float64),
+				TaskID:    element.(map[string]interface{})["id"].(string),
+			}
+		}
+	}
+	if v, ok := alias["delegates"]; ok {
+		e.Delegates = make([]DelegateMessage, len(v.([]interface{})))
+		for i, element := range v.([]interface{}) {
+			e.Delegates[i] = DelegateMessage{
+				Message:       element.(map[string]interface{})["message"].(string),
+				UUID:          element.(map[string]interface{})["uuid"].(string),
+				C2ProfileName: element.(map[string]interface{})["c2_profile"].(string),
+				MythicUUID:    element.(map[string]interface{})["new_uuid"].(string),
+			}
+		}
+	}
+	if v, ok := alias["socks"]; ok {
+		e.Socks = make([]SocksMsg, len(v.([]interface{})))
+		for i, element := range v.([]interface{}) {
+			e.Socks[i] = SocksMsg{
+				ServerId: uint32(element.(map[string]interface{})["server_id"].(float64)),
+				Data:     element.(map[string]interface{})["data"].(string),
+				Exit:     element.(map[string]interface{})["exit"].(bool),
+				Port:     uint32(element.(map[string]interface{})["port"].(float64)),
+			}
+		}
+	}
+	if v, ok := alias["rpfwd"]; ok {
+		e.Rpfwds = make([]SocksMsg, len(v.([]interface{})))
+		for i, element := range v.([]interface{}) {
+			e.Rpfwds[i] = SocksMsg{
+				ServerId: uint32(element.(map[string]interface{})["server_id"].(float64)),
+				Data:     element.(map[string]interface{})["data"].(string),
+				Exit:     element.(map[string]interface{})["exit"].(bool),
+				Port:     uint32(element.(map[string]interface{})["port"].(float64)),
+			}
+		}
+	}
+	if v, ok := alias["responses"]; ok {
+		e.Responses = make([]map[string]interface{}, len(v.([]interface{})))
+		for i, element := range v.([]interface{}) {
+			e.Responses[i] = element.(map[string]interface{})
+		}
+	}
+	if v, ok := alias["interactive"]; ok {
+		e.InteractiveTasks = make([]InteractiveTaskMessage, len(v.([]interface{})))
+		for i, element := range v.([]interface{}) {
+			e.InteractiveTasks[i] = InteractiveTaskMessage{
+				TaskUUID:    element.(map[string]interface{})["task_id"].(string),
+				Data:        element.(map[string]interface{})["data"].(string),
+				MessageType: InteractiveTask.MessageType(element.(map[string]interface{})["message_type"].(float64)),
+			}
+		}
+	}
+	return nil
 }
 
 type Task struct {
-	Command           string  `json:"command"`
-	Params            string  `json:"parameters"`
-	Timestamp         float64 `json:"timestamp"`
-	TaskID            string  `json:"id"`
+	Command           string
+	Params            string
+	Timestamp         float64
+	TaskID            string
 	Job               *Job
 	removeRunningTask chan string
+}
+
+func (e Task) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"command":    e.Command,
+		"parameters": e.Params,
+		"timestamp":  e.Timestamp,
+		"id":         e.TaskID,
+	}
+	return json.Marshal(alias)
 }
 
 func (t *Task) SetRemoveRunningTaskChannel(removeRunningTask chan string) {
@@ -148,10 +326,37 @@ type AddInternalConnectionMessage struct {
 	Connection    interface{}
 }
 type InteractiveTaskMessage struct {
-	TaskUUID    string                      `json:"task_id" mapstructure:"task_id"`
-	Data        string                      `json:"data" mapstructure:"data"`
-	MessageType InteractiveTask.MessageType `json:"message_type" mapstructure:"message_type"`
+	TaskUUID    string
+	Data        string
+	MessageType InteractiveTask.MessageType
 }
+
+func (e InteractiveTaskMessage) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"task_id":      e.TaskUUID,
+		"data":         e.Data,
+		"message_type": e.MessageType,
+	}
+	return json.Marshal(alias)
+}
+func (e *InteractiveTaskMessage) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["task_id"]; ok {
+		e.TaskUUID = v.(string)
+	}
+	if v, ok := alias["data"]; ok {
+		e.Data = v.(string)
+	}
+	if v, ok := alias["message_type"]; ok {
+		e.MessageType = v.(InteractiveTask.MessageType)
+	}
+	return nil
+}
+
 type Job struct {
 	Stop                            *int
 	ReceiveResponses                chan json.RawMessage
@@ -203,28 +408,66 @@ type GetFileFromMythicStruct struct {
 }
 
 type ProcessDetails struct {
-	ProcessID             int                    `json:"process_id"`
-	ParentProcessID       int                    `json:"parent_process_id"`
-	Arch                  string                 `json:"architecture"`
-	User                  string                 `json:"user"`
-	BinPath               string                 `json:"bin_path"`
-	Arguments             []string               `json:"args"`
-	Environment           map[string]string      `json:"env"`
-	SandboxPath           string                 `json:"sandboxpath"`
-	ScriptingProperties   map[string]interface{} `json:"scripting_properties"`
-	Name                  string                 `json:"name"`
-	BundleID              string                 `json:"bundleid"`
-	UpdateDeleted         bool                   `json:"update_deleted"`
-	AdditionalInformation map[string]interface{} `json:"additional_information"`
+	ProcessID             int
+	ParentProcessID       int
+	Arch                  string
+	User                  string
+	BinPath               string
+	Arguments             []string
+	Environment           map[string]string
+	SandboxPath           string
+	ScriptingProperties   map[string]interface{}
+	Name                  string
+	BundleID              string
+	UpdateDeleted         bool
+	AdditionalInformation map[string]interface{}
 }
+
+func (e ProcessDetails) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"process_id":             e.ProcessID,
+		"parent_process_id":      e.ParentProcessID,
+		"architecture":           e.Arch,
+		"user":                   e.User,
+		"bin_path":               e.BinPath,
+		"args":                   e.Arguments,
+		"env":                    e.Environment,
+		"sandboxpath":            e.SandboxPath,
+		"scripting_properties":   e.ScriptingProperties,
+		"name":                   e.Name,
+		"bundleid":               e.BundleID,
+		"update_deleted":         e.UpdateDeleted,
+		"additional_information": e.AdditionalInformation,
+	}
+	return json.Marshal(alias)
+}
+
 type Keylog struct {
 	User        string `json:"user"`
 	WindowTitle string `json:"window_title"`
 	Keystrokes  string `json:"keystrokes"`
 }
+
+func (e Keylog) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"user":         e.User,
+		"window_title": e.WindowTitle,
+		"keystrokes":   e.Keystrokes,
+	}
+	return json.Marshal(alias)
+}
+
 type Artifact struct {
 	BaseArtifact string `json:"base_artifact"`
 	Artifact     string `json:"artifact"`
+}
+
+func (e Artifact) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"base_artifact": e.BaseArtifact,
+		"Artifact":      e.Artifact,
+	}
+	return json.Marshal(alias)
 }
 
 const (
@@ -234,37 +477,114 @@ const (
 )
 
 type Alert struct {
-	Source       *string                 `json:"source,omitempty"`
-	Alert        string                  `json:"alert"`
-	WebhookAlert *map[string]interface{} `json:"webhook_alert,omitempty"`
-	Level        *string                 `json:"level,omitempty"`
-	SendWebhook  bool                    `json:"send_webhook"`
+	Source       *string
+	Alert        string
+	WebhookAlert *map[string]interface{}
+	Level        *string
+	SendWebhook  bool
+}
+
+func (e Alert) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"alert":        e.Alert,
+		"send_webhook": e.SendWebhook,
+	}
+	if e.Source != nil {
+		alias["source"] = *e.Source
+	}
+	if e.Level != nil {
+		alias["level"] = *e.Level
+	}
+	if e.WebhookAlert != nil {
+		alias["webhook_alert"] = *e.WebhookAlert
+	}
+	return json.Marshal(alias)
 }
 
 type CallbackUpdate struct {
-	Cwd                  *string `json:"cwd,omitempty"`
-	ImpersonationContext *string `json:"impersonation_context,omitempty"`
+	Cwd                  *string
+	ImpersonationContext *string
+}
+
+func (e CallbackUpdate) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{}
+	if e.Cwd != nil {
+		alias["cwd"] = *e.Cwd
+	}
+	if e.ImpersonationContext != nil {
+		alias["impersonation_context"] = *e.ImpersonationContext
+	}
+	return json.Marshal(alias)
 }
 
 type Response struct {
-	TaskID            string               `json:"task_id"`
-	UserOutput        string               `json:"user_output,omitempty"`
-	Completed         bool                 `json:"completed,omitempty"`
-	Status            string               `json:"status,omitempty"`
-	FileBrowser       *FileBrowser         `json:"file_browser,omitempty"`
-	RemovedFiles      *[]RmFiles           `json:"removed_files,omitempty"`
-	Processes         *[]ProcessDetails    `json:"processes,omitempty"`
-	TrackingUUID      string               `json:"tracking_uuid,omitempty"`
-	Upload            *FileUploadMessage   `json:"upload,omitempty"`
-	Download          *FileDownloadMessage `json:"download,omitempty"`
-	Keylogs           *[]Keylog            `json:"keylogs,omitempty"`
-	Artifacts         *[]Artifact          `json:"artifacts,omitempty"`
-	Alerts            *[]Alert             `json:"alerts,omitempty"`
-	CallbackUpdate    *CallbackUpdate      `json:"callback,omitempty"`
-	ProcessResponse   *string              `json:"process_response,omitempty"`
-	Stdout            *string              `json:"stdout"`
-	Stderr            *string              `json:"stderr"`
+	TaskID            string
+	UserOutput        string
+	Completed         bool
+	Status            string
+	FileBrowser       *FileBrowser
+	RemovedFiles      *[]RmFiles
+	Processes         *[]ProcessDetails
+	TrackingUUID      string
+	Upload            *FileUploadMessage
+	Download          *FileDownloadMessage
+	Keylogs           *[]Keylog
+	Artifacts         *[]Artifact
+	Alerts            *[]Alert
+	CallbackUpdate    *CallbackUpdate
+	ProcessResponse   *string
+	Stdout            *string
+	Stderr            *string
 	removeRunningTask chan string
+}
+
+func (e Response) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"task_id":     e.TaskID,
+		"user_output": e.UserOutput,
+		"completed":   e.Completed,
+		"status":      e.Status,
+	}
+	if e.FileBrowser != nil {
+		alias["file_browser"] = *e.FileBrowser
+	}
+	if e.RemovedFiles != nil {
+		alias["removed_files"] = *e.RemovedFiles
+	}
+	if e.Processes != nil {
+		alias["processes"] = *e.Processes
+	}
+	if e.TrackingUUID != "" {
+		alias["tracking_uuid"] = e.TrackingUUID
+	}
+	if e.Upload != nil {
+		alias["upload"] = *e.Upload
+	}
+	if e.Download != nil {
+		alias["download"] = *e.Download
+	}
+	if e.Keylogs != nil {
+		alias["keylogs"] = *e.Keylogs
+	}
+	if e.Artifacts != nil {
+		alias["artifacts"] = *e.Artifacts
+	}
+	if e.Alerts != nil {
+		alias["alerts"] = *e.Alerts
+	}
+	if e.CallbackUpdate != nil {
+		alias["callback"] = *e.CallbackUpdate
+	}
+	if e.ProcessResponse != nil {
+		alias["process_response"] = *e.ProcessResponse
+	}
+	if e.Stdout != nil {
+		alias["stdout"] = *e.Stdout
+	}
+	if e.Stderr != nil {
+		alias["stderr"] = *e.Stderr
+	}
+	return json.Marshal(alias)
 }
 
 func (r *Response) CompleteTask() {
@@ -277,104 +597,330 @@ func (r *Response) SetError(errString string) {
 }
 
 type RmFiles struct {
-	Path string `json:"path"`
-	Host string `json:"host"`
+	Path string
+	Host string
 }
+
+func (e RmFiles) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"path": e.Path,
+		"host": e.Host,
+	}
+	return json.Marshal(alias)
+}
+
 type FilePermission struct {
-	UID         int    `json:"uid"`
-	GID         int    `json:"gid"`
-	Permissions string `json:"permissions"`
-	SetUID      bool   `json:"setuid"`
-	SetGID      bool   `json:"setgid"`
-	Sticky      bool   `json:"sticky"`
-	User        string `json:"user,omitempty"`
-	Group       string `json:"group,omitempty"`
-	Symlink     string `json:"symlink,omitempty"`
+	UID         int
+	GID         int
+	Permissions string
+	SetUID      bool
+	SetGID      bool
+	Sticky      bool
+	User        string
+	Group       string
+	Symlink     string
 }
+
+func (e FilePermission) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"uid":         e.UID,
+		"gid":         e.GID,
+		"permissions": e.Permissions,
+		"setuid":      e.SetUID,
+		"setgid":      e.SetGID,
+		"sticky":      e.Sticky,
+		"user":        e.User,
+		"group":       e.Group,
+		"symlink":     e.Symlink,
+	}
+	return json.Marshal(alias)
+}
+
 type FileBrowser struct {
-	Files           []FileData     `json:"files"`
-	IsFile          bool           `json:"is_file"`
-	Permissions     FilePermission `json:"permissions"`
-	Filename        string         `json:"name"`
-	ParentPath      string         `json:"parent_path"`
-	Success         bool           `json:"success"`
-	FileSize        int64          `json:"size"`
-	LastModified    int64          `json:"modify_time"`
-	LastAccess      int64          `json:"access_time"`
-	UpdateDeleted   bool           `json:"update_deleted"`
-	SetAsUserOutput bool           `json:"set_as_user_output,omitempty"`
+	Files           []FileData
+	IsFile          bool
+	Permissions     FilePermission
+	Filename        string
+	ParentPath      string
+	Success         bool
+	FileSize        int64
+	LastModified    int64
+	LastAccess      int64
+	UpdateDeleted   bool
+	SetAsUserOutput bool
+}
+
+func (e FileBrowser) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"files":              e.Files,
+		"is_file":            e.IsFile,
+		"permissions":        e.Permissions,
+		"name":               e.Filename,
+		"parent_path":        e.ParentPath,
+		"success":            e.Success,
+		"size":               e.FileSize,
+		"modify_time":        e.LastModified,
+		"access_time":        e.LastAccess,
+		"update_deleted":     e.UpdateDeleted,
+		"set_as_user_output": e.SetAsUserOutput,
+	}
+	return json.Marshal(alias)
 }
 
 type FileData struct {
-	IsFile       bool           `json:"is_file"`
-	Permissions  FilePermission `json:"permissions"`
-	Name         string         `json:"name"`
-	FullName     string         `json:"full_name"`
-	FileSize     int64          `json:"size"`
-	LastModified int64          `json:"modify_time"`
-	LastAccess   int64          `json:"access_time"`
+	IsFile       bool
+	Permissions  FilePermission
+	Name         string
+	FullName     string
+	FileSize     int64
+	LastModified int64
+	LastAccess   int64
+}
+
+func (e FileData) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"is_file":     e.IsFile,
+		"permissions": e.Permissions,
+		"name":        e.Name,
+		"full_name":   e.FullName,
+		"size":        e.FileSize,
+		"modify_time": e.LastModified,
+		"access_time": e.LastAccess,
+	}
+	return json.Marshal(alias)
 }
 
 type DelegateMessage struct {
-	Message       string `json:"message"`
-	UUID          string `json:"uuid"`
-	C2ProfileName string `json:"c2_profile"`
-	MythicUUID    string `json:"new_uuid,omitempty"`
+	Message       string
+	UUID          string
+	C2ProfileName string
+	MythicUUID    string
+}
+
+func (e DelegateMessage) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"message":    e.Message,
+		"c2_profile": e.C2ProfileName,
+		"new_uuid":   e.MythicUUID,
+		"uuid":       e.UUID,
+	}
+	return json.Marshal(alias)
+}
+func (e *DelegateMessage) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["message"]; ok {
+		e.Message = v.(string)
+	}
+	if v, ok := alias["uuid"]; ok {
+		e.UUID = v.(string)
+	}
+	if v, ok := alias["c2_profile"]; ok {
+		e.C2ProfileName = v.(string)
+	}
+	if v, ok := alias["new_uuid"]; ok {
+		e.MythicUUID = v.(string)
+	}
+	return nil
 }
 
 type FileUploadMessage struct {
-	ChunkSize   int    `json:"chunk_size"`
-	TotalChunks int    `json:"total_chunks"`
-	FileID      string `json:"file_id"`
-	ChunkNum    int    `json:"chunk_num"`
-	FullPath    string `json:"full_path"`
-	ChunkData   string `json:"chunk_data"`
+	ChunkSize   int
+	TotalChunks int
+	FileID      string
+	ChunkNum    int
+	FullPath    string
+	ChunkData   string
 }
+
+func (e FileUploadMessage) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"chunk_size":   e.ChunkSize,
+		"total_chunks": e.TotalChunks,
+		"file_id":      e.FileID,
+		"chunk_num":    e.ChunkNum,
+		"full_path":    e.FullPath,
+		"chunk_data":   e.ChunkData,
+	}
+	return json.Marshal(alias)
+}
+
 type FileDownloadMessage struct {
-	TotalChunks int    `json:"total_chunks"`
-	ChunkNum    int    `json:"chunk_num"`
-	FullPath    string `json:"full_path"`
+	TotalChunks int
+	ChunkNum    int
+	FullPath    string
 	// optionally identify a filename for the file within Mythic separate from full_path
-	FileName     string `json:"filename"`
-	ChunkData    string `json:"chunk_data"`
-	FileID       string `json:"file_id,omitempty"`
-	IsScreenshot bool   `json:"is_screenshot,omitempty"`
+	FileName     string
+	ChunkData    string
+	FileID       string
+	IsScreenshot bool
+}
+
+func (e FileDownloadMessage) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"total_chunks":  e.TotalChunks,
+		"chunk_num":     e.ChunkNum,
+		"full_path":     e.FullPath,
+		"file_id":       e.FileID,
+		"chunk_data":    e.ChunkData,
+		"is_screenshot": e.IsScreenshot,
+		"filename":      e.FileName,
+	}
+	return json.Marshal(alias)
 }
 
 type FileUploadMessageResponse struct {
-	TotalChunks int    `json:"total_chunks"`
-	ChunkNum    int    `json:"chunk_num"`
-	ChunkData   string `json:"chunk_data"`
-	FileID      string `json:"file_id"`
+	TotalChunks int
+	ChunkNum    int
+	ChunkData   string
+	FileID      string
 }
+
+func (e *FileUploadMessageResponse) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["total_chunks"]; ok {
+		e.TotalChunks = int(v.(float64))
+	}
+	if v, ok := alias["chunk_num"]; ok {
+		e.ChunkNum = int(v.(float64))
+	}
+	if v, ok := alias["chunk_data"]; ok {
+		e.ChunkData = v.(string)
+	}
+	if v, ok := alias["file_id"]; ok {
+		e.FileID = v.(string)
+	}
+	return nil
+}
+
 type P2PConnectionMessage struct {
-	Source        string `json:"source"`
-	Destination   string `json:"destination"`
-	Action        string `json:"action"`
-	C2ProfileName string `json:"c2_profile"`
+	Source        string
+	Destination   string
+	Action        string
+	C2ProfileName string
+}
+
+func (e P2PConnectionMessage) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"source":      e.Source,
+		"destination": e.Destination,
+		"action":      e.Action,
+		"c2_profile":  e.C2ProfileName,
+	}
+	return json.Marshal(alias)
+}
+func (e *P2PConnectionMessage) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["source"]; ok {
+		e.Source = v.(string)
+	}
+	if v, ok := alias["destination"]; ok {
+		e.Destination = v.(string)
+	}
+	if v, ok := alias["action"]; ok {
+		e.Action = v.(string)
+	}
+	if v, ok := alias["c2_profile"]; ok {
+		e.C2ProfileName = v.(string)
+	}
+	return nil
 }
 
 // TaskStub to post list of currently processing tasks.
 type TaskStub struct {
-	Command string `json:"command"`
-	Params  string `json:"params"`
-	ID      string `json:"id"`
+	Command string
+	Params  string
+	ID      string
+}
+
+func (e TaskStub) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"command": e.Command,
+		"params":  e.Params,
+		"id":      e.ID,
+	}
+	return json.Marshal(alias)
 }
 
 type FileBrowserArguments struct {
-	File        string `json:"file"`
-	Path        string `json:"path"`
-	Host        string `json:"host"`
-	FileBrowser bool   `json:"file_browser"`
-	Depth       int    `json:"depth"`
+	File        string
+	Path        string
+	Host        string
+	FileBrowser bool
+	Depth       int
+}
+
+func (e *FileBrowserArguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["file"]; ok {
+		e.File = v.(string)
+	}
+	if v, ok := alias["path"]; ok {
+		e.Path = v.(string)
+	}
+	if v, ok := alias["host"]; ok {
+		e.Host = v.(string)
+	}
+	if v, ok := alias["file_browser"]; ok {
+		e.FileBrowser = v.(bool)
+	}
+	if v, ok := alias["depth"]; ok {
+		e.Depth = int(v.(float64))
+	}
+	return nil
 }
 
 // SocksMsg struct for dealing with Socks and rpfwd messages
 type SocksMsg struct {
-	ServerId uint32 `json:"server_id"`
-	Data     string `json:"data"`
-	Exit     bool   `json:"exit"`
-	Port     uint32 `json:"port"`
+	ServerId uint32
+	Data     string
+	Exit     bool
+	Port     uint32
+}
+
+func (e SocksMsg) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"server_id": e.ServerId,
+		"data":      e.Data,
+		"exit":      e.Exit,
+		"port":      e.Port,
+	}
+	return json.Marshal(alias)
+}
+func (e *SocksMsg) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["server_id"]; ok {
+		e.ServerId = uint32(v.(float64))
+	}
+	if v, ok := alias["data"]; ok {
+		e.Data = v.(string)
+	}
+	if v, ok := alias["exit"]; ok {
+		e.Exit = v.(bool)
+	}
+	if v, ok := alias["port"]; ok {
+		e.Port = uint32(v.(float64))
+	}
+	return nil
 }
 
 // Message - struct definition for websocket C2 messages

