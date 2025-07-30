@@ -58,8 +58,9 @@ func sendFileMessagesToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 	}
 
 	chunks := uint64(math.Ceil(float64(size) / FILE_CHUNK_SIZE))
+	totalChunks := int(chunks)
 	fileDownloadData := structs.FileDownloadMessage{}
-	fileDownloadData.TotalChunks = int(chunks)
+	fileDownloadData.TotalChunks = totalChunks
 	fileDownloadData.FullPath = sendFileToMythic.FullPath
 	if sendFileToMythic.FullPath != "" {
 		abspath, err := filepath.Abs(sendFileToMythic.FullPath)
@@ -101,6 +102,7 @@ func sendFileMessagesToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 		if _, ok := fileDetails["file_id"]; ok {
 			updateUserOutput := structs.Response{}
 			updateUserOutput.TaskID = sendFileToMythic.Task.TaskID
+			updateUserOutput.Status = fmt.Sprintf("Downloaded 1/%d Chunks...", totalChunks)
 			updateUserOutput.UserOutput = "{\"file_id\": \"" + fmt.Sprintf("%v", fileDetails["file_id"]) + "\", \"total_chunks\": \"" + strconv.Itoa(int(chunks)) + "\"}\n"
 			sendFileToMythic.Task.Job.SendResponses <- updateUserOutput
 			break
@@ -112,7 +114,6 @@ func sendFileMessagesToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 	} else {
 		sendFileToMythic.File.Seek(0, 0)
 	}
-	lastPercentCompleteNotified := 0
 	for i := uint64(0); i < chunks; {
 		if sendFileToMythic.Task.ShouldStop() {
 			// tasked to stop, so bail
@@ -150,16 +151,9 @@ func sendFileMessagesToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 		fileDownloadData.FileID = fileDetails["file_id"].(string)
 		fileDownloadData.ChunkData = base64.StdEncoding.EncodeToString(partBuffer)
 		fileDownloadMsg.Download = &fileDownloadData
+		fileDownloadMsg.Status = fmt.Sprintf("Downloaded %d/%d Chunks...", fileDownloadData.ChunkNum, totalChunks)
 		sendFileToMythic.Task.Job.SendResponses <- fileDownloadMsg
-		newPercentComplete := ((fileDownloadData.ChunkNum * 100) / int(chunks))
 
-		if newPercentComplete/10 > lastPercentCompleteNotified && sendFileToMythic.SendUserStatusUpdates {
-			response := sendFileToMythic.Task.NewResponse()
-			response.Completed = false
-			response.UserOutput = fmt.Sprintf("File Transfer Update: %d%% complete\n", newPercentComplete)
-			sendFileToMythic.Task.Job.SendResponses <- response
-			lastPercentCompleteNotified = newPercentComplete / 10
-		}
 		// Wait for a response for our file chunk
 		var postResp map[string]interface{}
 		for {
