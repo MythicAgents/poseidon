@@ -221,51 +221,103 @@ func (e *MythicMessageResponse) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	if v, ok := alias["action"]; ok {
+	if v, ok := alias["action"]; ok && v != nil {
 		e.Action = v.(string)
 	}
 	if v, ok := alias["tasks"]; ok {
 		e.Tasks = make([]Task, len(v.([]interface{})))
 		for i, element := range v.([]interface{}) {
-			e.Tasks[i] = Task{
-				Command:   element.(map[string]interface{})["command"].(string),
-				Params:    element.(map[string]interface{})["parameters"].(string),
-				Timestamp: element.(map[string]interface{})["timestamp"].(float64),
-				TaskID:    element.(map[string]interface{})["id"].(string),
+			msg := Task{}
+			taskMap := element.(map[string]interface{})
+			if val, ok := taskMap["id"]; ok && val != nil {
+				msg.TaskID = val.(string)
 			}
+			if val, ok := taskMap["command"]; ok && val != nil {
+				msg.Command = val.(string)
+			}
+			if val, ok := taskMap["parameters"]; ok && val != nil {
+				msg.Params = val.(string)
+			}
+			if val, ok := taskMap["timestamp"]; ok && val != nil {
+				msg.Timestamp = val.(float64)
+			}
+			e.Tasks[i] = msg
 		}
 	}
 	if v, ok := alias["delegates"]; ok {
 		e.Delegates = make([]DelegateMessage, len(v.([]interface{})))
 		for i, element := range v.([]interface{}) {
-			e.Delegates[i] = DelegateMessage{
-				Message:       element.(map[string]interface{})["message"].(string),
-				UUID:          element.(map[string]interface{})["uuid"].(string),
-				C2ProfileName: element.(map[string]interface{})["c2_profile"].(string),
-				MythicUUID:    element.(map[string]interface{})["new_uuid"].(string),
+			msg := DelegateMessage{}
+			delegateMap := element.(map[string]interface{})
+			if val, ok := delegateMap["message"]; ok && val != nil {
+				msg.Message = val.(string)
 			}
+			if val, ok := delegateMap["uuid"]; ok && val != nil {
+				msg.UUID = val.(string)
+			}
+			if val, ok := delegateMap["c2_profile"]; ok && val != nil {
+				msg.C2ProfileName = val.(string)
+			}
+			if val, ok := delegateMap["new_uuid"]; ok && val != nil {
+				msg.MythicUUID = val.(string)
+			}
+			e.Delegates[i] = msg
 		}
 	}
 	if v, ok := alias["socks"]; ok {
 		e.Socks = make([]SocksMsg, len(v.([]interface{})))
 		for i, element := range v.([]interface{}) {
-			e.Socks[i] = SocksMsg{
-				ServerId: uint32(element.(map[string]interface{})["server_id"].(float64)),
-				Data:     element.(map[string]interface{})["data"].(string),
-				Exit:     element.(map[string]interface{})["exit"].(bool),
-				Port:     uint32(element.(map[string]interface{})["port"].(float64)),
+			msg := SocksMsg{}
+			socksMap := element.(map[string]interface{})
+			if val, ok := socksMap["server_id"]; ok {
+				if val != nil {
+					msg.ServerId = uint32(val.(float64))
+				}
 			}
+			if val, ok := socksMap["data"]; ok {
+				if val != nil {
+					msg.Data = val.(string)
+				}
+			}
+			if val, ok := socksMap["exit"]; ok {
+				if val != nil {
+					msg.Exit = val.(bool)
+				}
+			}
+			if val, ok := socksMap["port"]; ok {
+				if val != nil {
+					msg.Port = uint32(val.(float64))
+				}
+			}
+			e.Socks[i] = msg
 		}
 	}
 	if v, ok := alias["rpfwd"]; ok {
 		e.Rpfwds = make([]SocksMsg, len(v.([]interface{})))
 		for i, element := range v.([]interface{}) {
-			e.Rpfwds[i] = SocksMsg{
-				ServerId: uint32(element.(map[string]interface{})["server_id"].(float64)),
-				Data:     element.(map[string]interface{})["data"].(string),
-				Exit:     element.(map[string]interface{})["exit"].(bool),
-				Port:     uint32(element.(map[string]interface{})["port"].(float64)),
+			msg := SocksMsg{}
+			socksMap := element.(map[string]interface{})
+			if val, ok := socksMap["server_id"]; ok {
+				if val != nil {
+					msg.ServerId = uint32(val.(float64))
+				}
 			}
+			if val, ok := socksMap["data"]; ok {
+				if val != nil {
+					msg.Data = val.(string)
+				}
+			}
+			if val, ok := socksMap["exit"]; ok {
+				if val != nil {
+					msg.Exit = val.(bool)
+				}
+			}
+			if val, ok := socksMap["port"]; ok {
+				if val != nil {
+					msg.Port = uint32(val.(float64))
+				}
+			}
+			e.Rpfwds[i] = msg
 		}
 	}
 	if v, ok := alias["responses"]; ok {
