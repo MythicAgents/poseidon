@@ -11,6 +11,8 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
+
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
@@ -27,6 +29,8 @@ var (
 	egress_failover string
 	// failoverThresholdString
 	failedConnectionCountThresholdString string
+	backoffDelay                         = 5
+	backoffSeconds                       = 1
 )
 
 // these are internal representations and other variables
@@ -279,6 +283,26 @@ func UpdateAllSleepJitter(newJitter int) string {
 	return output
 }
 
+// UpdateAllSleepBackoffDelay updates how many seconds of blank traffic at sleep 0 before updating sleep time
+func UpdateAllSleepBackoffDelay(newBackoffDelay int) string {
+	if newBackoffDelay < 0 {
+		backoffDelay = 0
+	} else {
+		backoffDelay = newBackoffDelay
+	}
+	return fmt.Sprintf("Updated Backoff Delay to %d seconds\n", backoffDelay)
+}
+
+// UpdateAllSleepBackoffSeconds updates how many seconds the new sleep should be before returning to sleep 0
+func UpdateAllSleepBackoffSeconds(newBackoffSeconds int) string {
+	if newBackoffSeconds < 0 {
+		backoffSeconds = 0
+	} else {
+		backoffSeconds = newBackoffSeconds
+	}
+	return fmt.Sprintf("Updated Backoff Seconds to %d seconds\n", backoffSeconds)
+}
+
 // UpdateC2Profile updates an arbitrary parameter/value for the specified c2 profile
 func UpdateC2Profile(profileName string, argName string, argValue string) {
 	for c2, _ := range availableC2Profiles {
@@ -314,9 +338,21 @@ func GetPushChannel() chan structs.MythicMessage {
 // GetSleepTime gets the sleep time for the currently running c2 profile
 func GetSleepTime() int {
 	for c2, _ := range availableC2Profiles {
-		sleep := availableC2Profiles[c2].GetSleepTime()
-		if sleep >= 0 {
-			return sleep
+		if availableC2Profiles[c2].IsP2P() || availableC2Profiles[c2].GetPushChannel() != nil {
+			continue
+		}
+		if availableC2Profiles[c2].IsRunning() {
+			sleep := availableC2Profiles[c2].GetSleepTime()
+			if sleep >= 0 {
+				if sleep != 0 {
+					return sleep
+				}
+				// if we're at sleep 0, and it's been > 5 s since the last real message, sleep 1
+				if time.Now().Sub(responses.LastMessageTime).Seconds() > float64(backoffDelay) {
+					return backoffSeconds
+				}
+				return sleep
+			}
 		}
 	}
 	return 0

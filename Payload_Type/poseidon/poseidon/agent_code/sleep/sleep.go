@@ -11,8 +11,10 @@ import (
 )
 
 type Arguments struct {
-	Interval int
-	Jitter   int
+	Interval       int
+	Jitter         int
+	BackoffDelay   int
+	BackoffSeconds int
 }
 
 func (e *Arguments) UnmarshalJSON(data []byte) error {
@@ -26,6 +28,12 @@ func (e *Arguments) UnmarshalJSON(data []byte) error {
 	}
 	if v, ok := alias["jitter"]; ok {
 		e.Jitter = int(v.(float64))
+	}
+	if v, ok := alias["backoff_delay"]; ok {
+		e.BackoffDelay = int(v.(float64))
+	}
+	if v, ok := alias["backoff_seconds"]; ok {
+		e.BackoffSeconds = int(v.(float64))
 	}
 	return nil
 }
@@ -46,6 +54,12 @@ func Run(task structs.Task) {
 	}
 	if args.Jitter >= 0 && args.Jitter <= 100 {
 		output += profiles.UpdateAllSleepJitter(args.Jitter)
+	}
+	if args.BackoffDelay >= 0 {
+		output += profiles.UpdateAllSleepBackoffDelay(args.BackoffDelay)
+	}
+	if args.BackoffSeconds >= 0 {
+		output += profiles.UpdateAllSleepBackoffSeconds(args.BackoffSeconds)
 	}
 	msg := task.NewResponse()
 	msg.UserOutput = output

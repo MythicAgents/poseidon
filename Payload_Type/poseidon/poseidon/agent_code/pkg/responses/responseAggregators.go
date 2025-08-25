@@ -21,7 +21,8 @@ var (
 	// P2PConnectionMessages is an array of P2P add/remove messages for Mythic
 	P2PConnectionMessages []structs.P2PConnectionMessage
 	// AlertResponses is an array of alert notifications for the operator
-	AlertResponses []structs.Alert
+	AlertResponses  []structs.Alert
+	LastMessageTime time.Time
 )
 
 // channels for aggregating task responses and notifications towards Mythic
@@ -53,6 +54,7 @@ var (
 func listenForDelegateMessagesToMythic(getProfilesPushChannelFunc func() chan structs.MythicMessage) {
 	for {
 		response := <-NewDelegatesToMythicChannel
+		LastMessageTime = time.Now()
 		pushChan := getProfilesPushChannelFunc()
 		if pushChan != nil {
 			pushChan <- structs.MythicMessage{
@@ -71,6 +73,7 @@ func listenForDelegateMessagesToMythic(getProfilesPushChannelFunc func() chan st
 func listenForEdgeAnnouncementsToMythic(getProfilesPushChannelFunc func() chan structs.MythicMessage) {
 	for {
 		response := <-P2PConnectionMessageChannel
+		LastMessageTime = time.Now()
 		pushChan := getProfilesPushChannelFunc()
 		if pushChan != nil {
 			pushChan <- structs.MythicMessage{
@@ -115,6 +118,7 @@ func listenForTaskResponsesToMythic(getProfilesPushChannelFunc func() chan struc
 }
 
 func emitResponse(getProfilesPushChannelFunc func() chan structs.MythicMessage, response structs.Response) {
+	LastMessageTime = time.Now()
 	pushChan := getProfilesPushChannelFunc()
 	if pushChan != nil {
 		pushChan <- structs.MythicMessage{
@@ -133,6 +137,7 @@ func listenForInteractiveTasksToMythic(getProfilesPushChannelFunc func() chan st
 	for {
 		select {
 		case response := <-NewInteractiveTaskOutputChannel:
+			LastMessageTime = time.Now()
 			pushChan := getProfilesPushChannelFunc()
 			if pushChan != nil {
 				pushChan <- structs.MythicMessage{
@@ -153,6 +158,7 @@ func listenForAlertMessagesToMythic(getProfilesPushChannelFunc func() chan struc
 	for {
 		select {
 		case response := <-NewAlertChannel:
+			LastMessageTime = time.Now()
 			pushChan := getProfilesPushChannelFunc()
 			if pushChan != nil {
 				utils.PrintDebug("adding new alert to pushChan")
@@ -174,6 +180,7 @@ func listenForAlertMessagesToMythic(getProfilesPushChannelFunc func() chan struc
 func listenForSocksTrafficToMythic(getProfilesPushChannelFunc func() chan structs.MythicMessage) {
 	for {
 		response := <-InterceptToMythicSocksChannel
+		LastMessageTime = time.Now()
 		pushChan := getProfilesPushChannelFunc()
 		if pushChan != nil {
 			select {
@@ -200,6 +207,7 @@ func listenForSocksTrafficToMythic(getProfilesPushChannelFunc func() chan struct
 func listenForRpfwdTrafficToMythic(getProfilesPushChannelFunc func() chan structs.MythicMessage) {
 	for {
 		response := <-InterceptToMythicRpfwdChannel
+		LastMessageTime = time.Now()
 		pushChan := getProfilesPushChannelFunc()
 		if pushChan != nil {
 			select {

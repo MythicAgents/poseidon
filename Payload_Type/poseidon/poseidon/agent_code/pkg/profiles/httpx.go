@@ -352,7 +352,7 @@ func (c *C2HTTPx) Sleep() {
 	// wait for either sleep time duration or sleep interrupt
 	select {
 	case <-c.interruptSleepChannel:
-	case <-time.After(time.Second * time.Duration(c.GetSleepTime())):
+	case <-time.After(time.Second * time.Duration(GetSleepTime())):
 	}
 }
 func (c *C2HTTPx) Stop() {
