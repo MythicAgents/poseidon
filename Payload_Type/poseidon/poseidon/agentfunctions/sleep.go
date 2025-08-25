@@ -60,7 +60,7 @@ func init() {
 						UIModalPosition:     3,
 					},
 				},
-				Description: "Number of seconds at sleep 0 with no meaningful content before implicitly sleeping to backoff_sleep seconds",
+				Description: "Number of seconds at sleep 0 with no meaningful content before implicitly sleeping to backoff_seconds seconds",
 			},
 			{
 				Name:             "backoff_seconds",
