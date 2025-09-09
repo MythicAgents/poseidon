@@ -32,10 +32,10 @@ C2_DNS=dns
 
 EGRESS_ORDER=$(shell echo [\"http\",\"websocket\",\"dynamichttp\",\"dns\"] | base64 -i - )
 EGRESS_FAILOVER="failover"
-DEBUG=false
+DEBUG=true
 failedConnectionCountThresholdString=10
-#goCmd=go build
-goCmd=CGO_ENABLED=1 GOGARBLE=* /Users/itsafeature/go/bin/garble -literals -tiny -debug -seed random build
+goCmd=CGO_ENABLED=1 go build
+#goCmd=CGO_ENABLED=1 GOGARBLE=* /Users/itsafeature/go/bin/garble -literals -tiny -debug -seed random build
 
 
 build_protobuf_go:
