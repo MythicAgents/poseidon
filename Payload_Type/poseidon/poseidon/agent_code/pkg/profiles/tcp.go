@@ -28,26 +28,58 @@ var tcp_initial_config string
 var poseidonChunkSize = uint32(30000)
 
 type TCPInitialConfig struct {
-	Port                   uint   `json:"port"`
-	Killdate               string `json:"killdate"`
-	EncryptedExchangeCheck bool   `json:"encrypted_exchange_check"`
-	AESPSK                 string `json:"AESPSK"`
+	Port                   uint
+	Killdate               string
+	EncryptedExchangeCheck bool
+	AESPSK                 string
+}
+
+func (e *TCPInitialConfig) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["port"]; ok {
+		e.Port = uint(v.(float64))
+	}
+	if v, ok := alias["killdate"]; ok {
+		e.Killdate = v.(string)
+	}
+	if v, ok := alias["encrypted_exchange_check"]; ok {
+		e.EncryptedExchangeCheck = v.(bool)
+	}
+	if v, ok := alias["AESPSK"]; ok {
+		e.AESPSK = v.(string)
+	}
+
+	return nil
 }
 
 type C2PoseidonTCP struct {
-	ExchangingKeys       bool                `json:"ExchangingKeys"`
-	Key                  string              `json:"Key"`
-	RsaPrivateKey        *rsa.PrivateKey     `json:"RsaPrivateKey"`
-	Port                 string              `json:"Port"`
-	EgressTCPConnections map[string]net.Conn `json:"-"`
-	FinishedStaging      bool                `json:"FinishedStaging"`
-	Killdate             time.Time           `json:"Killdate"`
+	ExchangingKeys       bool
+	Key                  string
+	RsaPrivateKey        *rsa.PrivateKey
+	Port                 string
+	EgressTCPConnections map[string]net.Conn
+	FinishedStaging      bool
+	Killdate             time.Time
 	egressLock           sync.RWMutex
-	ShouldStop           bool `json:"ShouldStop"`
+	ShouldStop           bool
 	stoppedChannel       chan bool
-	PushChannel          chan structs.MythicMessage `json:"-"`
+	PushChannel          chan structs.MythicMessage
 	stopListeningChannel chan bool
 	chunkSize            uint32
+}
+
+func (e C2PoseidonTCP) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"Key":           e.Key,
+		"RsaPrivateKey": e.RsaPrivateKey,
+		"Port":          e.Port,
+		"Killdate":      e.Killdate,
+	}
+	return json.Marshal(alias)
 }
 
 func init() {

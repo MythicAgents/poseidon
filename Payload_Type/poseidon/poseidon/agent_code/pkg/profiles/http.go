@@ -30,41 +30,124 @@ import (
 var http_initial_config string
 
 type HTTPInitialConfig struct {
-	CallbackHost           string            `json:"callback_host"`
-	CallbackPort           uint              `json:"callback_port"`
-	Killdate               string            `json:"killdate"`
-	Interval               uint              `json:"callback_interval"`
-	Jitter                 uint              `json:"callback_jitter"`
-	PostURI                string            `json:"post_uri"`
-	GetURI                 string            `json:"get_uri"`
-	QueryPathName          string            `json:"query_path_name"`
-	EncryptedExchangeCheck bool              `json:"encrypted_exchange_check"`
-	Headers                map[string]string `json:"headers"`
-	AESPSK                 string            `json:"AESPSK"`
-	ProxyPort              uint              `json:"proxy_port"`
-	ProxyUser              string            `json:"proxy_user"`
-	ProxyPass              string            `json:"proxy_pass"`
-	ProxyHost              string            `json:"proxy_host"`
-	ProxyBypass            bool              `json:"proxy_bypass"`
+	CallbackHost           string
+	CallbackPort           uint
+	Killdate               string
+	Interval               uint
+	Jitter                 uint
+	PostURI                string
+	GetURI                 string
+	QueryPathName          string
+	EncryptedExchangeCheck bool
+	Headers                map[string]string
+	AESPSK                 string
+	ProxyPort              uint
+	ProxyUser              string
+	ProxyPass              string
+	ProxyHost              string
+	ProxyBypass            bool
+}
+
+func (e *HTTPInitialConfig) parseMapStringString(configMap map[string]interface{}) map[string]string {
+	serverHeaders := make(map[string]string)
+	if configMap != nil {
+		for j, k := range configMap {
+			serverHeaders[j] = k.(string)
+		}
+	}
+	return serverHeaders
+}
+func (e *HTTPInitialConfig) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["callback_host"]; ok {
+		e.CallbackHost = v.(string)
+	}
+	if v, ok := alias["callback_port"]; ok {
+		e.CallbackPort = uint(v.(float64))
+	}
+	if v, ok := alias["killdate"]; ok {
+		e.Killdate = v.(string)
+	}
+	if v, ok := alias["callback_interval"]; ok {
+		e.Interval = uint(v.(float64))
+	}
+	if v, ok := alias["callback_jitter"]; ok {
+		e.Jitter = uint(v.(float64))
+	}
+	if v, ok := alias["post_uri"]; ok {
+		e.PostURI = v.(string)
+	}
+	if v, ok := alias["get_uri"]; ok {
+		e.GetURI = v.(string)
+	}
+	if v, ok := alias["query_path_name"]; ok {
+		e.QueryPathName = v.(string)
+	}
+	if v, ok := alias["encrypted_exchange_check"]; ok {
+		e.EncryptedExchangeCheck = v.(bool)
+	}
+	if v, ok := alias["headers"]; ok {
+		e.Headers = e.parseMapStringString(v.(map[string]interface{}))
+	}
+	if v, ok := alias["AESPSK"]; ok {
+		e.AESPSK = v.(string)
+	}
+	if v, ok := alias["proxy_port"]; ok {
+		e.ProxyPort = uint(v.(float64))
+	}
+	if v, ok := alias["proxy_user"]; ok {
+		e.ProxyUser = v.(string)
+	}
+	if v, ok := alias["proxy_pass"]; ok {
+		e.ProxyPass = v.(string)
+	}
+	if v, ok := alias["proxy_host"]; ok {
+		e.ProxyHost = v.(string)
+	}
+	if v, ok := alias["proxy_bypass"]; ok {
+		e.ProxyBypass = v.(bool)
+	}
+	return nil
 }
 
 type C2HTTP struct {
-	BaseURL               string            `json:"BaseURL"`
-	PostURI               string            `json:"PostURI"`
-	ProxyURL              string            `json:"ProxyURL"`
-	ProxyUser             string            `json:"ProxyUser"`
-	ProxyPass             string            `json:"ProxyPass"`
-	ProxyBypass           bool              `json:"ProxyBypass"`
-	Interval              int               `json:"Interval"`
-	Jitter                int               `json:"Jitter"`
-	HeaderList            map[string]string `json:"Headers"`
+	BaseURL               string
+	PostURI               string
+	ProxyURL              string
+	ProxyUser             string
+	ProxyPass             string
+	ProxyBypass           bool
+	Interval              int
+	Jitter                int
+	HeaderList            map[string]string
 	ExchangingKeys        bool
-	Key                   string `json:"EncryptionKey"`
+	Key                   string
 	RsaPrivateKey         *rsa.PrivateKey
-	Killdate              time.Time `json:"KillDate"`
+	Killdate              time.Time
 	ShouldStop            bool
 	stoppedChannel        chan bool
 	interruptSleepChannel chan bool
+}
+
+func (e C2HTTP) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"BaseURL":       e.BaseURL,
+		"PostURI":       e.PostURI,
+		"ProxyURL":      e.ProxyURL,
+		"ProxyUser":     e.ProxyUser,
+		"ProxyPass":     e.ProxyPass,
+		"ProxyBypass":   e.ProxyBypass,
+		"Interval":      e.Interval,
+		"Jitter":        e.Jitter,
+		"Headers":       e.HeaderList,
+		"EncryptionKey": e.Key,
+		"KillDate":      e.Killdate,
+	}
+	return json.Marshal(alias)
 }
 
 // New creates a new HTTP C2 profile from the package's global variables and returns it
@@ -162,7 +245,7 @@ func (c *C2HTTP) Sleep() {
 	// wait for either sleep time duration or sleep interrupt
 	select {
 	case <-c.interruptSleepChannel:
-	case <-time.After(time.Second * time.Duration(c.GetSleepTime())):
+	case <-time.After(time.Second * time.Duration(GetSleepTime())):
 	}
 }
 func (c *C2HTTP) Start() {

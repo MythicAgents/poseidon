@@ -29,61 +29,209 @@ import (
 var httpx_initial_config string
 
 type HTTPxInitialConfig struct {
-	Killdate               string          `json:"killdate"`
-	Interval               uint            `json:"callback_interval"`
-	Jitter                 uint            `json:"callback_jitter"`
-	CallbackDomains        []string        `json:"callback_domains"`
-	DomainRotationMethod   string          `json:"domain_rotation"`
-	FailoverThreshold      int             `json:"failover_threshold"`
-	EncryptedExchangeCheck bool            `json:"encrypted_exchange_check"`
-	AESPSK                 string          `json:"AESPSK"`
+	Killdate               string
+	Interval               uint
+	Jitter                 uint
+	CallbackDomains        []string
+	DomainRotationMethod   string
+	FailoverThreshold      int
+	EncryptedExchangeCheck bool
+	AESPSK                 string
 	RawC2Config            AgentVariations `json:"raw_c2_config"`
 }
+
+func (e *HTTPxInitialConfig) parseAgentVariationConfigMessageTransform(configArray []interface{}) []AgentVariationConfigMessageTransform {
+	if configArray == nil {
+		return make([]AgentVariationConfigMessageTransform, 0)
+	}
+	config := make([]AgentVariationConfigMessageTransform, len(configArray))
+	for i := 0; i < len(configArray); i++ {
+		entry := configArray[i].(map[string]interface{})
+		config[i] = AgentVariationConfigMessageTransform{
+			Action: entry["action"].(string),
+			Value:  entry["value"].(string),
+		}
+	}
+	return config
+}
+func (e *HTTPxInitialConfig) parseAgentVariationConfigClient(configMap map[string]interface{}) AgentVariationConfigClient {
+	config := AgentVariationConfigClient{}
+	if headers, ok := configMap["headers"]; ok && headers != nil {
+		config.Headers = e.parseMapStringString(headers.(map[string]interface{}))
+	} else {
+		config.Headers = make(map[string]string)
+	}
+	if parameters, ok := configMap["parameters"]; ok && parameters != nil {
+		config.Parameters = e.parseMapStringString(parameters.(map[string]interface{}))
+	} else {
+		config.Parameters = make(map[string]string)
+	}
+
+	if headers, ok := configMap["domain_specific_headers"]; ok && headers != nil {
+		DomainHeaders := make(map[string]map[string]string)
+		for j, k := range headers.(map[string]interface{}) {
+			DomainHeaders[j] = e.parseMapStringString(k.(map[string]interface{}))
+		}
+		config.DomainSpecificHeaders = DomainHeaders
+	} else {
+		config.DomainSpecificHeaders = make(map[string]map[string]string)
+	}
+	config.Message.Name = configMap["message"].(map[string]interface{})["name"].(string)
+	config.Message.Location = configMap["message"].(map[string]interface{})["location"].(string)
+	if transforms, ok := configMap["transforms"]; ok && transforms != nil {
+		config.Transforms = e.parseAgentVariationConfigMessageTransform(transforms.([]interface{}))
+	} else {
+		config.Transforms = []AgentVariationConfigMessageTransform{}
+	}
+	return config
+}
+func (e *HTTPxInitialConfig) parseAgentVariationConfigServer(configMap map[string]interface{}) AgentVariationConfigServer {
+	config := AgentVariationConfigServer{}
+	if headers, ok := configMap["headers"]; ok && headers != nil {
+		config.Headers = e.parseMapStringString(headers.(map[string]interface{}))
+	} else {
+		config.Headers = make(map[string]string)
+	}
+	if transforms, ok := configMap["transforms"]; ok && transforms != nil {
+		config.Transforms = e.parseAgentVariationConfigMessageTransform(transforms.([]interface{}))
+	} else {
+		config.Transforms = []AgentVariationConfigMessageTransform{}
+	}
+	return config
+}
+func (e *HTTPxInitialConfig) parseMapStringString(configMap map[string]interface{}) map[string]string {
+	serverHeaders := make(map[string]string)
+	if configMap != nil {
+		for j, k := range configMap {
+			serverHeaders[j] = k.(string)
+		}
+	}
+	return serverHeaders
+}
+func (e *HTTPxInitialConfig) parseStringArray(configArray []interface{}) []string {
+	urls := make([]string, len(configArray))
+	if configArray != nil {
+		for l, p := range configArray {
+			urls[l] = p.(string)
+		}
+	}
+	return urls
+}
+func (e *HTTPxInitialConfig) parseRawC2Config(configMap map[string]interface{}) AgentVariations {
+	RawC2Config := AgentVariations{}
+	getConfig := AgentVariationConfig{}
+	postConfig := AgentVariationConfig{}
+	RawC2Config.Name = configMap["name"].(string)
+
+	get := configMap["get"].(map[string]interface{})
+	getConfig.Verb = get["verb"].(string)
+	if uris, ok := get["uris"]; ok {
+		getConfig.URIs = e.parseStringArray(uris.([]interface{}))
+	}
+	if clientConfig, ok := get["client"]; ok && clientConfig != nil {
+		getConfig.Client = e.parseAgentVariationConfigClient(clientConfig.(map[string]interface{}))
+	}
+	if serverConfig, ok := get["server"]; ok && serverConfig != nil {
+		getConfig.Server = e.parseAgentVariationConfigServer(serverConfig.(map[string]interface{}))
+	}
+
+	post := configMap["post"].(map[string]interface{})
+	postConfig.Verb = post["verb"].(string)
+	if uris, ok := post["uris"]; ok {
+		postConfig.URIs = e.parseStringArray(uris.([]interface{}))
+	}
+	if clientConfig, ok := post["client"]; ok && clientConfig != nil {
+		postConfig.Client = e.parseAgentVariationConfigClient(clientConfig.(map[string]interface{}))
+	}
+	if serverConfig, ok := post["server"]; ok && serverConfig != nil {
+		postConfig.Server = e.parseAgentVariationConfigServer(serverConfig.(map[string]interface{}))
+	}
+
+	RawC2Config.Get = getConfig
+	RawC2Config.Post = postConfig
+	return RawC2Config
+}
+func (e *HTTPxInitialConfig) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["killdate"]; ok {
+		e.Killdate = v.(string)
+	}
+	if v, ok := alias["callback_interval"]; ok {
+		e.Interval = uint(v.(float64))
+	}
+	if v, ok := alias["callback_jitter"]; ok {
+		e.Jitter = uint(v.(float64))
+	}
+	if v, ok := alias["encrypted_exchange_check"]; ok {
+		e.EncryptedExchangeCheck = v.(bool)
+	}
+	if v, ok := alias["AESPSK"]; ok {
+		e.AESPSK = v.(string)
+	}
+	if v, ok := alias["domain_rotation"]; ok {
+		e.DomainRotationMethod = v.(string)
+	}
+	if v, ok := alias["failover_threshold"]; ok {
+		e.FailoverThreshold = int(v.(float64))
+	}
+	if v, ok := alias["callback_domains"]; ok {
+		e.CallbackDomains = e.parseStringArray(v.([]interface{}))
+	}
+	if v, ok := alias["raw_c2_config"]; ok {
+		e.RawC2Config = e.parseRawC2Config(v.(map[string]interface{}))
+	}
+	return nil
+}
+
 type AgentVariationConfigMessageTransform struct {
-	Action string `json:"action" toml:"action"`
-	Value  string `json:"value" toml:"value"`
+	Action string
+	Value  string
 }
 type AgentVariationConfigMessage struct {
-	Location string `json:"location" toml:"location"`
-	Name     string `json:"name" toml:"name"`
+	Location string
+	Name     string
 }
 type AgentVariationConfigClient struct {
-	Headers               map[string]string                      `json:"headers" toml:"headers"`
-	Parameters            map[string]string                      `json:"parameters" toml:"parameters"`
-	DomainSpecificHeaders map[string]map[string]string           `json:"domain_specific_headers" toml:"domain_specific_headers"`
-	Message               AgentVariationConfigMessage            `json:"message" toml:"message"`
-	Transforms            []AgentVariationConfigMessageTransform `json:"transforms" toml:"transforms"`
+	Headers               map[string]string
+	Parameters            map[string]string
+	DomainSpecificHeaders map[string]map[string]string
+	Message               AgentVariationConfigMessage
+	Transforms            []AgentVariationConfigMessageTransform
 }
 type AgentVariationConfigServer struct {
-	Headers    map[string]string                      `json:"headers" toml:"headers"`
-	Transforms []AgentVariationConfigMessageTransform `json:"transforms" toml:"transforms"`
+	Headers    map[string]string
+	Transforms []AgentVariationConfigMessageTransform
 }
 type AgentVariationConfig struct {
-	Verb   string                     `json:"verb" toml:"verb"`
-	URIs   []string                   `json:"uris" toml:"uris"`
-	Client AgentVariationConfigClient `json:"client" toml:"client"`
-	Server AgentVariationConfigServer `json:"server" toml:"server"`
+	Verb   string
+	URIs   []string
+	Client AgentVariationConfigClient
+	Server AgentVariationConfigServer
 }
 type AgentVariations struct {
-	Name string               `json:"name" toml:"name"`
-	Get  AgentVariationConfig `json:"get" toml:"get"`
-	Post AgentVariationConfig `json:"post" toml:"post"`
+	Name string
+	Get  AgentVariationConfig
+	Post AgentVariationConfig
 }
 
 type C2HTTPx struct {
-	Interval                 int       `json:"interval"`
-	Jitter                   int       `json:"jitter"`
-	CallbackDomains          []string  `json:"callback_domains"`
-	CallbackDomainsFailCount []int     `json:"callback_domains_fail_count"`
-	CurrentDomain            int       `json:"current_domain"`
-	DomainRotationMethod     string    `json:"domain_rotation"`
-	FailoverThreshold        int       `json:"failover_threshold"`
-	Killdate                 time.Time `json:"killdate"`
+	Interval                 int
+	Jitter                   int
+	CallbackDomains          []string
+	CallbackDomainsFailCount []int
+	CurrentDomain            int
+	DomainRotationMethod     string
+	FailoverThreshold        int
+	Killdate                 time.Time
 	ExchangingKeys           bool
-	ChunkSize                int `json:"chunk_size"`
+	ChunkSize                int
 	// internally set pieces
-	Config                AgentVariations `json:"config"`
-	Key                   string          `json:"encryption_key"`
+	Config                AgentVariations
+	Key                   string
 	RsaPrivateKey         *rsa.PrivateKey
 	ShouldStop            bool
 	stoppedChannel        chan bool
@@ -204,7 +352,7 @@ func (c *C2HTTPx) Sleep() {
 	// wait for either sleep time duration or sleep interrupt
 	select {
 	case <-c.interruptSleepChannel:
-	case <-time.After(time.Second * time.Duration(c.GetSleepTime())):
+	case <-time.After(time.Second * time.Duration(GetSleepTime())):
 	}
 }
 func (c *C2HTTPx) Stop() {

@@ -45,26 +45,26 @@ func sendUploadFileMessagesToMythic(getFileFromMythic structs.GetFileFromMythicS
 		errResponse := structs.Response{}
 		errResponse.Completed = true
 		errResponse.TaskID = getFileFromMythic.Task.TaskID
-		errResponse.UserOutput = fmt.Sprintf("Failed to parse message response from Mythic: %s", err.Error())
+		errResponse.UserOutput = fmt.Sprintf("Failed to parse message response: %s", err.Error())
 		getFileFromMythic.Task.Job.SendResponses <- errResponse
 		getFileFromMythic.ReceivedChunkChannel <- make([]byte, 0)
 		return
 	}
 	// inform the user that we started getting data and let them know how many chunks it'll be
-	if getFileFromMythic.SendUserStatusUpdates {
-		response := structs.Response{}
-		response.Completed = false
-		response.TaskID = getFileFromMythic.Task.TaskID
-		response.UserOutput = fmt.Sprintf("Fetching file from Mythic with %d total chunks at %d bytes per chunk\n", fileUploadMsgResponse.TotalChunks, fileUploadData.ChunkSize)
-		getFileFromMythic.Task.Job.SendResponses <- response
-	}
+
+	response := structs.Response{}
+	response.Completed = false
+	response.TaskID = getFileFromMythic.Task.TaskID
+	response.Status = fmt.Sprintf("Uploaded %d/%d Chunks...", 1, fileUploadMsgResponse.TotalChunks)
+	getFileFromMythic.Task.Job.SendResponses <- response
+
 	// start handling the data and sending it to the requesting task
 	decoded, err := base64.StdEncoding.DecodeString(fileUploadMsgResponse.ChunkData)
 	if err != nil {
 		errResponse := structs.Response{}
 		errResponse.Completed = true
 		errResponse.TaskID = getFileFromMythic.Task.TaskID
-		errResponse.UserOutput = fmt.Sprintf("Failed to parse message response from Mythic: %s", err.Error())
+		errResponse.UserOutput = fmt.Sprintf("Failed to parse message response: %s", err.Error())
 		getFileFromMythic.Task.Job.SendResponses <- errResponse
 		getFileFromMythic.ReceivedChunkChannel <- make([]byte, 0)
 		return
@@ -73,7 +73,8 @@ func sendUploadFileMessagesToMythic(getFileFromMythic structs.GetFileFromMythicS
 	// track the percentage of completion for file transfer for users so it's easier to see
 	lastPercentCompleteNotified := 0
 	if fileUploadMsgResponse.TotalChunks > 1 {
-		for index := 2; index <= fileUploadMsgResponse.TotalChunks; index++ {
+		totalChunks := fileUploadMsgResponse.TotalChunks
+		for index := 2; index <= totalChunks; index++ {
 			if getFileFromMythic.Task.ShouldStop() {
 				getFileFromMythic.ReceivedChunkChannel <- make([]byte, 0)
 				return
@@ -90,7 +91,7 @@ func sendUploadFileMessagesToMythic(getFileFromMythic structs.GetFileFromMythicS
 				errResponse := structs.Response{}
 				errResponse.Completed = true
 				errResponse.TaskID = getFileFromMythic.Task.TaskID
-				errResponse.UserOutput = fmt.Sprintf("Failed to parse message response from Mythic: %s", err.Error())
+				errResponse.UserOutput = fmt.Sprintf("Failed to parse message response: %s", err.Error())
 				getFileFromMythic.Task.Job.SendResponses <- errResponse
 				getFileFromMythic.ReceivedChunkChannel <- make([]byte, 0)
 				return
@@ -101,18 +102,18 @@ func sendUploadFileMessagesToMythic(getFileFromMythic structs.GetFileFromMythicS
 				errResponse := structs.Response{}
 				errResponse.Completed = true
 				errResponse.TaskID = getFileFromMythic.Task.TaskID
-				errResponse.UserOutput = fmt.Sprintf("Failed to parse message response from Mythic: %s", err.Error())
+				errResponse.UserOutput = fmt.Sprintf("Failed to parse message response: %s", err.Error())
 				getFileFromMythic.Task.Job.SendResponses <- errResponse
 				getFileFromMythic.ReceivedChunkChannel <- make([]byte, 0)
 				return
 			}
 			getFileFromMythic.ReceivedChunkChannel <- decoded
-			newPercentComplete := ((index * 100) / fileUploadMsgResponse.TotalChunks)
-			if newPercentComplete/10 > lastPercentCompleteNotified && getFileFromMythic.SendUserStatusUpdates {
+			newPercentComplete := ((index * 100) / totalChunks)
+			if newPercentComplete/10 > lastPercentCompleteNotified {
 				response := structs.Response{}
 				response.Completed = false
 				response.TaskID = getFileFromMythic.Task.TaskID
-				response.UserOutput = fmt.Sprintf("File Transfer Update: %d%% complete\n", newPercentComplete)
+				response.Status = fmt.Sprintf("Uploaded %d/%d Chunks...", fileUploadMsg.Upload.ChunkNum, totalChunks)
 				getFileFromMythic.Task.Job.SendResponses <- response
 				lastPercentCompleteNotified = newPercentComplete / 10
 			}

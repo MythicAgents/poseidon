@@ -10,9 +10,36 @@ import (
 )
 
 type Arguments struct {
-	Application string   `json:"application"`
-	HideApp     bool     `json:"hideApp"`
-	AppArgs     []string `json:"appArgs"`
+	Application string
+	HideApp     bool
+	AppArgs     []string
+}
+
+func (e *Arguments) parseStringArray(configArray []interface{}) []string {
+	urls := make([]string, len(configArray))
+	if configArray != nil {
+		for l, p := range configArray {
+			urls[l] = p.(string)
+		}
+	}
+	return urls
+}
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["application"]; ok {
+		e.Application = v.(string)
+	}
+	if v, ok := alias["hideApp"]; ok {
+		e.HideApp = v.(bool)
+	}
+	if v, ok := alias["appArgs"]; ok {
+		e.AppArgs = e.parseStringArray(v.([]interface{}))
+	}
+	return nil
 }
 
 func Run(task structs.Task) {

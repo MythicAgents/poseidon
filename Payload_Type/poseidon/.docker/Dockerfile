@@ -1,5 +1,8 @@
 FROM itsafeaturemythic/mythic_go_macos:latest
 
+RUN chmod +x /go/bin/garble
+RUN garble version
+
 WORKDIR /Mythic/
 
 COPY [".", "."]

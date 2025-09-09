@@ -10,11 +10,35 @@ import (
 )
 
 type Arguments struct {
-	Path   string `json:"path"`
-	Name   string `json:"name"`
-	Global bool   `json:"global"`
-	List   bool   `json:"list"`
-	Remove bool   `json:"remove"`
+	Path   string
+	Name   string
+	Global bool
+	List   bool
+	Remove bool
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["path"]; ok {
+		e.Path = v.(string)
+	}
+	if v, ok := alias["name"]; ok {
+		e.Name = v.(string)
+	}
+	if v, ok := alias["global"]; ok {
+		e.Global = v.(bool)
+	}
+	if v, ok := alias["list"]; ok {
+		e.List = v.(bool)
+	}
+	if v, ok := alias["remove"]; ok {
+		e.Remove = v.(bool)
+	}
+	return nil
 }
 
 func Run(task structs.Task) {

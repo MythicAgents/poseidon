@@ -10,12 +10,24 @@ import (
 )
 
 type Drive struct {
-	Name             string `json:"name"`
-	Description      string `json:"description"`
-	FreeBytes        uint64 `json:"free_bytes"`
-	TotalBytes       uint64 `json:"total_bytes"`
-	FreeBytesPretty  string `json:"free_bytes_pretty"`
-	TotalBytesPretty string `json:"total_bytes_pretty"`
+	Name             string
+	Description      string
+	FreeBytes        uint64
+	TotalBytes       uint64
+	FreeBytesPretty  string
+	TotalBytesPretty string
+}
+
+func (e Drive) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"name":               e.Name,
+		"description":        e.Description,
+		"free_bytes":         e.FreeBytes,
+		"total_bytes":        e.TotalBytes,
+		"free_bytes_pretty":  e.FreeBytesPretty,
+		"total_bytes_pretty": e.TotalBytesPretty,
+	}
+	return json.Marshal(alias)
 }
 
 // Run - Function that executes the shell command

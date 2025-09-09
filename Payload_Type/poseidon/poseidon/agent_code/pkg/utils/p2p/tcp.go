@@ -31,7 +31,7 @@ func (c poseidonTCP) ProcessIngressMessageForP2P(delegate *structs.DelegateMessa
 	if conn, ok := internalTCPConnections[delegate.UUID]; ok {
 		if delegate.MythicUUID != "" && delegate.MythicUUID != delegate.UUID {
 			// Mythic told us that our UUID was fake and gave the right one
-			utils.PrintDebug(fmt.Sprintf("adding new MythicUUID: %s from %s\n", delegate.MythicUUID, delegate.UUID))
+			utils.PrintDebug(fmt.Sprintf("updating ID: %s from %s\n", delegate.MythicUUID, delegate.UUID))
 			internalTCPConnections[delegate.MythicUUID] = conn
 			internalTCPMapping[delegate.UUID] = delegate.MythicUUID
 			// remove our old one
@@ -85,7 +85,7 @@ func (c poseidonTCP) AddInternalConnection(connection interface{}) {
 	defer internalTCPConnectionMutex.Unlock()
 
 	newConnectionString := (*connection.(*net.Conn)).RemoteAddr().String()
-	utils.PrintDebug(fmt.Sprintf("AddNewInternalConnectionChannel with UUID ( %s ) for %v\n", connectionUUID, newConnectionString))
+	utils.PrintDebug(fmt.Sprintf("new connection with UUID ( %s ) for %v\n", connectionUUID, newConnectionString))
 	for _, v := range internalTCPConnections {
 		if (*v).RemoteAddr().String() == newConnectionString {
 			// we already have an existing connection to this IP:Port combination, close old one
@@ -98,7 +98,7 @@ func (c poseidonTCP) AddInternalConnection(connection interface{}) {
 	go c.readFromInternalTCPConnections(connection.(*net.Conn), connectionUUID)
 }
 func (c poseidonTCP) GetInternalP2PMap() string {
-	output := "----- InternalTCPConnectionsMap ------\n"
+	output := "----- InternalConnectionsMap ------\n"
 	internalTCPConnectionMutex.RLock()
 	defer internalTCPConnectionMutex.RUnlock()
 	for k, v := range internalTCPConnections {

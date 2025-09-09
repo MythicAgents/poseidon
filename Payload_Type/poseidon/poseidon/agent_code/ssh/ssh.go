@@ -27,12 +27,36 @@ type Credential struct {
 	PrivateKey string
 }
 
-type SSHParams struct {
-	Host       string `json:"host"`
-	Port       int    `json:"port"`
-	Username   string `json:"username"`
-	Password   string `json:"password"`
-	PrivateKey string `json:"private_key"`
+type Arguments struct {
+	Host       string
+	Port       int
+	Username   string
+	Password   string
+	PrivateKey string
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["host"]; ok {
+		e.Host = v.(string)
+	}
+	if v, ok := alias["port"]; ok {
+		e.Port = int(v.(float64))
+	}
+	if v, ok := alias["username"]; ok {
+		e.Username = v.(string)
+	}
+	if v, ok := alias["password"]; ok {
+		e.Password = v.(string)
+	}
+	if v, ok := alias["private_key"]; ok {
+		e.PrivateKey = v.(string)
+	}
+	return nil
 }
 
 // SSH Functions
@@ -123,7 +147,7 @@ func SSHLogin(host string, port int, cred Credential) (*goSSH.Session, *goSSH.Cl
 }
 
 func Run(task structs.Task) {
-	params := SSHParams{}
+	params := Arguments{}
 	msg := task.NewResponse()
 	err := json.Unmarshal([]byte(task.Params), &params)
 	if err != nil {

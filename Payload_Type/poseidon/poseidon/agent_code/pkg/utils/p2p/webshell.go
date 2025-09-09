@@ -45,7 +45,7 @@ func (c webshell) ProcessIngressMessageForP2P(delegate *structs.DelegateMessage)
 	if conn, ok := internalWebshellConnections[delegate.UUID]; ok {
 		if delegate.MythicUUID != "" && delegate.MythicUUID != delegate.UUID {
 			// Mythic told us that our UUID was fake and gave the right one
-			utils.PrintDebug(fmt.Sprintf("adding new MythicUUID: %s from %s\n", delegate.MythicUUID, delegate.UUID))
+			utils.PrintDebug(fmt.Sprintf("updating ID: %s from %s\n", delegate.MythicUUID, delegate.UUID))
 			internalWebshellConnections[delegate.MythicUUID] = conn
 			// remove our old one
 			utils.PrintDebug(fmt.Sprintf("removing internal tcp connection for: %s\n", delegate.UUID))

@@ -15,8 +15,23 @@ import (
 )
 
 type Arguments struct {
-	SourceFile      string `json:"source"`
-	DestinationFile string `json:"destination"`
+	SourceFile      string
+	DestinationFile string
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["source"]; ok {
+		e.SourceFile = v.(string)
+	}
+	if v, ok := alias["destination"]; ok {
+		e.DestinationFile = v.(string)
+	}
+	return nil
 }
 
 func copy(src, dst string) (int64, error) {
