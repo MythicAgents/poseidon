@@ -1,20 +1,21 @@
 package agentfunctions
 
 import (
-	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"errors"
+	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
+	"path/filepath"
 )
 
 func init() {
 	agentstructs.AllPayloadData.Get("poseidon").AddCommand(agentstructs.Command{
 		Name:                "download_bulk",
-		HelpString:          "download_bulk",
+		HelpString:          "download_bulk -paths /Users/bob/Desktop -paths /Users/bob/Downloads -compress",
 		Description:         "Download file(s), optionally compressing into a Zip before download. Stored in memory prior to upload - may be resource intensive.",
 		Version:             1,
 		MitreAttackMappings: []string{"T1020", "T1030", "T1041"},
 		Author:              "@maclarel",
 		AssociatedBrowserScript: &agentstructs.BrowserScript{
-			ScriptPath: filepath.Join(".", "poseidon", "browserscripts", "download_bulk.js"), 
+			ScriptPath: filepath.Join(".", "poseidon", "browserscripts", "download_bulk.js"),
 			Author:     "@maclarel",
 		},
 		CommandParameters: []agentstructs.CommandParameter{
@@ -39,7 +40,7 @@ func init() {
 				DefaultValue:     true,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
-						ParameterIsRequired: true,
+						ParameterIsRequired: false,
 						UIModalPosition:     2,
 					},
 				},
@@ -66,4 +67,4 @@ func init() {
 			}
 		},
 	})
-} 
+}
