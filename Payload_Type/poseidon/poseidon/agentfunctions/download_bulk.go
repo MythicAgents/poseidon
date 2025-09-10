@@ -2,7 +2,9 @@ package agentfunctions
 
 import (
 	"errors"
+	"fmt"
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
+	"github.com/MythicMeta/MythicContainer/logging"
 	"path/filepath"
 )
 
@@ -54,6 +56,26 @@ func init() {
 				Success: true,
 				TaskID:  taskData.Task.ID,
 			}
+			displayParams := ""
+			paths, err := taskData.Args.GetArrayArg("paths")
+			if err != nil {
+				logging.LogError(err, "failed to get paths argument")
+				response.Success = false
+				return response
+			}
+			for _, path := range paths {
+				displayParams += fmt.Sprintf(" -path \"%s\"", path)
+			}
+			compress, err := taskData.Args.GetBooleanArg("compress")
+			if err != nil {
+				logging.LogError(err, "failed to get compress")
+				response.Success = false
+				return response
+			}
+			if compress {
+				displayParams += " -compress"
+			}
+			response.DisplayParams = &displayParams
 			return response
 		},
 		TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
