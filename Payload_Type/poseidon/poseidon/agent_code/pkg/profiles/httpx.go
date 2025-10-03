@@ -49,7 +49,9 @@ func (e *HTTPxInitialConfig) parseAgentVariationConfigMessageTransform(configArr
 		entry := configArray[i].(map[string]interface{})
 		config[i] = AgentVariationConfigMessageTransform{
 			Action: entry["action"].(string),
-			Value:  entry["value"].(string),
+		}
+		if entry["value"] != nil {
+			config[i].Value = entry["value"].(string)
 		}
 	}
 	return config
@@ -76,8 +78,11 @@ func (e *HTTPxInitialConfig) parseAgentVariationConfigClient(configMap map[strin
 	} else {
 		config.DomainSpecificHeaders = make(map[string]map[string]string)
 	}
-	config.Message.Name = configMap["message"].(map[string]interface{})["name"].(string)
-	config.Message.Location = configMap["message"].(map[string]interface{})["location"].(string)
+	if message, ok := configMap["message"]; ok && message != nil {
+		stringStringMessage := e.parseMapStringString(message.(map[string]interface{}))
+		config.Message.Name = stringStringMessage["name"]
+		config.Message.Location = stringStringMessage["location"]
+	}
 	if transforms, ok := configMap["transforms"]; ok && transforms != nil {
 		config.Transforms = e.parseAgentVariationConfigMessageTransform(transforms.([]interface{}))
 	} else {
