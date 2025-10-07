@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-const version = "2.2.17"
+const version = "2.2.18"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`
@@ -34,13 +34,14 @@ var badSigs = [][]byte{
 }
 var payloadDefinition = agentstructs.PayloadType{
 	Name:                                   "poseidon",
+	SemVer:                                 version,
 	FileExtension:                          "bin",
 	Author:                                 "@xorrior, @djhohnstein, @Ne0nd0g, @its_a_feature_",
 	SupportedOS:                            []string{agentstructs.SUPPORTED_OS_LINUX, agentstructs.SUPPORTED_OS_MACOS},
 	Wrapper:                                false,
 	CanBeWrappedByTheFollowingPayloadTypes: []string{},
 	SupportsDynamicLoading:                 false,
-	Description:                            fmt.Sprintf("A fully featured macOS and Linux Golang agent.\nVersion %s\nNeeds Mythic 3.3.0+\nNOTE: P2P not compatible with v2.1 agents!", version),
+	Description:                            fmt.Sprintf("A fully featured macOS and Linux Golang agent.\nNeeds Mythic 3.3.0+\nNOTE: P2P not compatible with v2.1 agents!"),
 	SupportedC2Profiles:                    []string{"http", "websocket", "tcp", "dynamichttp", "webshell", "httpx", "dns"},
 	MythicEncryptsData:                     true,
 	BuildParameters: []agentstructs.BuildParameter{
@@ -66,6 +67,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			Required:      false,
 			DefaultValue:  false,
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_BOOLEAN,
+			GroupName:     "egress",
 		},
 		{
 			Name:          "garble",
@@ -87,6 +89,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			Required:      false,
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_ARRAY,
 			DefaultValue:  []string{"http", "websocket", "dynamichttp", "httpx"},
+			GroupName:     "egress",
 		},
 		{
 			Name:          "egress_failover",
@@ -95,6 +98,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_CHOOSE_ONE,
 			Choices:       []string{"failover"},
 			DefaultValue:  "failover",
+			GroupName:     "egress",
 		},
 		{
 			Name:          "failover_threshold",
@@ -102,6 +106,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			Required:      false,
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_NUMBER,
 			DefaultValue:  10,
+			GroupName:     "egress",
 		},
 		{
 			Name:          "static",
@@ -109,6 +114,18 @@ var payloadDefinition = agentstructs.PayloadType{
 			Required:      false,
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_BOOLEAN,
 			DefaultValue:  false,
+			SupportedOS:   []string{agentstructs.SUPPORTED_OS_LINUX},
+		},
+	},
+	SupportsMultipleC2InBuild: true,
+	C2ParameterDeviations: map[string]map[string]agentstructs.C2ParameterDeviation{
+		"http": {
+			"get_uri": {
+				Supported: false,
+			},
+			"query_path_name": {
+				Supported: false,
+			},
 		},
 	},
 	BuildSteps: []agentstructs.BuildStep{

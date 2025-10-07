@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.2.18] - 2025-10-07
+
+### Changed
+
+- Updated to MythicContainer@v1.5.0
+  - Updated for dynamic parameters
+- Updated to Go v1.25
+
 ## [2.2.17] - 2025-10-03
 
 ### Changed
