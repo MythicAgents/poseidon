@@ -15,8 +15,23 @@ type JxaRun interface {
 }
 
 type Arguments struct {
-	Code   string `json:"code"`
-	FileID string `json:"file_id"`
+	Code   string
+	FileID string
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["code"]; ok {
+		e.Code = v.(string)
+	}
+	if v, ok := alias["file_id"]; ok {
+		e.FileID = v.(string)
+	}
+	return nil
 }
 
 func Run(task structs.Task) {

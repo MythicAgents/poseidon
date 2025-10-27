@@ -5,6 +5,7 @@ import (
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"github.com/MythicMeta/MythicContainer/logging"
 	"github.com/MythicMeta/MythicContainer/mythicrpc"
+	"github.com/MythicMeta/MythicContainer/utils/helpers"
 )
 
 func init() {
@@ -25,6 +26,23 @@ func init() {
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: true,
+						GroupName:           "Default",
+						UIModalPosition:     1,
+					},
+				},
+			},
+			{
+				Name:                 "existingFile",
+				ModalDisplayName:     "Existing File",
+				ParameterType:        agentstructs.COMMAND_PARAMETER_TYPE_CHOOSE_ONE,
+				Description:          "Name of an existing file to upload",
+				Choices:              []string{""},
+				DefaultValue:         "",
+				DynamicQueryFunction: getUploadFiles,
+				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+					{
+						ParameterIsRequired: true,
+						GroupName:           "existingFile",
 						UIModalPosition:     1,
 					},
 				},
@@ -38,6 +56,12 @@ func init() {
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: false,
+						GroupName:           "Default",
+						UIModalPosition:     2,
+					},
+					{
+						ParameterIsRequired: false,
+						GroupName:           "existingFile",
 						UIModalPosition:     2,
 					},
 				},
@@ -51,6 +75,12 @@ func init() {
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: false,
+						GroupName:           "Default",
+						UIModalPosition:     3,
+					},
+					{
+						ParameterIsRequired: false,
+						GroupName:           "existingFile",
 						UIModalPosition:     3,
 					},
 				},
@@ -70,43 +100,110 @@ func init() {
 				Success: true,
 				TaskID:  taskData.Task.ID,
 			}
-			if fileID, err := taskData.Args.GetFileArg("file_id"); err != nil {
-				logging.LogError(err, "Failed to get file_id")
+			var search *mythicrpc.MythicRPCFileSearchMessageResponse
+			groupName, err := taskData.Args.GetParameterGroupName()
+			if err != nil {
+				logging.LogError(err, "failed to get group name")
 				response.Success = false
 				response.Error = err.Error()
 				return response
-			} else if search, err := mythicrpc.SendMythicRPCFileSearch(mythicrpc.MythicRPCFileSearchMessage{
-				AgentFileID: fileID,
-			}); err != nil {
+			}
+			if groupName == "Default" {
+				fileID, err := taskData.Args.GetFileArg("file_id")
+				if err != nil {
+					logging.LogError(err, "Failed to get file_id")
+					response.Success = false
+					response.Error = err.Error()
+					return response
+				}
+				search, err = mythicrpc.SendMythicRPCFileSearch(mythicrpc.MythicRPCFileSearchMessage{
+					AgentFileID: fileID,
+				})
+				taskData.Args.RemoveArg("file_id")
+			} else {
+				filename, err := taskData.Args.GetStringArg("existingFile")
+				if err != nil {
+					logging.LogError(err, "Failed to get file_id")
+					response.Success = false
+					response.Error = err.Error()
+					return response
+				}
+				search, err = mythicrpc.SendMythicRPCFileSearch(mythicrpc.MythicRPCFileSearchMessage{
+					Filename:   filename,
+					TaskID:     taskData.Task.ID,
+					MaxResults: 1,
+				})
+				taskData.Args.RemoveArg("existingFile")
+			}
+			if err != nil {
 				response.Success = false
 				response.Error = err.Error()
 				return response
-			} else if !search.Success {
+			}
+			if !search.Success {
 				response.Success = false
 				response.Error = search.Error
 				return response
-			} else if len(search.Files) == 0 {
+			}
+			if len(search.Files) == 0 {
 				response.Success = false
 				response.Error = "Failed to find the specified file, was it deleted?"
 				return response
-			} else if remotePath, err := taskData.Args.GetStringArg("remote_path"); err != nil {
+			}
+			taskData.Args.AddArg(agentstructs.CommandParameter{
+				Name:         "file_id",
+				DefaultValue: search.Files[0].AgentFileId,
+				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+					{
+						GroupName: groupName,
+					},
+				},
+			})
+			remotePath, err := taskData.Args.GetStringArg("remote_path")
+			if err != nil {
 				logging.LogError(err, "Failed to get remote path parameter")
 				response.Success = false
 				response.Error = err.Error()
 				return response
-			} else if len(remotePath) == 0 {
+			}
+			if len(remotePath) == 0 {
 				// set the remote path to just the filename to upload it to the same directory our agent is in
 				taskData.Args.SetArgValue("remote_path", search.Files[0].Filename)
 				displayString := fmt.Sprintf("%s",
 					search.Files[0].Filename)
 				response.DisplayParams = &displayString
 				return response
-			} else {
-				displayString := fmt.Sprintf("%s",
-					search.Files[0].Filename)
-				response.DisplayParams = &displayString
-				return response
 			}
+			displayString := fmt.Sprintf("%s",
+				search.Files[0].Filename)
+			response.DisplayParams = &displayString
+			return response
+
 		},
 	})
+}
+func getUploadFiles(input agentstructs.PTRPCDynamicQueryFunctionMessage) []string {
+	fileResp, err := mythicrpc.SendMythicRPCFileSearch(mythicrpc.MythicRPCFileSearchMessage{
+		LimitByCallback:     false,
+		CallbackID:          input.Callback,
+		IsPayload:           false,
+		IsDownloadFromAgent: false,
+		Filename:            "",
+	})
+	if err != nil {
+		logging.LogError(err, "Failed to search for files in callback")
+		return []string{}
+	}
+	if !fileResp.Success {
+		logging.LogError(err, "Failed to search for files in callback", "mythic error", fileResp.Error)
+		return []string{}
+	}
+	potentialFiles := []string{}
+	for _, file := range fileResp.Files {
+		if !helpers.StringSliceContains(potentialFiles, file.Filename) {
+			potentialFiles = append(potentialFiles, file.Filename)
+		}
+	}
+	return potentialFiles
+
 }

@@ -13,7 +13,10 @@ var pty = agentstructs.Command{
 	Description:               "open up an interactive pty",
 	MitreAttackMappings:       []string{"T1059"},
 	TaskFunctionCreateTasking: ptyCreateTasking,
-	SupportedUIFeatures:       []string{"task_response:interactive"},
+	SupportedUIFeatures: []string{
+		agentstructs.SUPPORTED_UI_FEATURE_TASK_RESPONSE_INTERACTIVE,
+		//agentstructs.SUPPORTED_UI_FEATURE_TASK_PROCESS_INTERACTIVE_TASKS,
+	},
 	CommandParameters: []agentstructs.CommandParameter{
 		{
 			Name:             "program_path",
@@ -22,6 +25,11 @@ var pty = agentstructs.Command{
 			ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
 			Description:      "What program to spawn with a PTY",
 			DefaultValue:     "/bin/bash",
+			ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+				{
+					ParameterIsRequired: false,
+				},
+			},
 		},
 		{
 			Name:             "open_port",
@@ -78,6 +86,24 @@ func ptyCreateTasking(taskData *agentstructs.PTTaskMessageAllData) agentstructs.
 		Success: true,
 		TaskID:  taskData.Task.ID,
 	}
+	/*
+		if taskData.Task.IsInteractiveTask {
+			logging.LogInfo("got interactive message", "type", taskData.Task.InteractiveTaskType, "msg", taskData.Args.GetCommandLine())
+			if taskData.Task.InteractiveTaskType == int(InteractiveTask.Input) {
+				logging.LogInfo("interactive message was type input")
+			}
+			mythicrpc.SendMythicRPCResponseCreate(mythicrpc.MythicRPCResponseCreateMessage{
+				TaskID:   taskData.Task.ParentTaskID,
+				Response: []byte("hello from the other side\n"),
+			})
+			completed := true
+			response.Completed = &completed
+			taskData.Args.SetManualArgs("id\n")
+			return response
+		}
+
+	*/
+
 	programPath, err := taskData.Args.GetStringArg("program_path")
 	if err != nil {
 		response.Error = err.Error()

@@ -11,18 +11,48 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
-type executeLibraryArgs struct {
-	FileID       string   `json:"file_id"`
-	FilePath     string   `json:"file_path"`
-	FunctionName string   `json:"function_name"`
-	Args         []string `json:"args"`
+type Arguments struct {
+	FileID       string
+	FilePath     string
+	FunctionName string
+	Args         []string
+}
+
+func (e *Arguments) parseStringArray(configArray []interface{}) []string {
+	urls := make([]string, len(configArray))
+	if configArray != nil {
+		for l, p := range configArray {
+			urls[l] = p.(string)
+		}
+	}
+	return urls
+}
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["file_id"]; ok {
+		e.FileID = v.(string)
+	}
+	if v, ok := alias["file_path"]; ok {
+		e.FilePath = v.(string)
+	}
+	if v, ok := alias["function_name"]; ok {
+		e.FunctionName = v.(string)
+	}
+	if v, ok := alias["args"]; ok {
+		e.Args = e.parseStringArray(v.([]interface{}))
+	}
+	return nil
 }
 
 // Run - interface method that retrieves a process list
 func Run(task structs.Task) {
 	msg := task.NewResponse()
 
-	args := executeLibraryArgs{}
+	args := Arguments{}
 
 	err := json.Unmarshal([]byte(task.Params), &args)
 	if err != nil {

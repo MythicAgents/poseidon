@@ -8,7 +8,7 @@ import (
 func init() {
 	agentstructs.AllPayloadData.Get("poseidon").AddCommand(agentstructs.Command{
 		Name:                "unlink_tcp",
-		Description:         "Unlink a poseidon_tcp connection.",
+		Description:         "Unlink a tcp connection.",
 		HelpString:          "unlink_tcp",
 		Version:             1,
 		MitreAttackMappings: []string{},
@@ -35,7 +35,7 @@ func init() {
 				ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_STRING,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
-						GroupName:           "Explicit UUID",
+						GroupName:           "UUID Provided",
 						ParameterIsRequired: true,
 					},
 				},
@@ -59,7 +59,7 @@ func init() {
 				response.Error = err.Error()
 				return response
 			}
-			if groupName == "Explicit UUID" {
+			if groupName == "UUID Provided" {
 				connectionString, err := taskData.Args.GetStringArg("connectionUUID")
 				if err != nil {
 					response.Success = false
@@ -74,7 +74,7 @@ func init() {
 						ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_STRING,
 						ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 							{
-								GroupName: "Explicit UUID",
+								GroupName: "UUID Provided",
 							},
 						},
 					})

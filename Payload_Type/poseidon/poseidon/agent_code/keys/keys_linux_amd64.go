@@ -51,7 +51,7 @@ func (l *LinuxKeyInformation) Data() []byte {
 	return l.KeyData
 }
 
-func getkeydata(opts Options) (LinuxKeyInformation, error) {
+func getkeydata(opts Arguments) (LinuxKeyInformation, error) {
 	//Check if the types are available
 	d := LinuxKeyInformation{}
 	switch opts.Command {

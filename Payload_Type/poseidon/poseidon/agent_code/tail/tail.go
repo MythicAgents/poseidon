@@ -8,15 +8,30 @@ import (
 	"os"
 )
 
-type tailArgs struct {
-	FilePath string `json:"path"`
-	Lines    int    `json:"lines"`
+type Arguments struct {
+	FilePath string
+	Lines    int
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["path"]; ok {
+		e.FilePath = v.(string)
+	}
+	if v, ok := alias["lines"]; ok {
+		e.Lines = int(v.(float64))
+	}
+	return nil
 }
 
 // Run - package function to run cat
 func Run(task structs.Task) {
 	msg := task.NewResponse()
-	args := tailArgs{}
+	args := Arguments{}
 	err := json.Unmarshal([]byte(task.Params), &args)
 	if err != nil {
 		msg.SetError(fmt.Sprintf("Failed to unmarshal parameters: %s", err.Error()))

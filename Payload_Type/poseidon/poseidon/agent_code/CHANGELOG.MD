@@ -4,6 +4,175 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.2.18] - 2025-10-07
+
+### Changed
+
+- Updated to MythicContainer@v1.5.0
+  - Updated for dynamic parameters
+- Updated to Go v1.25
+
+## [2.2.17] - 2025-10-03
+
+### Changed
+
+- Fixed an issue with `httpx` usage crashing with missing parameters
+
+## [2.2.16] - 2025-08-25
+
+### Changed
+
+- Updated `sleep` to take in backoff_delay and backoff_seconds fields
+  - Updated logic for `sleep 0` to use backoff_delay to increase sleep time if no meaningful messages sent/received
+
+## [2.2.15] - 2025-07-28
+
+### Changed
+
+- Updated the processing to minimize json tags in garble output
+- Updated build process to stamp out some garble keywords in final binary
+
+## [2.2.14] - 2025-07-21
+
+### Changed
+
+- Updated some processing for DNS requests to iterate over potential local addresses to find ones that work
+
+## [2.2.13] - 2025-07-18
+
+### Changed
+
+- Adding initial beta support for DNS C2 
+
+## [2.2.12] - 2025-06-18
+
+### Changed
+
+- Updated checkin and cd to update the new Mythic callback `cwd` fields for the UI
+
+## [2.2.11] - 2025-06-12
+
+### Changed
+
+- Updated a portion of the `ls` command to return 0 instead of -1 on error
+
+## [2.2.10] - 2025-06-05
+
+### Changed
+
+- Updated the way Poseidon handles callback host/callback port and proxy host/proxy port to be the same
+
+## 2.2.9 - 2025-06-02
+
+### Changed
+
+- Merged PR for updated sshauth command
+- Updated sshauth command to use Credential type
+- Updated sshauth agent code for rate limiting to 10 attemps at a time
+- Updated CIDR parsing code to respect /32
+- Updated ls to add `d` identifiers in permissions listings
+
+## 2.2.8 - 2025-05-30
+
+### Changed
+
+- Updated the download browserscript to render as the download happens
+- Updated the download task to not report back periodic progress updates
+- Added the supported ui feature `task:job_kill` to `jobkill` for support through the UI
+
+## 2.2.7 - 2025-05-19
+
+### Changed
+
+- Added some additional checks in the websocket code for failed connections
+- Added some http idle connection clearing code in other c2 profiles
+
+## 2.2.6 - 2025-04-17
+
+### Changed
+
+- Updated the portscan command to throttle to 10 hosts at a time and respect kill commands quicker
+
+## 2.2.5 - 2025-03-19
+
+### Changed
+
+- Updated `ls` to not mark files as deleted if it runs into errors listing files
+
+## 2.2.4 - 2025-03-12
+
+### Changed
+
+- Updated MythicContainer version to v1.4.19
+- Added default value for lsopen args
+
+## 2.2.3 - 2025-03-05
+
+### Changed
+
+- Updated MythicContainer version to v1.4.18
+- Updated download browser script to show current download percentage
+
+## 2.2.2 - 2025-02-24
+
+### Changed
+
+- Updated `upload` to allow specifying existing filename to upload
+- Updated `ls` to report back symlink data to browser script outputs
+- Added `chmod` command
+- Updated `rm` display parameters
+- Updated `ls` browser script to support new features
+- Updated `ls` to allow a `depth` parameter for recursively doing file listings
+- Fixed a bug with `persist_launchd` if no path was specified
+
+## 2.2.0 - 2025-02-10
+
+### Changed
+
+- Updated `ls` to reflect SUID/SGID/Sticky bits in permissions string
+- Removed `poseidon_tcp`
+- Added `tcp` support for ability to link with `apollo` via TCP as well
+
+## 2.1.15 - 2025-01-17
+
+### Changed
+
+- Updated the `ls` command to not double return output and leverage the new SetAsUserOutput flag in file browser data
+- Updated the `socks` command to continue on UDP timeouts and accept responses from different source UDP ports
+
+## 2.1.14 - 2024-12-08
+
+### Changed
+
+- Updated the httpx rotation method for random in success as well as error
+
+## 2.1.13 - 2024-11-27
+
+### Changed
+
+- Updated the egress order to include httpx
+
+## 2.1.12 - 2024-11-26 
+
+### Changed
+
+- Updated httpx implementation to match latest v0.0.0.15 release of httpx
+
+## 2.1.11 - 2024-11-15
+
+### Changed
+
+- Refactored the egress profiles to use a custom .Sleep() function that can be interrupted
+  - this allows changing sleep times to take effect immediately instead of waiting another sleep interval
+- Updated the checkAlive function to be more accurate
+
+## 2.1.10 - 2024-11-13
+
+### Changed
+
+- Merged in PR to add `lsopen` command
+- Merged in PR to update `portscan` for handling IPv6 addresses and updating browser script
+
 ## 2.1.9 - 2024-10-24
 
 - Fixed issue with new UDP associate breaking for non-udp long-lived connections

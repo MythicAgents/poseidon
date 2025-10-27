@@ -1,3 +1,4 @@
+//go:build darwin
 // +build darwin
 
 package keys
@@ -16,7 +17,7 @@ func (d *DarwinKeyOperation) Data() []byte {
 	return d.KeyData
 }
 
-func getkeydata(opt Options) (DarwinKeyOperation, error) {
+func getkeydata(opt Arguments) (DarwinKeyOperation, error) {
 	d := DarwinKeyOperation{}
 	return d, nil
 }

@@ -1,7 +1,7 @@
 package agentfunctions
 
 import (
-	"errors"
+	"fmt"
 	"github.com/MythicMeta/MythicContainer/logging"
 	"github.com/MythicMeta/MythicContainer/mythicrpc"
 	"strconv"
@@ -39,7 +39,7 @@ func init() {
 			{
 				Name:             "jitter",
 				ModalDisplayName: "Jitter Percentage",
-				DefaultValue:     0,
+				DefaultValue:     -1,
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_NUMBER,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
@@ -49,12 +49,56 @@ func init() {
 				},
 				Description: "Percentage of jitter on the interval",
 			},
+			{
+				Name:             "backoff_delay",
+				ModalDisplayName: "Backoff Delay",
+				DefaultValue:     5,
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_NUMBER,
+				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+					{
+						ParameterIsRequired: false,
+						UIModalPosition:     3,
+					},
+				},
+				Description: "Number of seconds at sleep 0 with no meaningful content before implicitly sleeping to backoff_seconds seconds",
+			},
+			{
+				Name:             "backoff_seconds",
+				ModalDisplayName: "Backoff Seconds",
+				DefaultValue:     1,
+				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_NUMBER,
+				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+					{
+						ParameterIsRequired: false,
+						UIModalPosition:     4,
+					},
+				},
+				Description: "Number of seconds to sleep between checkins if Backoff Delay is triggered while at sleep 0",
+			},
 		},
 		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,
 				TaskID:  taskData.Task.ID,
 			}
+			display := ""
+			interval, err := taskData.Args.GetNumberArg("interval")
+			if err == nil && interval >= 0 {
+				display += fmt.Sprintf("-interval %d ", int(interval))
+			}
+			jitter, err := taskData.Args.GetNumberArg("jitter")
+			if err == nil && jitter >= 0 {
+				display += fmt.Sprintf("-jitter %d ", int(jitter))
+			}
+			backoffDelay, err := taskData.Args.GetNumberArg("backoff_delay")
+			if err == nil && backoffDelay >= 0 {
+				display += fmt.Sprintf("-backoff_delay %d ", int(backoffDelay))
+			}
+			backoffSeconds, err := taskData.Args.GetNumberArg("backoff_seconds")
+			if err == nil && backoffSeconds >= 0 {
+				display += fmt.Sprintf("-backoff_seconds %d ", int(backoffSeconds))
+			}
+			response.DisplayParams = &display
 			return response
 		},
 		TaskFunctionProcessResponse: func(processResponse agentstructs.PtTaskProcessResponseMessage) agentstructs.PTTaskProcessResponseMessageResponse {
@@ -80,37 +124,47 @@ func init() {
 		},
 		TaskFunctionParseArgString: func(args *agentstructs.PTTaskMessageArgsData, input string) error {
 			stringPieces := strings.Split(input, "")
-			if len(stringPieces) == 1 {
+			if len(stringPieces) > 0 {
 				if interval, err := strconv.Atoi(stringPieces[0]); err != nil {
-					logging.LogError(err, "Failed to process first argument as integer")
+					logging.LogError(err, "Failed to process 1st argument as integer")
 					return err
 				} else if interval < 0 {
 					args.SetArgValue("interval", 0)
 				} else {
 					args.SetArgValue("interval", interval)
 				}
-				return nil
-			} else if len(stringPieces) == 2 {
-				if interval, err := strconv.Atoi(stringPieces[0]); err != nil {
-					return err
-				} else if jitter, err := strconv.Atoi(stringPieces[1]); err != nil {
-					return err
-				} else {
-					if interval < 0 {
-						args.SetArgValue("interval", 0)
-					} else {
-						args.SetArgValue("interval", interval)
-					}
-					if jitter < 0 {
-						args.SetArgValue("jitter", 0)
-					} else {
-						args.SetArgValue("jitter", jitter)
-					}
-					return nil
-				}
-			} else {
-				return errors.New("Too many arguments, expecting two")
 			}
+			if len(stringPieces) > 1 {
+				if interval, err := strconv.Atoi(stringPieces[1]); err != nil {
+					logging.LogError(err, "Failed to process 2nd argument as integer")
+					return err
+				} else if interval < 0 {
+					args.SetArgValue("jitter", 0)
+				} else {
+					args.SetArgValue("jitter", interval)
+				}
+			}
+			if len(stringPieces) > 2 {
+				if interval, err := strconv.Atoi(stringPieces[2]); err != nil {
+					logging.LogError(err, "Failed to process 3rd argument as integer")
+					return err
+				} else if interval < 0 {
+					args.SetArgValue("backoff_delay", 0)
+				} else {
+					args.SetArgValue("backoff_delay", interval)
+				}
+			}
+			if len(stringPieces) > 3 {
+				if interval, err := strconv.Atoi(stringPieces[3]); err != nil {
+					logging.LogError(err, "Failed to process 4th argument as integer")
+					return err
+				} else if interval < 0 {
+					args.SetArgValue("backoff_seconds", 0)
+				} else {
+					args.SetArgValue("backoff_seconds", interval)
+				}
+			}
+			return nil
 		},
 	})
 }

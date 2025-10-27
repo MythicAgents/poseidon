@@ -11,7 +11,19 @@ import (
 )
 
 type Arguments struct {
-	RegexFilter string `json:"regex_filter"`
+	RegexFilter string
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["regex_filter"]; ok {
+		e.RegexFilter = v.(string)
+	}
+	return nil
 }
 
 // Taken directly from Sliver's PS command. License file included in the folder

@@ -58,6 +58,7 @@ jobs:
         uses: docker/setup-qemu-action@v2
         with:
           platforms: 'arm64,arm'
+          image: tonistiigi/binfmt:qemu-v7.0.0-28
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v2
@@ -68,7 +69,7 @@ jobs:
         uses: docker/build-push-action@v5 # ref: https://github.com/marketplace/actions/build-and-push-docker-images
         with:
           context: Payload_Type/poseidon
-          file: Payload_Type/poseidon/.docker/Dockerfile
+          file: Payload_Type/poseidon/Dockerfile
           tags: |
             ${{ env.REGISTRY }}/${{ env.AGENT_IMAGE_NAME }}:${{ env.VERSION }}
             ${{ env.REGISTRY }}/${{ env.AGENT_IMAGE_NAME }}:latest
@@ -99,11 +100,6 @@ jobs:
         run: echo "AGENT_IMAGE_NAME=${AGENT_IMAGE_NAME,,}" >> ${GITHUB_ENV}
 
       # The Dockerfile which Mythic uses to pull in the base container image needs to be
-      # updated to reference the newly built container image
-      - name: Fix the server Dockerfile reference to reference the new release tag
-        working-directory: Payload_Type/poseidon
-        run: |
-          sed -i "s|^FROM ghcr\.io.*$|FROM ${REGISTRY}/${AGENT_IMAGE_NAME}:${VERSION}|" Dockerfile
 
       - name: Update package.json version
         uses: jossef/action-set-json-field@v2.1
@@ -118,7 +114,7 @@ jobs:
         uses: EndBug/add-and-commit@v9 # ref: https://github.com/marketplace/actions/add-commit
         with:
           # Only add the Dockerfile changes. Nothing else should have been modified
-          add: "['Payload_Type/poseidon/Dockerfile', 'config.json']"
+          add: "['config.json']"
           # Use the Github actions bot for the commit author
           default_author: github_actions
           committer_email: github-actions[bot]@users.noreply.github.com

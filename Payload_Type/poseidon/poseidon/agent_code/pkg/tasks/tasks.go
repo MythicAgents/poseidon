@@ -31,13 +31,16 @@ func HandleMessageFromMythic(mythicMessage structs.MythicMessageResponse) {
 	// Handle the response from mythic
 	//fmt.Printf("HandleMessageFromMythic:\n%v\n", mythicMessage)
 	// loop through each response and check to see if the file_id or task_id matches any existing background tasks
+	if len(mythicMessage.Responses) > 0 {
+		responses.LastMessageTime = time.Now()
+	}
 	for i := 0; i < len(mythicMessage.Responses); i++ {
-		var r map[string]interface{}
-		err := json.Unmarshal(mythicMessage.Responses[i], &r)
-		if err != nil {
-			//log.Printf("Error unmarshal response to task response: %s", err.Error())
-			break
-		}
+		r := mythicMessage.Responses[i]
+		//err := json.Unmarshal(mythicMessage.Responses[i], &r)
+		//if err != nil {
+		//log.Printf("Error unmarshal response to task response: %s", err.Error())
+		//	break
+		//}
 		if taskid, ok := r["task_id"]; ok {
 			if task, exists := runningTasks[taskid.(string)]; exists {
 				// send data to the channel
@@ -60,6 +63,9 @@ func HandleMessageFromMythic(mythicMessage structs.MythicMessageResponse) {
 		}
 	}
 	// loop through each socks message and send it off
+	if len(mythicMessage.Socks) > 0 {
+		responses.LastMessageTime = time.Now()
+	}
 	for j := 0; j < len(mythicMessage.Socks); j++ {
 		//fmt.Printf("got socks message from Mythic %v\n", mythicMessage.Socks[j])
 		select {
@@ -70,6 +76,9 @@ func HandleMessageFromMythic(mythicMessage structs.MythicMessageResponse) {
 
 	}
 	// loop through each rpwfd message and send it off
+	if len(mythicMessage.Rpfwds) > 0 {
+		responses.LastMessageTime = time.Now()
+	}
 	for j := 0; j < len(mythicMessage.Rpfwds); j++ {
 		select {
 		case responses.FromMythicRpfwdChannel <- mythicMessage.Rpfwds[j]:
@@ -79,6 +88,9 @@ func HandleMessageFromMythic(mythicMessage structs.MythicMessageResponse) {
 
 	}
 	// loop through interactive tasks
+	if len(mythicMessage.InteractiveTasks) > 0 {
+		responses.LastMessageTime = time.Now()
+	}
 	for j := 0; j < len(mythicMessage.InteractiveTasks); j++ {
 		if task, exists := runningTasks[mythicMessage.InteractiveTasks[j].TaskUUID]; exists {
 			//fmt.Printf("interactive task exists, sending data along\n")
@@ -105,6 +117,9 @@ func HandleMessageFromMythic(mythicMessage structs.MythicMessageResponse) {
 		return mythicMessage.Tasks[i].Timestamp < mythicMessage.Tasks[j].Timestamp
 	})
 	// for each task, give it the appropriate Job information and send it on its way for processing
+	if len(mythicMessage.Tasks) > 0 {
+		responses.LastMessageTime = time.Now()
+	}
 	for j := 0; j < len(mythicMessage.Tasks); j++ {
 		job := &structs.Job{
 			Stop:                            new(int),
@@ -131,6 +146,7 @@ func HandleMessageFromMythic(mythicMessage structs.MythicMessageResponse) {
 	}
 	// loop through each delegate and try to forward it along
 	if len(mythicMessage.Delegates) > 0 {
+		responses.LastMessageTime = time.Now()
 		go p2p.HandleDelegateMessageForInternalP2PConnections(mythicMessage.Delegates)
 	}
 	//fmt.Printf("returning from HandleMessageFromMythic\n")

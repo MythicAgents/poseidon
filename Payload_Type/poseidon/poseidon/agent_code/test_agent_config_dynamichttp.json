@@ -1,7 +1,7 @@
 {
   "callback_jitter": 0,
   "callback_interval": 2,
-  "killdate": "2024-12-31",
+  "killdate": "2025-12-31",
   "encrypted_exchange_check": true,
   "AESPSK": "YBRX8nRTYUrkKue/HhEgm+F7gG304uqPdZQwzZ+vaL8=",
   "raw_c2_config": {

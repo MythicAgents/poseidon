@@ -13,9 +13,33 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
-type PortScanParams struct {
-	Hosts []string `json:"hosts"` // Can also be a cidr
-	Ports []string `json:"ports"`
+type Arguments struct {
+	Hosts []string // Can also be a cidr
+	Ports []string
+}
+
+func (e *Arguments) parseStringArray(configArray []interface{}) []string {
+	urls := make([]string, len(configArray))
+	if configArray != nil {
+		for l, p := range configArray {
+			urls[l] = p.(string)
+		}
+	}
+	return urls
+}
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["hosts"]; ok {
+		e.Hosts = e.parseStringArray(v.([]interface{}))
+	}
+	if v, ok := alias["ports"]; ok {
+		e.Ports = e.parseStringArray(v.([]interface{}))
+	}
+	return nil
 }
 
 func doScan(hostList []string, portListStrs []string, job *structs.Job) ([]CIDR, error) {
@@ -68,13 +92,16 @@ func doScan(hostList []string, portListStrs []string, job *structs.Job) ([]CIDR,
 
 	var results []CIDR
 	// Scan the hosts
+	throttleRoutines := 10
+	throttler := make(chan bool, throttleRoutines)
+
 	for i := 0; i < len(hostList); i++ {
 		newCidr, err := NewCIDR(hostList[i])
 		if err != nil {
 			continue
 		} else {
 			// Iterate through every host in hostCidr
-			newCidr.ScanHosts(portList, timeout, job)
+			newCidr.ScanHosts(portList, timeout, job, throttler)
 			results = append(results, *newCidr)
 			// cidrs = append(cidrs, newCidr)
 		}
@@ -84,7 +111,7 @@ func doScan(hostList []string, portListStrs []string, job *structs.Job) ([]CIDR,
 
 func Run(task structs.Task) {
 	msg := task.NewResponse()
-	params := PortScanParams{}
+	params := Arguments{}
 
 	err := json.Unmarshal([]byte(task.Params), &params)
 	if err != nil {

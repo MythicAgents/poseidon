@@ -41,7 +41,7 @@ func Run(task structs.Task) {
 	downloadMsg := structs.SendFileToMythicStruct{}
 	downloadMsg.Task = &task
 	downloadMsg.IsScreenshot = false
-	downloadMsg.SendUserStatusUpdates = true
+	downloadMsg.SendUserStatusUpdates = false
 	downloadMsg.File = file
 	downloadMsg.FileName = fi.Name()
 	downloadMsg.FullPath = fullPath

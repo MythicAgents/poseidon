@@ -13,15 +13,27 @@ import (
 // initial .m code pulled from https://github.com/its-a-feature/macos_execute_from_memory
 // and https://github.com/opensource-apple/dyld/tree/master/unit-tests/test-cases/bundle-memory-load
 
-type jsimportArgs struct {
-	FileID string `json:"file_id"`
+type Arguments struct {
+	FileID string
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["file_id"]; ok {
+		e.FileID = v.(string)
+	}
+	return nil
 }
 
 // Run - interface method that retrieves a process list
 func Run(task structs.Task) {
 	msg := task.NewResponse()
 
-	args := jsimportArgs{}
+	args := Arguments{}
 
 	err := json.Unmarshal([]byte(task.Params), &args)
 	if err != nil {

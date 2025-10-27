@@ -10,22 +10,50 @@ import (
 )
 
 type Arguments struct {
-	PID int `json:"pid"`
+	PID int
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["pid"]; ok {
+		e.PID = int(v.(float64))
+	}
+	return nil
 }
 
 type ProcessDetails struct {
-	ProcessID    int                    `json:"process_id"`
-	Entitlements map[string]interface{} `json:"entitlements"`
-	Name         string                 `json:"name"`
-	BinPath      string                 `json:"bin_path"`
-	CodeSign     int                    `json:"code_sign"`
+	ProcessID    int
+	Entitlements map[string]interface{}
+	Name         string
+	BinPath      string
+	CodeSign     int
+}
+
+func (e ProcessDetails) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"process_id":   e.ProcessID,
+		"entitlements": e.Entitlements,
+		"name":         e.Name,
+		"bin_path":     e.BinPath,
+		"code_sign":    e.CodeSign,
+	}
+	return json.Marshal(alias)
 }
 
 func Run(task structs.Task) {
 	msg := task.NewResponse()
 	var final string
 	args := Arguments{}
-	json.Unmarshal([]byte(task.Params), &args)
+	err := json.Unmarshal([]byte(task.Params), &args)
+	if err != nil {
+		msg.SetError(err.Error())
+		task.Job.SendResponses <- msg
+		return
+	}
 	if args.PID < 0 {
 		procs, _ := ps.Processes()
 		p := make([]ProcessDetails, len(procs))

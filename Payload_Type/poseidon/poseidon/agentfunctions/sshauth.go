@@ -44,12 +44,22 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 					{
 						ParameterIsRequired: true,
 						UIModalPosition:     1,
+						GroupName:           "scp-private-key-credstore",
+					},
+					{
+						ParameterIsRequired: true,
+						UIModalPosition:     1,
 						GroupName:           "run-command-plaintext-password",
 					},
 					{
 						ParameterIsRequired: true,
 						UIModalPosition:     1,
 						GroupName:           "run-command-private-key",
+					},
+					{
+						ParameterIsRequired: true,
+						UIModalPosition:     1,
+						GroupName:           "run-command-private-key-credstore",
 					},
 				},
 			},
@@ -69,6 +79,11 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 						UIModalPosition:     6,
 						GroupName:           "scp-plaintext-password",
 					},
+					{
+						ParameterIsRequired: true,
+						UIModalPosition:     6,
+						GroupName:           "scp-private-key-credstore",
+					},
 				},
 			},
 			{
@@ -87,12 +102,16 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 						UIModalPosition:     7,
 						GroupName:           "scp-plaintext-password",
 					},
+					{
+						ParameterIsRequired: true,
+						UIModalPosition:     7,
+						GroupName:           "scp-private-key-credstore",
+					},
 				},
 			},
 			{
 				Name:             "private_key",
-				ModalDisplayName: "Path to Private key on disk",
-				Description:      "Authenticate to the designated hosts using this private key",
+				ModalDisplayName: "Private Key Path On Target",
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_STRING,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
@@ -104,6 +123,24 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 						ParameterIsRequired: true,
 						UIModalPosition:     2,
 						GroupName:           "run-command-private-key",
+					},
+				},
+			},
+			{
+				Name:                   "cred", // can't share `private_key` name
+				ModalDisplayName:       "Credential",
+				ParameterType:          agentstructs.COMMAND_PARAMETER_TYPE_CREDENTIAL,
+				LimitCredentialsByType: []string{"plaintext", "key"},
+				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+					{
+						ParameterIsRequired: true,
+						UIModalPosition:     2,
+						GroupName:           "scp-private-key-credstore",
+					},
+					{
+						ParameterIsRequired: true,
+						UIModalPosition:     2,
+						GroupName:           "run-command-private-key-credstore",
 					},
 				},
 			},
@@ -127,12 +164,22 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 					{
 						ParameterIsRequired: false,
 						UIModalPosition:     5,
+						GroupName:           "scp-private-key-credstore",
+					},
+					{
+						ParameterIsRequired: false,
+						UIModalPosition:     5,
 						GroupName:           "scp-plaintext-password",
 					},
 					{
 						ParameterIsRequired: false,
 						UIModalPosition:     5,
 						GroupName:           "run-command-plaintext-password",
+					},
+					{
+						ParameterIsRequired: false,
+						UIModalPosition:     5,
+						GroupName:           "run-command-private-key-credstore",
 					},
 				},
 			},
@@ -159,12 +206,17 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 				ModalDisplayName: "Array of CIDR notation for hosts",
 				Description:      "Hosts that you will auth to",
 				ParameterType:    agentstructs.COMMAND_PARAMETER_TYPE_ARRAY,
-				DefaultValue:     []string{},
+				DefaultValue:     []string{"127.0.0.1/32"},
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						ParameterIsRequired: true,
 						UIModalPosition:     4,
 						GroupName:           "scp-plaintext-password",
+					},
+					{
+						ParameterIsRequired: true,
+						UIModalPosition:     4,
+						GroupName:           "scp-private-key-credstore",
 					},
 					{
 						ParameterIsRequired: true,
@@ -180,6 +232,11 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 						ParameterIsRequired: true,
 						UIModalPosition:     4,
 						GroupName:           "scp-private-key",
+					},
+					{
+						ParameterIsRequired: true,
+						UIModalPosition:     4,
+						GroupName:           "run-command-private-key-credstore",
 					},
 				},
 			},
@@ -199,6 +256,11 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 						UIModalPosition:     6,
 						GroupName:           "run-command-private-key",
 					},
+					{
+						ParameterIsRequired: true,
+						UIModalPosition:     6,
+						GroupName:           "run-command-private-key-credstore",
+					},
 				},
 			},
 		},
@@ -208,28 +270,33 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 				TaskID:  taskData.Task.ID,
 			}
 			displayParams := ""
-			if username, err := taskData.Args.GetStringArg("username"); err != nil {
+			username, err := taskData.Args.GetStringArg("username")
+			if err != nil {
 				response.Success = false
 				response.Error = err.Error()
-			} else if groupName, err := taskData.Args.GetParameterGroupName(); err != nil {
-				response.Success = false
-				response.Error = err.Error()
-			} else {
-				displayParams += fmt.Sprintf("as %s ", username)
-				if strings.Contains(groupName, "private-key") {
-					// authing with private key
-					displayParams += fmt.Sprintf("with a private key")
-				} else {
-					// authing with plaintext password
-					displayParams += fmt.Sprintf("with a plaintext password")
-				}
-				if strings.Contains(groupName, "command") {
-					displayParams += fmt.Sprintf(" to run a command")
-				} else {
-					displayParams += fmt.Sprintf(" to copy a file")
-				}
-				response.DisplayParams = &displayParams
+				return response
 			}
+			groupName, err := taskData.Args.GetParameterGroupName()
+			if err != nil {
+				response.Success = false
+				response.Error = err.Error()
+				return response
+			}
+			displayParams += fmt.Sprintf("as %s ", username)
+			if strings.Contains(groupName, "private-key") {
+				// authing with private key
+				displayParams += fmt.Sprintf("with a private key")
+			} else {
+				// authing with plaintext password
+				displayParams += fmt.Sprintf("with a plaintext password")
+			}
+			if strings.Contains(groupName, "command") {
+				displayParams += fmt.Sprintf(" to run a command")
+			} else {
+				displayParams += fmt.Sprintf(" to copy a file")
+			}
+			response.DisplayParams = &displayParams
+
 			return response
 		},
 		TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {

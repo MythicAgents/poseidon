@@ -20,9 +20,24 @@ type rpfwdTracker struct {
 	Connection net.Conn
 	Port       uint32
 }
-type Args struct {
-	Action string `json:"action"`
-	Port   uint32 `json:"port"`
+type Arguments struct {
+	Action string
+	Port   uint32
+}
+
+func (e *Arguments) UnmarshalJSON(data []byte) error {
+	alias := map[string]interface{}{}
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+	if v, ok := alias["action"]; ok {
+		e.Action = v.(string)
+	}
+	if v, ok := alias["port"]; ok {
+		e.Port = uint32(v.(float64))
+	}
+	return nil
 }
 
 var channelMap = make(map[uint32]rpfwdTracker)
@@ -93,7 +108,7 @@ func handleListenMapModifications() {
 	for {
 		select {
 		case task := <-listenMessageChan:
-			args := Args{}
+			args := Arguments{}
 			err := json.Unmarshal([]byte(task.Params), &args)
 			if err != nil {
 				msg := task.NewResponse()

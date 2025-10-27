@@ -140,3 +140,7 @@ _ReSharper*/
 
 # vscode
 .vscode/
+
+Payload_Type/poseidon/poseidon/agent_code/poseidon_poseidon_tcp
+
+Payload_Type/poseidon/poseidon/agent_code/poseidon_tcp
