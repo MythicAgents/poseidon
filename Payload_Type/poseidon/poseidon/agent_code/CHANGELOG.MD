@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.2.19] - 2025-10-28
+
+### Changed
+
+- Updated MythicContainer@v1.5.2
+  - Added support to supply UI position to build parameters
+  
 ## [2.2.18] - 2025-10-07
 
 ### Changed
