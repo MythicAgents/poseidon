@@ -732,7 +732,18 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 					badAnswers = true
 					break
 				}
+				if ackValues[response.Answer[answerIndex].Header().Ttl] != nil {
+					utils.PrintDebug(fmt.Sprintf("Duplicate TTL detected %d", response.Answer[answerIndex].Header().Ttl))
+					badAnswers = true
+					break
+				}
 				ackValues[response.Answer[answerIndex].Header().Ttl] = response.Answer[answerIndex]
+			}
+			for index, _ := range ackValues {
+				if ackValues[index] == nil {
+					utils.PrintDebug(fmt.Sprintf("One of the values is nil, ackValues[%d]", index))
+					badAnswers = true
+				}
 			}
 			if badAnswers {
 				continue
@@ -898,11 +909,22 @@ func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 			for answerIndex := range response.Answer {
 				if response.Answer[answerIndex].Header().Ttl > uint32(len(ackValues)) {
 					time.Sleep(1 * time.Second)
-					utils.PrintDebug(fmt.Sprintf("Got pieces, but TTL values are wrong: %d, %s, %v", len(response.Answer), dns.Fqdn(finalData+domain), response))
+					utils.PrintDebug(fmt.Sprintf("Got 4 pieces, but TTL values are wrong: %d, %s, %v", len(response.Answer), dns.Fqdn(finalData+domain), response))
+					badAnswers = true
+					break
+				}
+				if ackValues[response.Answer[answerIndex].Header().Ttl] != nil {
+					utils.PrintDebug(fmt.Sprintf("Duplicate TTL detected %d", response.Answer[answerIndex].Header().Ttl))
 					badAnswers = true
 					break
 				}
 				ackValues[response.Answer[answerIndex].Header().Ttl] = response.Answer[answerIndex]
+			}
+			for index, _ := range ackValues {
+				if ackValues[index] == nil {
+					utils.PrintDebug(fmt.Sprintf("One of the values is nil, ackValues[%d]", index))
+					badAnswers = true
+				}
 			}
 			if badAnswers {
 				continue
