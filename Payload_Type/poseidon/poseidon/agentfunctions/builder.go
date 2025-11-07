@@ -21,7 +21,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-const version = "2.2.21"
+const version = "2.2.22"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`

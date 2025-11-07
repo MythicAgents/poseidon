@@ -700,11 +700,13 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 				continue
 			}
 			if response.Truncated {
+				i-- // deprecate the count and try again
 				utils.PrintDebug(fmt.Sprintf("Response truncated in sending message to server\n"))
 				time.Sleep(1 * time.Second)
 				chunkErrors += 1
 			}
 			if response.Rcode != dns.RcodeSuccess {
+				i-- // deprecate the count and try again
 				time.Sleep(1 * time.Second)
 				chunkErrors += 1
 				utils.PrintDebug(fmt.Sprintf("Failed to get successful response: %d, %s, %v", len(response.Answer), dns.Fqdn(finalData+domain), response))
@@ -725,8 +727,6 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 			badAnswers := false
 			for answerIndex := range response.Answer {
 				if response.Answer[answerIndex].Header().Ttl > uint32(len(ackValues)) {
-					i-- // deprecate the count and try again
-					time.Sleep(1 * time.Second)
 					chunkErrors += 1
 					utils.PrintDebug(fmt.Sprintf("Got 4 pieces, but TTL values are wrong: %d, %s, %v", len(response.Answer), dns.Fqdn(finalData+domain), response))
 					badAnswers = true
@@ -746,6 +746,8 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 				}
 			}
 			if badAnswers {
+				i-- // deprecate the count and try again
+				time.Sleep(1 * time.Second)
 				continue
 			}
 			if c.getRequestType() == dns.TypeA {
@@ -762,6 +764,7 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 				ackAgentSessionID = make([]byte, net.IPv4len)
 				sessionID, err := strconv.Atoi(ackValues[0].(*dns.TXT).Txt[0])
 				if err != nil {
+					i--
 					utils.PrintDebug(fmt.Sprintf("failed to convert sessionID to int: %v\n", err))
 					continue
 				}
@@ -770,6 +773,7 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 				ackMessageID = make([]byte, net.IPv4len)
 				msgMessageID, _ := strconv.Atoi(ackValues[1].(*dns.TXT).Txt[0])
 				if err != nil {
+					i--
 					utils.PrintDebug(fmt.Sprintf("failed to convert msgMessageID to int: %v\n", err))
 					continue
 				}
@@ -778,6 +782,7 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 				ackStartByte = make([]byte, net.IPv4len)
 				msgStartByte, _ := strconv.Atoi(ackValues[2].(*dns.TXT).Txt[0])
 				if err != nil {
+					i--
 					utils.PrintDebug(fmt.Sprintf("failed to convert msgStartByte to int: %v\n", err))
 					continue
 				}
@@ -786,6 +791,7 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 				ackAction = make([]byte, net.IPv4len)
 				msgAction, _ := strconv.Atoi(ackValues[3].(*dns.TXT).Txt[0])
 				if err != nil {
+					i--
 					utils.PrintDebug(fmt.Sprintf("failed to convert msgAction to int: %v\n", err))
 					continue
 				}
@@ -889,8 +895,13 @@ func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 			}
 			if response.Truncated {
 				utils.PrintDebug(fmt.Sprintf("Response truncated\n"))
+				c.udpChunkSize = c.udpChunkSize + 1024
+				if c.udpChunkSize < 1024 {
+					c.udpChunkSize = 4096
+				}
 				time.Sleep(1 * time.Second)
-				c.increaseErrorCount(domain)
+				//c.increaseErrorCount(domain)
+				continue
 			}
 			if response.Rcode != dns.RcodeSuccess {
 				time.Sleep(1 * time.Second)
@@ -914,7 +925,7 @@ func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 					break
 				}
 				if ackValues[response.Answer[answerIndex].Header().Ttl] != nil {
-					utils.PrintDebug(fmt.Sprintf("Duplicate TTL detected %d", response.Answer[answerIndex].Header().Ttl))
+					//utils.PrintDebug(fmt.Sprintf("Duplicate TTL detected %d, %v", response.Answer[answerIndex].Header().Ttl, response.Answer[answerIndex]))
 					badAnswers = true
 					break
 				}
