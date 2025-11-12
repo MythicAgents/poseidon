@@ -16,8 +16,8 @@ poseidon's icon made by Eucalyp from www.flaticon.com
 
 When it's time for you to test out your install or for another user to install your agent, it's pretty simple. Within Mythic you can run the `mythic-cli` binary to install this in one of three ways:
 
-* `sudo ./mythic-cli install github https://github.com/user/repo` to install the main branch
-* `sudo ./mythic-cli install github https://github.com/user/repo branchname` to install a specific branch of that repo
+* `sudo ./mythic-cli install github https://github.com/MythicAgents/poseidon` to install the main branch
+* `sudo ./mythic-cli install github https://github.com/MythicAgents/poseidon branchname` to install a specific branch of that repo
 * `sudo ./mythic-cli install folder /path/to/local/folder/cloned/from/github` to install from an already cloned down version of an agent repo
 
 Now, you might be wondering _when_ should you or a user do this to properly add your agent to their Mythic instance. There's no wrong answer here, just depends on your preference. The three options are:
