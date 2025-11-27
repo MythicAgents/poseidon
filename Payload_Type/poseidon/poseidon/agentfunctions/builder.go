@@ -6,11 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
-	"github.com/MythicMeta/MythicContainer/mythicrpc"
-	"github.com/google/uuid"
-	"github.com/pelletier/go-toml"
-	"golang.org/x/exp/slices"
 	"io"
 	"os"
 	"os/exec"
@@ -18,9 +13,15 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
+	"github.com/MythicMeta/MythicContainer/mythicrpc"
+	"github.com/google/uuid"
+	"github.com/pelletier/go-toml"
+	"golang.org/x/exp/slices"
 )
 
-const version = "2.2.18"
+const version = "2.2.22"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`
@@ -52,6 +53,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			DefaultValue:  "default",
 			Choices:       []string{"default", "c-archive", "c-shared"},
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_CHOOSE_ONE,
+			UiPosition:    1,
 		},
 		{
 			Name:          "architecture",
@@ -60,6 +62,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			DefaultValue:  "AMD_x64",
 			Choices:       []string{"AMD_x64", "ARM_x64"},
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_CHOOSE_ONE,
+			UiPosition:    2,
 		},
 		{
 			Name:          "proxy_bypass",
@@ -68,6 +71,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			DefaultValue:  false,
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_BOOLEAN,
 			GroupName:     "egress",
+			UiPosition:    9,
 		},
 		{
 			Name:          "garble",
@@ -75,6 +79,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			Required:      false,
 			DefaultValue:  false,
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_BOOLEAN,
+			UiPosition:    4,
 		},
 		{
 			Name:          "debug",
@@ -82,6 +87,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			Required:      false,
 			DefaultValue:  false,
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_BOOLEAN,
+			UiPosition:    3,
 		},
 		{
 			Name:          "egress_order",
@@ -90,6 +96,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_ARRAY,
 			DefaultValue:  []string{"http", "websocket", "dynamichttp", "httpx"},
 			GroupName:     "egress",
+			UiPosition:    6,
 		},
 		{
 			Name:          "egress_failover",
@@ -99,6 +106,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			Choices:       []string{"failover"},
 			DefaultValue:  "failover",
 			GroupName:     "egress",
+			UiPosition:    7,
 		},
 		{
 			Name:          "failover_threshold",
@@ -107,6 +115,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_NUMBER,
 			DefaultValue:  10,
 			GroupName:     "egress",
+			UiPosition:    8,
 		},
 		{
 			Name:          "static",
@@ -115,6 +124,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_BOOLEAN,
 			DefaultValue:  false,
 			SupportedOS:   []string{agentstructs.SUPPORTED_OS_LINUX},
+			UiPosition:    5,
 		},
 	},
 	SupportsMultipleC2InBuild: true,

