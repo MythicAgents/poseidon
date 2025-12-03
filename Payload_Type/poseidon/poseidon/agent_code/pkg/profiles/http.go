@@ -6,10 +6,11 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"encoding/base64"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 	"io"
 	"os"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 
 	"encoding/json"
 	"fmt"
@@ -581,13 +582,12 @@ func (c *C2HTTP) SendMessage(sendData []byte) []byte {
 			}
 		}
 		if len(c.ProxyPass) > 0 && len(c.ProxyUser) > 0 {
+			// setting both proxy-auth and basic auth for compatability with more proxies
 			req.SetBasicAuth(c.ProxyUser, c.ProxyPass)
-			/*
-				auth := fmt.Sprintf("%s:%s", c.ProxyUser, c.ProxyPass)
-				basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(auth))
-				req.Header.Add("Proxy-Authorization", basicAuth)
+			auth := fmt.Sprintf("%s:%s", c.ProxyUser, c.ProxyPass)
+			basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(auth))
+			req.Header.Add("Proxy-Authorization", basicAuth)
 
-			*/
 		}
 		resp, err := client.Do(req)
 		if err != nil {
