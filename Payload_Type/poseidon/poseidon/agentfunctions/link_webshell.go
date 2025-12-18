@@ -3,6 +3,7 @@ package agentfunctions
 import (
 	"errors"
 	"fmt"
+
 	"github.com/MythicMeta/MythicContainer/logging"
 	"github.com/MythicMeta/MythicContainer/mythicrpc"
 
@@ -97,8 +98,8 @@ func init() {
 			} else {
 				// we have the callback uuid and need the payload uuid
 				callbackSearchResponse, err := mythicrpc.SendMythicRPCCallbackSearch(mythicrpc.MythicRPCCallbackSearchMessage{
-					AgentCallbackID:    taskData.Callback.ID,
-					SearchCallbackUUID: &connectionInfo.CallbackUUID,
+					CallbackID:            taskData.Callback.ID,
+					SearchAgentCallbackID: &connectionInfo.CallbackUUID,
 				})
 				if err != nil {
 					logging.LogError(err, "Failed to search callbacks data")

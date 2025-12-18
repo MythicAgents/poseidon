@@ -2,10 +2,11 @@ package agentfunctions
 
 import (
 	"fmt"
-	"github.com/MythicMeta/MythicContainer/logging"
-	"github.com/MythicMeta/MythicContainer/mythicrpc"
 	"strconv"
 	"strings"
+
+	"github.com/MythicMeta/MythicContainer/logging"
+	"github.com/MythicMeta/MythicContainer/mythicrpc"
 
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 )
@@ -108,8 +109,8 @@ func init() {
 			}
 			sleepString := processResponse.Response.(string)
 			if updateResp, err := mythicrpc.SendMythicRPCCallbackUpdate(mythicrpc.MythicRPCCallbackUpdateMessage{
-				AgentCallbackUUID: &processResponse.TaskData.Callback.AgentCallbackID,
-				SleepInfo:         &sleepString,
+				AgentCallbackID: &processResponse.TaskData.Callback.AgentCallbackID,
+				SleepInfo:       &sleepString,
 			}); err != nil {
 				response.Success = false
 				response.Error = err.Error()

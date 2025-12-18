@@ -3,6 +3,7 @@ package agentfunctions
 import (
 	"encoding/base64"
 	"fmt"
+
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"github.com/MythicMeta/MythicContainer/logging"
 	"github.com/MythicMeta/MythicContainer/mythicrpc"
@@ -91,7 +92,7 @@ func init() {
 				taskData.Args.AddArg(agentstructs.CommandParameter{
 					Name:          "file_id",
 					ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_STRING,
-					DefaultValue:  search.Files[0].AgentFileId,
+					DefaultValue:  search.Files[0].AgentFileID,
 				})
 				base64Code := base64.StdEncoding.EncodeToString([]byte(code))
 				taskData.Args.SetArgValue("code", base64Code)

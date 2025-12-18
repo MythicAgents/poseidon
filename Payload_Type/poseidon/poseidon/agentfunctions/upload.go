@@ -2,6 +2,7 @@ package agentfunctions
 
 import (
 	"fmt"
+
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"github.com/MythicMeta/MythicContainer/logging"
 	"github.com/MythicMeta/MythicContainer/mythicrpc"
@@ -152,7 +153,7 @@ func init() {
 			}
 			taskData.Args.AddArg(agentstructs.CommandParameter{
 				Name:         "file_id",
-				DefaultValue: search.Files[0].AgentFileId,
+				DefaultValue: search.Files[0].AgentFileID,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
 						GroupName: groupName,
