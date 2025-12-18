@@ -14,5 +14,5 @@ message DnsPacket {
   uint32 MessageID      = 3;
   uint32 Size           = 4;
   uint32 Begin          = 5;
-  string Data           = 6;
+  bytes  Data           = 6;
 }

