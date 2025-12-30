@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.2.26] - 2025-12-30
+
+### Changed
+
+- Updated `dns` profile for fallback TCP connection on truncated UDP requests
+- Updated a few header files for ObjectiveC code
+
 ## [2.2.25] - 2025-12-18
 
 ### Changed

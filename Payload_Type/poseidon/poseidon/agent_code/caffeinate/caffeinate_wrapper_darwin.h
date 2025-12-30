@@ -2,6 +2,6 @@
 #ifndef main_h
 #define main_h
 
-extern char* caffeinate(int enable);
+extern const char* caffeinate(int enable);
 
 #endif /* main_h */

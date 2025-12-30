@@ -35,4 +35,4 @@
 int csops(pid_t pid, unsigned int  ops, void * useraddr, size_t usersize);
 extern char* exec_csops(int proc_id);
 extern int exec_csops_status(int proc_id);
-char* parse_plist(char* plist_string);
+const char* parse_plist(char* plist_string);

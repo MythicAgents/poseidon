@@ -93,7 +93,7 @@ int exec_csops_status( int proc_id){
         return int_buffer;
 	}
 }
-char* parse_plist( char* plist_string){
+const char* parse_plist( char* plist_string){
     NSString* plistString = [NSString stringWithUTF8String:plist_string];
     NSData* plistData = [plistString dataUsingEncoding:NSUTF8StringEncoding];
     NSPropertyListFormat* format;

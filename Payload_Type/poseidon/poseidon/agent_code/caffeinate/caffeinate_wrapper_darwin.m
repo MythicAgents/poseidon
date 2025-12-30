@@ -2,7 +2,7 @@
 #import <IOKit/pwr_mgt/IOPMLib.h>
 #include "caffeinate_wrapper_darwin.h"
 
-char* caffeinate(int enable) {
+const char* caffeinate(int enable) {
     @try {
             IOPMAssertionLevel newLevel = kIOPMAssertionLevelOn;
             if(enable == 0){

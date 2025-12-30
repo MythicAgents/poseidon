@@ -1,1 +1,1 @@
-char* testPassword(char* user, char* password);
+const char* testPassword(char* user, char* password);

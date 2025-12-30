@@ -1,1 +1,1 @@
-char* checkTCC(char* user);
+const char* checkTCC(char* user);

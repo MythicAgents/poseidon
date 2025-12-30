@@ -21,7 +21,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-const version = "2.2.25"
+const version = "2.2.26"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`
@@ -327,7 +327,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 					}
 				}
 				initialConfig[key] = tomlConfig
-			} else if slices.Contains([]string{"callback_jitter", "callback_interval", "callback_port", "port", "callback_port", "failover_threshold", "max_query_length"}, key) {
+			} else if slices.Contains([]string{"callback_jitter", "callback_interval", "callback_port", "port", "callback_port", "failover_threshold", "max_query_length", "max_subdomain_length"}, key) {
 
 				val, err := payloadBuildMsg.C2Profiles[index].GetNumberArg(key)
 				if err != nil {

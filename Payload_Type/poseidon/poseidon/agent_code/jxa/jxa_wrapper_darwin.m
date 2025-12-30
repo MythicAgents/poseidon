@@ -2,7 +2,7 @@
 #import <OSAKit/OSAKit.h>
 #include "jxa_wrapper_darwin.h"
 
-char* runjs(char *s) {
+const char* runjs(char *s) {
     @try {
             NSString *codeString = [NSString stringWithUTF8String:s];
             OSALanguage *lang = [OSALanguage languageForName:@"JavaScript"];

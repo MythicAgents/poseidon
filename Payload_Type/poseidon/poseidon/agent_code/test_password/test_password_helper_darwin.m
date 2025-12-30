@@ -2,7 +2,7 @@
 #import <Foundation/Foundation.h>
 #import <OpenDirectory/OpenDirectory.h>
 
-char* testPassword(char* user, char* password){
+const char* testPassword(char* user, char* password){
     NSMutableString* output = [[NSMutableString alloc] initWithString:@""];
     ODSession* session = [ODSession defaultSession];
     ODNode *node = [ODNode nodeWithSession:session type:kODNodeTypeAuthentication error:nil];

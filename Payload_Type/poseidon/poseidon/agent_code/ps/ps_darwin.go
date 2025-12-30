@@ -43,7 +43,7 @@ int getResponsiblePid(int pidOfInterest) {
 
     }
 }
-char* GetProcInfo(int pid) {
+const char* GetProcInfo(int pid) {
 	RDProcess *p = [[RDProcess alloc] initWithPID:pid];
 	NSString* source = @"unknown";
 	int ppid = getPPID(pid);

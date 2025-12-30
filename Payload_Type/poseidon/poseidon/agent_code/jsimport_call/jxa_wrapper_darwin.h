@@ -9,6 +9,6 @@
 #ifndef main_h
 #define main_h
 
-extern char* runjsimport(char *s);
+extern const char* runjsimport(char *s);
 
 #endif /* main_h */

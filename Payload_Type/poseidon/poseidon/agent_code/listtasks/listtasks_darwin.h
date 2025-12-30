@@ -3,4 +3,4 @@
 #include <stdlib.h>
 #include <libproc.h>
 
-extern char* listtasks();
+extern const char* listtasks();

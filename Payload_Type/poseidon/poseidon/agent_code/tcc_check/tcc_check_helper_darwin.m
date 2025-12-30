@@ -2,7 +2,7 @@
 #import <Foundation/Foundation.h>
 #import <ApplicationServices/ApplicationServices.h>
 
-char* checkTCC(char* user){
+const char* checkTCC(char* user){
     bool fullDiskAccess = false;
     bool desktopAccess = false;
     bool documentsAccess = false;

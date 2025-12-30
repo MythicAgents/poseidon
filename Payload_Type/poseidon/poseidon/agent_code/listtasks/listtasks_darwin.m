@@ -1,7 +1,7 @@
 #import <Foundation/Foundation.h>
 #include "listtasks_darwin.h"
 
-char* listtasks() {
+const char* listtasks() {
     @try {
         host_t    myhost = mach_host_self();
         host_t    host_priv;
