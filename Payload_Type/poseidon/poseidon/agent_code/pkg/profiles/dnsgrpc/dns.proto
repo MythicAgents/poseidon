@@ -12,7 +12,7 @@ message DnsPacket {
   Actions  Action       = 1;
   uint32 AgentSessionID = 2;
   uint32 MessageID      = 3;
-  uint32 Size           = 4;
-  uint32 Begin          = 5;
+  uint32 TotalChunks           = 4;
+  uint32 CurrentChunk          = 5;
   bytes  Data           = 6;
 }

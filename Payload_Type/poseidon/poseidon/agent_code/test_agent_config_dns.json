@@ -1,13 +1,14 @@
 {
-  "domains": ["dns.localhost", "fake.localhost", "this.is.something.longer.localhost"],
+  "domains": ["1.example.com"],
   "domain_rotation": "fail-over",
   "failover_threshold": 5,
-  "dns_server": "127.0.0.1:53",
-  "record_type": "TXT",
-  "max_query_length": 255,
-  "killdate": "2025-12-31",
+  "dns_server": "127.0.0.1135:53",
+  "record_type": "A",
+  "max_query_length": 150,
+  "killdate": "2026-12-31",
   "callback_interval": 2,
   "callback_jitter": 0,
   "encrypted_exchange_check": true,
-  "AESPSK": "0Ogt6jaLVgAt00FHiF4ifpS1yS9t+e/vFvPQDHyM11M="
+  "AESPSK": "0Ogt6jaLVgAt00FHiF4ifpS1yS9t+e/vFvPQDHyM11M=",
+  "max_subdomain_length": 12
 }

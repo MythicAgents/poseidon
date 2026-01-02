@@ -78,8 +78,8 @@ type DnsPacket struct {
 	Action         Actions                `protobuf:"varint,1,opt,name=Action,proto3,enum=dnsStructs.Actions" json:"Action,omitempty"`
 	AgentSessionID uint32                 `protobuf:"varint,2,opt,name=AgentSessionID,proto3" json:"AgentSessionID,omitempty"`
 	MessageID      uint32                 `protobuf:"varint,3,opt,name=MessageID,proto3" json:"MessageID,omitempty"`
-	Size           uint32                 `protobuf:"varint,4,opt,name=Size,proto3" json:"Size,omitempty"`
-	Begin          uint32                 `protobuf:"varint,5,opt,name=Begin,proto3" json:"Begin,omitempty"`
+	TotalChunks    uint32                 `protobuf:"varint,4,opt,name=TotalChunks,proto3" json:"TotalChunks,omitempty"`
+	CurrentChunk   uint32                 `protobuf:"varint,5,opt,name=CurrentChunk,proto3" json:"CurrentChunk,omitempty"`
 	Data           []byte                 `protobuf:"bytes,6,opt,name=Data,proto3" json:"Data,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
@@ -136,16 +136,16 @@ func (x *DnsPacket) GetMessageID() uint32 {
 	return 0
 }
 
-func (x *DnsPacket) GetSize() uint32 {
+func (x *DnsPacket) GetTotalChunks() uint32 {
 	if x != nil {
-		return x.Size
+		return x.TotalChunks
 	}
 	return 0
 }
 
-func (x *DnsPacket) GetBegin() uint32 {
+func (x *DnsPacket) GetCurrentChunk() uint32 {
 	if x != nil {
-		return x.Begin
+		return x.CurrentChunk
 	}
 	return 0
 }
@@ -162,13 +162,13 @@ var File_dns_proto protoreflect.FileDescriptor
 const file_dns_proto_rawDesc = "" +
 	"\n" +
 	"\tdns.proto\x12\n" +
-	"dnsStructs\"\xbc\x01\n" +
+	"dnsStructs\"\xd8\x01\n" +
 	"\tDnsPacket\x12+\n" +
 	"\x06Action\x18\x01 \x01(\x0e2\x13.dnsStructs.ActionsR\x06Action\x12&\n" +
 	"\x0eAgentSessionID\x18\x02 \x01(\rR\x0eAgentSessionID\x12\x1c\n" +
-	"\tMessageID\x18\x03 \x01(\rR\tMessageID\x12\x12\n" +
-	"\x04Size\x18\x04 \x01(\rR\x04Size\x12\x14\n" +
-	"\x05Begin\x18\x05 \x01(\rR\x05Begin\x12\x12\n" +
+	"\tMessageID\x18\x03 \x01(\rR\tMessageID\x12 \n" +
+	"\vTotalChunks\x18\x04 \x01(\rR\vTotalChunks\x12\"\n" +
+	"\fCurrentChunk\x18\x05 \x01(\rR\fCurrentChunk\x12\x12\n" +
 	"\x04Data\x18\x06 \x01(\fR\x04Data*P\n" +
 	"\aActions\x12\x11\n" +
 	"\rAgentToServer\x10\x00\x12\x11\n" +
