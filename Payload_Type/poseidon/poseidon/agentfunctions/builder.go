@@ -40,7 +40,7 @@ var payloadDefinition = agentstructs.PayloadType{
 	Author:                                 "@xorrior, @djhohnstein, @Ne0nd0g, @its_a_feature_",
 	SupportedOS:                            []string{agentstructs.SUPPORTED_OS_LINUX, agentstructs.SUPPORTED_OS_MACOS},
 	Wrapper:                                false,
-	CanBeWrappedByTheFollowingPayloadTypes: []string{},
+	CanBeWrappedByTheFollowingPayloadTypes: []string{"container_wrapper"},
 	SupportsDynamicLoading:                 false,
 	Description:                            fmt.Sprintf("A fully featured macOS and Linux Golang agent.\nNeeds Mythic 3.3.0+\nNOTE: P2P not compatible with v2.1 agents!"),
 	SupportedC2Profiles:                    []string{"http", "websocket", "tcp", "dynamichttp", "webshell", "httpx", "dns"},
