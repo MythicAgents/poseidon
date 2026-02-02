@@ -9,12 +9,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 	"net"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 
 	"github.com/google/uuid"
 
@@ -374,7 +375,7 @@ func (c *C2PoseidonTCP) ChunkAndWriteData(conn net.Conn, data []byte) error {
 		} else {
 			chunkData = data[currentChunk*c.chunkSize : (currentChunk+1)*c.chunkSize]
 		}
-		utils.PrintDebug(fmt.Sprintf("Sending chunk %d/%d\n", currentChunk, totalChunks))
+		utils.PrintDebug(fmt.Sprintf("Sending chunk %d/%d\n", currentChunk+1, totalChunks))
 		// first write the size of the chunk + size of total chunks + size of current chunk
 		err := binary.Write(conn, binary.BigEndian, uint32(len(chunkData)+8))
 		if err != nil {
@@ -452,7 +453,7 @@ func (c *C2PoseidonTCP) ReadAndChunkData(conn net.Conn) ([]byte, error) {
 		// finished reading this chunk and all of its data
 		totalBytes = append(totalBytes, readBuffer...)
 		//copy(totalBytes[len(totalBytes):], readBuffer[:])
-		utils.PrintDebug(fmt.Sprintf("Finished read for %d/%d chunks, for size %d\n", currentChunk, totalChunks, totalRead))
+		utils.PrintDebug(fmt.Sprintf("Finished read for %d/%d chunks, for size %d\n", currentChunk+1, totalChunks, totalRead))
 		if currentChunk+1 == totalChunks {
 			utils.PrintDebug(fmt.Sprintf("Finished read for all chunks, for size %d\n", len(totalBytes)))
 			return totalBytes, nil

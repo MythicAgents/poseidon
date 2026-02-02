@@ -4,12 +4,13 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"net"
+	"sync"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 	"github.com/google/uuid"
-	"net"
-	"sync"
 )
 
 var (
@@ -28,7 +29,12 @@ func (c poseidonTCP) ProfileName() string {
 func (c poseidonTCP) ProcessIngressMessageForP2P(delegate *structs.DelegateMessage) {
 	var err error = nil
 	internalTCPConnectionMutex.Lock()
-	if conn, ok := internalTCPConnections[delegate.UUID]; ok {
+	conn, ok := internalTCPConnections[delegate.UUID]
+	if !ok {
+		conn, ok = internalTCPConnections[delegate.MythicUUID]
+	}
+	if ok {
+		//utils.PrintDebug(fmt.Sprintf("ProcessIngressMessageForP2P:\n%v\n", delegate))
 		if delegate.MythicUUID != "" && delegate.MythicUUID != delegate.UUID {
 			// Mythic told us that our UUID was fake and gave the right one
 			utils.PrintDebug(fmt.Sprintf("updating ID: %s from %s\n", delegate.MythicUUID, delegate.UUID))
@@ -41,8 +47,11 @@ func (c poseidonTCP) ProcessIngressMessageForP2P(delegate *structs.DelegateMessa
 		utils.PrintDebug(fmt.Sprintf("Sending ingress data to P2P connection\n"))
 		//err = SendTCPData([]byte(delegate.Message), *conn)
 		err = c.ChunkAndWriteData(*conn, []byte(delegate.Message))
+	} else {
+		utils.PrintDebug(fmt.Sprintf("ProcessIngressMessageForP2P: UUID %s not found\n", delegate.UUID))
 	}
 	internalTCPConnectionMutex.Unlock()
+	//utils.PrintDebug(c.GetInternalP2PMap())
 	if err != nil {
 		utils.PrintDebug(fmt.Sprintf("Failed to send data to linked p2p connection, %v\n", err))
 		go c.RemoveInternalConnection(delegate.UUID)
@@ -119,7 +128,7 @@ func (c poseidonTCP) readFromInternalTCPConnections(newConnection *net.Conn, tem
 		readBuffer, err := c.ReadAndChunkData(*newConnection)
 		if err != nil {
 			utils.PrintDebug(fmt.Sprintf("Failed to read from tcp connection: %v\n", err))
-			c.RemoveInternalConnection(tempConnectionUUID)
+			c.RemoveInternalConnection(getInternalConnectionUUID(tempConnectionUUID))
 			return
 		}
 		newDelegateMessage := structs.DelegateMessage{}
@@ -177,7 +186,7 @@ func (c poseidonTCP) ChunkAndWriteData(conn net.Conn, data []byte) error {
 				return errors.New("failed to write to connection")
 			}
 		}
-		utils.PrintDebug(fmt.Sprintf("sent %d bytes\n", uint32(len(chunkData)+8)))
+		utils.PrintDebug(fmt.Sprintf("sent %d bytes\n", uint32(len(chunkData))))
 		currentChunk += 1
 	}
 	return nil
@@ -209,7 +218,7 @@ func (c poseidonTCP) ReadAndChunkData(conn net.Conn) ([]byte, error) {
 			utils.PrintDebug(fmt.Sprintf("failed to read current chunk from tcp connection: %v\n", err))
 			return nil, err
 		}
-		utils.PrintDebug(fmt.Sprintf("Starting read for %d/%d chunks, for size %d\n", currentChunk, totalChunks, sizeBuffer))
+		utils.PrintDebug(fmt.Sprintf("Starting read for %d/%d chunks, for size %d\n", currentChunk+1, totalChunks, sizeBuffer-8))
 		readBuffer := make([]byte, sizeBuffer-8)
 		readSoFar, err := conn.Read(readBuffer)
 		if err != nil {
@@ -231,7 +240,7 @@ func (c poseidonTCP) ReadAndChunkData(conn net.Conn) ([]byte, error) {
 		// finished reading this chunk and all of its data
 		totalBytes = append(totalBytes, readBuffer...)
 		//copy(totalBytes[len(totalBytes):], readBuffer[:])
-		utils.PrintDebug(fmt.Sprintf("Finished read for %d/%d chunks, for size %d\n", currentChunk, totalChunks, totalRead))
+		utils.PrintDebug(fmt.Sprintf("Finished read for %d/%d chunks, for size %d\n", currentChunk+1, totalChunks, totalRead))
 		if currentChunk+1 == totalChunks {
 			utils.PrintDebug(fmt.Sprintf("Finished read for all chunks, for size %d\n", len(totalBytes)))
 			return totalBytes, nil

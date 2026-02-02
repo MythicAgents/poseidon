@@ -1,6 +1,6 @@
 {
   "port": 8085,
-  "killdate": "2025-12-31",
+  "killdate": "2026-12-31",
   "encrypted_exchange_check": true,
-  "AESPSK": "0ZFQR9HJdrQfDWq58OetcM+d55nBxW1HftrzJ5ohTVo="
+  "AESPSK": "dNpxaDKHQiOF1v7BpqJHoNWcwZGItdNo99O9KzFr5xc="
 }

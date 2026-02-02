@@ -1,0 +1,6 @@
+{
+  "port": 8086,
+  "killdate": "2026-12-31",
+  "encrypted_exchange_check": true,
+  "AESPSK": "VCLEip+lplpALgmRJORGrVw9rQqr0ZDDJ/vHTKCsO90="
+}

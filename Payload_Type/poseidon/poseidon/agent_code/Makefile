@@ -6,15 +6,19 @@ WEBSOCKET_UUID=80844d19-9bfc-47f9-b9af-c6b9144c0fdc
 WEBSOCKET_AGENT_CONFIG_FILE=test_agent_config_websocket.json
 WEBSOCKET_CONFIG=$(shell base64 -i ${WEBSOCKET_AGENT_CONFIG_FILE})
 
-TCP_UUID=e053199c-3be8-4901-b8d2-fecb444fcd9e
+TCP_UUID=f3733aa6-6add-499c-8b7d-c1d177ef5e2a
 TCP_AGENT_CONFIG_FILE=test_agent_config_tcp.json
 TCP_CONFIG=$(shell base64 -i ${TCP_AGENT_CONFIG_FILE})
+
+TCP_UUID2=ca8b05f9-9378-444f-a4af-e69f539b0ef2
+TCP_AGENT_CONFIG_FILE2=test_agent_config_tcp2.json
+TCP_CONFIG2=$(shell base64 -i ${TCP_AGENT_CONFIG_FILE2})
 
 DYNAMICHTTP_UUID=fbd34459-f783-4b78-9d4c-fd26a5289fee
 DYNAMICHTTP_AGENT_CONFIG_FILE=test_agent_config_dynamichttp.json
 DYNAMICHTTP_CONFIG=$(shell base64 -i ${DYNAMICHTTP_AGENT_CONFIG_FILE})
 
-HTTPX_UUID=6d1dce05-6f50-4043-9dd0-231f771b20ce
+HTTPX_UUID=ad8470b5-7720-4557-a07b-50c3ce519a01
 HTTPX_AGENT_CONFIG_FILE=test_agent_config_httpx.json
 HTTPX_CONFIG=$(shell base64 -i ${HTTPX_AGENT_CONFIG_FILE})
 
@@ -63,6 +67,16 @@ build_tcp:
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils.debugString=${DEBUG}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.failedConnectionCountThresholdString=${failedConnectionCountThresholdString}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.${C2_TCP}_initial_config=${TCP_CONFIG}'\
+" .
+
+build_tcp2:
+	${goCmd} -o ${BINARY_NAME}_${C2_TCP}2 -tags="${C2_TCP}" -ldflags=" \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.UUID=${TCP_UUID2}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_order=${EGRESS_ORDER}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_failover=${EGRESS_FAILOVER}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils.debugString=${DEBUG}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.failedConnectionCountThresholdString=${failedConnectionCountThresholdString}' \
+-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.${C2_TCP}_initial_config=${TCP_CONFIG2}'\
 " .
 
 build_http_tcp:
@@ -133,6 +147,9 @@ run_http:
 run_tcp:
 	./${BINARY_NAME}_${C2_TCP}
 
+run_tcp2:
+	./${BINARY_NAME}_${C2_TCP}2
+
 run_websocket:
 	./${BINARY_NAME}_${C2_WEBSOCKET}.bin
 
@@ -151,6 +168,8 @@ run_dns:
 build_and_run_http: build_http run_http
 
 build_and_run_tcp: build_tcp run_tcp
+
+build_and_run_tcp2: build_tcp2 run_tcp2
 
 build_and_run_dynamichttp: build_dynamichttp run_dynamichttp
 

@@ -3,15 +3,16 @@ package tasks
 import (
 	"encoding/base64"
 	"encoding/json"
+	"sort"
+	"sync"
+	"time"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/enums/InteractiveTask"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/files"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/p2p"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
-	"sort"
-	"sync"
-	"time"
 )
 
 var runningTasks = make(map[string]structs.Task)
@@ -29,7 +30,6 @@ func listenForInboundMythicMessageFromEgressP2PChannel() {
 // HandleMessageFromMythic processes a message from Mythic
 func HandleMessageFromMythic(mythicMessage structs.MythicMessageResponse) {
 	// Handle the response from mythic
-	//fmt.Printf("HandleMessageFromMythic:\n%v\n", mythicMessage)
 	// loop through each response and check to see if the file_id or task_id matches any existing background tasks
 	if len(mythicMessage.Responses) > 0 {
 		responses.LastMessageTime = time.Now()
