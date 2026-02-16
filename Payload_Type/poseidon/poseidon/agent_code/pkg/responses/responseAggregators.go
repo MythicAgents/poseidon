@@ -2,11 +2,12 @@ package responses
 
 import (
 	"fmt"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 	"math"
 	"sync"
 	"time"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var (
@@ -29,13 +30,13 @@ var (
 var (
 	NewInteractiveTaskOutputChannel = make(chan structs.InteractiveTaskMessage, 100)
 	NewAlertChannel                 = make(chan structs.Alert, 10)
-	NewResponseChannel              = make(chan structs.Response, 10)
-	NewDelegatesToMythicChannel     = make(chan structs.DelegateMessage, 10)
-	P2PConnectionMessageChannel     = make(chan structs.P2PConnectionMessage, 10)
+	NewResponseChannel              = make(chan structs.Response, 100)
+	NewDelegatesToMythicChannel     = make(chan structs.DelegateMessage, 1000)
+	P2PConnectionMessageChannel     = make(chan structs.P2PConnectionMessage, 1000)
 )
 var (
 	// HandleInboundMythicMessageFromEgressChannel processes messages from egress
-	HandleInboundMythicMessageFromEgressChannel = make(chan structs.MythicMessageResponse, 100)
+	HandleInboundMythicMessageFromEgressChannel = make(chan structs.MythicMessageResponse, 1000)
 	// FromMythicSocksChannel gets SOCKS messages from Mythic
 	FromMythicSocksChannel = make(chan structs.SocksMsg, 2000)
 	// FromMythicRpfwdChannel gets RPFWD messages from Mythic
@@ -53,7 +54,9 @@ var (
 // listenForDelegateMessagesToMythic gathers the delegate messages (NewDelegatesToMythicChannel) that need to go out the egress channel into a central location
 func listenForDelegateMessagesToMythic(getProfilesPushChannelFunc func() chan structs.MythicMessage) {
 	for {
+		//utils.PrintDebug(fmt.Sprintf("waiting for delegates to mythic in listenForDelegateMessagesToMythic\n"))
 		response := <-NewDelegatesToMythicChannel
+		//utils.PrintDebug(fmt.Sprintf("got delegate to mythic in listenForDelegateMessagesToMythic\n"))
 		LastMessageTime = time.Now()
 		pushChan := getProfilesPushChannelFunc()
 		if pushChan != nil {

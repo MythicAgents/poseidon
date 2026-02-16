@@ -109,7 +109,7 @@ func init() {
 		Killdate:             killDateTime,
 		ShouldStop:           false,
 		stoppedChannel:       make(chan bool, 1),
-		PushChannel:          make(chan structs.MythicMessage, 100),
+		PushChannel:          make(chan structs.MythicMessage, 1000),
 		stopListeningChannel: make(chan bool, 1),
 		chunkSize:            poseidonChunkSize,
 	}
@@ -234,7 +234,9 @@ func (c *C2PoseidonTCP) handleEgressConnectionIncomingMessage(conn net.Conn) {
 	var enc_raw []byte
 	//fmt.Printf("handleEgressConnectionIncomingMessage started\n")
 	for {
+		//utils.PrintDebug(fmt.Sprintf("waiting to read tcp connection coming from Mythic to agent in profiles/tcp\n"))
 		readBuffer, err := c.ReadAndChunkData(conn)
+		//utils.PrintDebug(fmt.Sprintf("finished read tcp connection coming from Mythic to agent in profiles/tcp\n"))
 		if err != nil {
 			utils.PrintDebug(fmt.Sprintf("failed to read  tcp connection: %v\n", err))
 			c.RemoveEgressTCPConnectionByConnection(conn)
@@ -268,7 +270,7 @@ func (c *C2PoseidonTCP) handleEgressConnectionIncomingMessage(conn net.Conn) {
 			if err != nil {
 				fmt.Printf("Failed to unmarshal message into MythicResponse: %v\n", err)
 			}
-			utils.PrintDebug(fmt.Sprintf("Raw message from mythic: %s\n", string(enc_raw)))
+			//utils.PrintDebug(fmt.Sprintf("Raw message from mythic: %s\n", string(enc_raw)))
 			responses.HandleInboundMythicMessageFromEgressChannel <- taskResp
 		} else {
 			if c.ExchangingKeys {
@@ -406,6 +408,33 @@ func (c *C2PoseidonTCP) ChunkAndWriteData(conn net.Conn, data []byte) error {
 	}
 	return nil
 }
+func (c *C2PoseidonTCP) readXBytes(conn net.Conn, numOfBytes uint32) ([]byte, error) {
+	var totalBytes []byte
+	readBuffer := make([]byte, numOfBytes)
+	readSoFar, err := conn.Read(readBuffer)
+	if err != nil {
+		utils.PrintDebug(fmt.Sprintf("failed to read bytes from tcp connection: %v\n", err))
+		return nil, err
+	}
+	totalRead := uint32(readSoFar)
+	for totalRead < uint32(len(readBuffer)) {
+		// we didn't read the full size of the message yet, read more
+		nextBuffer := make([]byte, numOfBytes-totalRead)
+		readSoFar, err = conn.Read(nextBuffer)
+		if err != nil {
+			utils.PrintDebug(fmt.Sprintf("failed to read more bytes from tcp connection: %v\n", err))
+			return nil, err
+		}
+		copy(readBuffer[totalRead:], nextBuffer)
+		totalRead = totalRead + uint32(readSoFar)
+	}
+	// finished reading this chunk and all of its data
+	totalBytes = append(totalBytes, readBuffer...)
+	return totalBytes, nil
+}
+func (c *C2PoseidonTCP) bytesToBigEndian(data []byte) uint32 {
+	return binary.BigEndian.Uint32(data)
+}
 func (c *C2PoseidonTCP) ReadAndChunkData(conn net.Conn) ([]byte, error) {
 	var sizeBuffer uint32
 	var totalChunks uint32
@@ -413,47 +442,35 @@ func (c *C2PoseidonTCP) ReadAndChunkData(conn net.Conn) ([]byte, error) {
 
 	var totalBytes []byte
 	for {
-		err := binary.Read(conn, binary.BigEndian, &sizeBuffer)
+		//utils.PrintDebug(fmt.Sprintf("Starting to read from p2p connection\n"))
+		sizeBytes, err := c.readXBytes(conn, 4)
 		if err != nil {
-			utils.PrintDebug(fmt.Sprintf("failed to read size from tcp connection: %v\n", err))
 			return nil, err
 		}
+		//utils.PrintDebug(fmt.Sprintf("got size bytes: %v\n", sizeBytes))
+		sizeBuffer = c.bytesToBigEndian(sizeBytes)
 		if sizeBuffer == 0 {
 			utils.PrintDebug(fmt.Sprintf("got 0 size from remote connection\n"))
-			return nil, errors.New("got 0 size")
+			return nil, nil
 		}
-		err = binary.Read(conn, binary.BigEndian, &totalChunks)
+		totalChunksBytes, err := c.readXBytes(conn, 4)
 		if err != nil {
-			utils.PrintDebug(fmt.Sprintf("failed to read total chunks from tcp connection: %v\n", err))
 			return nil, err
 		}
-		err = binary.Read(conn, binary.BigEndian, &currentChunk)
+		//utils.PrintDebug(fmt.Sprintf("got total chunks bytes: %v\n", totalChunksBytes))
+		totalChunks = c.bytesToBigEndian(totalChunksBytes)
+		currentChunkBytes, err := c.readXBytes(conn, 4)
 		if err != nil {
-			utils.PrintDebug(fmt.Sprintf("failed to read current chunk from tcp connection: %v\n", err))
 			return nil, err
 		}
-		readBuffer := make([]byte, sizeBuffer-8)
-		readSoFar, err := conn.Read(readBuffer)
-		if err != nil {
-			utils.PrintDebug(fmt.Sprintf("failed to read bytes from tcp connection: %v\n", err))
-			return nil, err
-		}
-		totalRead := uint32(readSoFar)
-		for totalRead < uint32(len(readBuffer)) {
-			// we didn't read the full size of the message yet, read more
-			nextBuffer := make([]byte, sizeBuffer-totalRead)
-			readSoFar, err = conn.Read(nextBuffer)
-			if err != nil {
-				utils.PrintDebug(fmt.Sprintf("failed to read more bytes from tcp connection: %v\n", err))
-				return nil, err
-			}
-			copy(readBuffer[totalRead:], nextBuffer)
-			totalRead = totalRead + uint32(readSoFar)
-		}
+		//utils.PrintDebug(fmt.Sprintf("got current chunk bytes: %v\n", currentChunkBytes))
+		currentChunk = c.bytesToBigEndian(currentChunkBytes)
+		utils.PrintDebug(fmt.Sprintf("Starting read for %d/%d chunks, for size %d\n", currentChunk+1, totalChunks, sizeBuffer-8))
+		chunkBytes, err := c.readXBytes(conn, sizeBuffer-8)
 		// finished reading this chunk and all of its data
-		totalBytes = append(totalBytes, readBuffer...)
+		totalBytes = append(totalBytes, chunkBytes...)
 		//copy(totalBytes[len(totalBytes):], readBuffer[:])
-		utils.PrintDebug(fmt.Sprintf("Finished read for %d/%d chunks, for size %d\n", currentChunk+1, totalChunks, totalRead))
+		utils.PrintDebug(fmt.Sprintf("Finished read for %d/%d chunks, for size %d\n", currentChunk+1, totalChunks, sizeBuffer))
 		if currentChunk+1 == totalChunks {
 			utils.PrintDebug(fmt.Sprintf("Finished read for all chunks, for size %d\n", len(totalBytes)))
 			return totalBytes, nil
@@ -488,32 +505,39 @@ func (c *C2PoseidonTCP) SendMessage(sendData []byte) []byte {
 			i++
 		}
 		for _, connectionUUID := range keys {
+			//utils.PrintDebug(fmt.Sprintf("about to ChunkAndWriteData\n"))
 			err := c.ChunkAndWriteData(c.EgressTCPConnections[connectionUUID], sendData)
 			if err != nil {
 				utils.PrintDebug(fmt.Sprintf("Failed to send with error: %v\n", err))
 				// need to make sure we track that this egress connection is dead and should be removed
 				c.RemoveEgressTCPConnection(connectionUUID)
-				time.Sleep(200 * time.Millisecond)
+				//time.Sleep(200 * time.Millisecond)
 				continue
 			}
 			return nil
 		}
 		// if we get here it means we have no more active egress connections, so we can't send it anywhere useful
 		time.Sleep(200 * time.Millisecond)
+		//utils.PrintDebug(fmt.Sprintf("Couldn't send message\n"))
+		return nil
 	}
 }
 
 func (c *C2PoseidonTCP) CreateMessagesForEgressConnections() {
 	// got a message that needs to go to one of the c.ExternalConnection
 	for {
+		//utils.PrintDebug("waiting to get message for mythic to p2p agent from c.PushChannel")
 		msg := <-c.PushChannel
+		//utils.PrintDebug("got message from c.PushChannel to go to Mythic")
 		raw, err := json.Marshal(msg)
 		if err != nil {
 			utils.PrintDebug(fmt.Sprintf("Failed to marshal message to Mythic: %v\n", err))
 			continue
 		}
 		//fmt.Printf("Sending message outbound to websocket: %v\n", msg)
+		//utils.PrintDebug("writing message to Mythic over TCP")
 		c.SendMessage(raw)
+		//utils.PrintDebug("finished sending message for mythic to p2p agent")
 	}
 }
 func (c *C2PoseidonTCP) RemoveEgressTCPConnection(connectionUUID string) bool {

@@ -147,7 +147,10 @@ func HandleMessageFromMythic(mythicMessage structs.MythicMessageResponse) {
 	// loop through each delegate and try to forward it along
 	if len(mythicMessage.Delegates) > 0 {
 		responses.LastMessageTime = time.Now()
-		go p2p.HandleDelegateMessageForInternalP2PConnections(mythicMessage.Delegates)
+		//utils.PrintDebug("waiting to send delegates from mythic to p2p agent")
+		p2p.HandleDelegateMessageForInternalP2PConnectionsChannel <- mythicMessage.Delegates
+		//utils.PrintDebug("sent delegates from mythic to p2p agent")
+		//go p2p.HandleDelegateMessageForInternalP2PConnections(mythicMessage.Delegates)
 	}
 	//fmt.Printf("returning from HandleMessageFromMythic\n")
 	return

