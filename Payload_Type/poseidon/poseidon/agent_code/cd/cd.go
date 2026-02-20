@@ -2,10 +2,11 @@ package cd
 
 import (
 	"fmt"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 
 	// Poseidon
 
@@ -28,8 +29,14 @@ func Run(task structs.Task) {
 	} else {
 		msg.UserOutput = fmt.Sprintf("changed directory to: %s", task.Params)
 		newCwd := functions.GetCwd()
-		callbackUpdate := structs.CallbackUpdate{Cwd: &newCwd}
-		msg.CallbackUpdate = &callbackUpdate
+		if newCwd == "" {
+			callbackUpdate := structs.CallbackUpdate{Cwd: &task.Params}
+			msg.CallbackUpdate = &callbackUpdate
+			msg.UserOutput += fmt.Sprintf("\nWarning: Can't list current directory")
+		} else {
+			callbackUpdate := structs.CallbackUpdate{Cwd: &newCwd}
+			msg.CallbackUpdate = &callbackUpdate
+		}
 	}
 	task.Job.SendResponses <- msg
 	return

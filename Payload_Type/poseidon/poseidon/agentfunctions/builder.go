@@ -21,7 +21,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-const version = "2.2.29"
+const version = "2.2.30"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`
@@ -256,24 +256,34 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 
 	// Build Go link flags that are passed in at compile time through the "-ldflags=" argument
 	// https://golang.org/cmd/link/
+	buildLdFlags := []string{}
+	// leaving in old fmt.Sprintf format now as sanity checking, but will remove at some point since it's unused
 	ldflags := ""
 	if static {
 		ldflags += fmt.Sprintf("-extldflags=-static -s -w -X '%s.UUID=%s'", poseidon_repo_profile, payloadBuildMsg.PayloadUUID)
+		buildLdFlags = append(buildLdFlags, "-extldflags=-static", "-s", "-w", "-X",
+			fmt.Sprintf("'%s.UUID=%s'", poseidon_repo_profile, payloadBuildMsg.PayloadUUID))
 	} else {
 		ldflags += fmt.Sprintf("-s -w -X '%s.UUID=%s'", poseidon_repo_profile, payloadBuildMsg.PayloadUUID)
+		buildLdFlags = append(buildLdFlags, "-s", "-w", "-X",
+			fmt.Sprintf("'%s.UUID=%s'", poseidon_repo_profile, payloadBuildMsg.PayloadUUID))
 	}
 	ldflags += fmt.Sprintf(" -X '%s.debugString=%v'", poseidon_repo_utils, debug)
+	buildLdFlags = append(buildLdFlags, "-X", fmt.Sprintf("'%s.debugString=%v'", poseidon_repo_utils, debug))
 	ldflags += fmt.Sprintf(" -X '%s.egress_failover=%s'", poseidon_repo_profile, egress_failover)
+	buildLdFlags = append(buildLdFlags, "-X", fmt.Sprintf("'%s.egress_failover=%s'", poseidon_repo_profile, egress_failover))
 	ldflags += fmt.Sprintf(" -X '%s.failedConnectionCountThresholdString=%v'", poseidon_repo_profile, failedConnectionCountThresholdString)
-	if egressBytes, err := json.Marshal(egress_order); err != nil {
+	buildLdFlags = append(buildLdFlags, "-X", fmt.Sprintf("'%s.failedConnectionCountThresholdString=%v'", poseidon_repo_profile, failedConnectionCountThresholdString))
+	egressBytes, err := json.Marshal(egress_order)
+	if err != nil {
 		payloadBuildResponse.Success = false
 		payloadBuildResponse.BuildStdErr = err.Error()
 		return payloadBuildResponse
-	} else {
-		stringBytes := base64.StdEncoding.EncodeToString(egressBytes)
-		//stringBytes = strings.ReplaceAll(stringBytes, "\"", "\\\"")
-		ldflags += fmt.Sprintf(" -X '%s.egress_order=%s'", poseidon_repo_profile, stringBytes)
 	}
+	stringBytes := base64.StdEncoding.EncodeToString(egressBytes)
+	//stringBytes = strings.ReplaceAll(stringBytes, "\"", "\\\"")
+	ldflags += fmt.Sprintf(" -X '%s.egress_order=%s'", poseidon_repo_profile, stringBytes)
+	buildLdFlags = append(buildLdFlags, "-X", fmt.Sprintf("'%s.egress_order=%s'", poseidon_repo_profile, stringBytes))
 	// Iterate over the C2 profile parameters and associated variable through Go's "-X" link flag
 	for index, _ := range payloadBuildMsg.C2Profiles {
 		initialConfig := make(map[string]interface{})
@@ -404,6 +414,8 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		initialConfigBase64 := base64.StdEncoding.EncodeToString(initialConfigBytes)
 		payloadBuildResponse.BuildStdOut += fmt.Sprintf("%s's config: \n%v\n", payloadBuildMsg.C2Profiles[index].Name, string(initialConfigBytes))
 		ldflags += fmt.Sprintf(" -X '%s.%s_%s=%v'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, "initial_config", initialConfigBase64)
+		buildLdFlags = append(buildLdFlags, "-X",
+			fmt.Sprintf("'%s.%s_%s=%v'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, "initial_config", initialConfigBase64))
 	}
 
 	proxyBypass, err := payloadBuildMsg.BuildParameters.GetBooleanArg("proxy_bypass")
@@ -431,7 +443,9 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		return payloadBuildResponse
 	}
 	ldflags += fmt.Sprintf(" -X '%s.proxy_bypass=%v'", poseidon_repo_profile, proxyBypass)
+	buildLdFlags = append(buildLdFlags, "-X", fmt.Sprintf("'%s.proxy_bypass=%v'", poseidon_repo_profile, proxyBypass))
 	ldflags += " -buildid="
+	buildLdFlags = append(buildLdFlags, "-buildid=")
 	goarch := "amd64"
 	if architecture == "ARM_x64" {
 		goarch = "arm64"
@@ -447,26 +461,38 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		tags = append(tags, "shared")
 	}
 	command := fmt.Sprintf("CGO_ENABLED=1 GOOS=%s GOARCH=%s ", targetOs, goarch)
+	commandEnv := []string{"CGO_ENABLED=1",
+		fmt.Sprintf("GOOS=%s", targetOs),
+		fmt.Sprintf("GOARCH=%s", goarch),
+	}
 	goCmd := fmt.Sprintf("-tags %s -buildmode %s -ldflags \"%s\"", strings.Join(tags, ","), mode, ldflags)
 	if targetOs == "darwin" {
 		command += "CC=o64-clang CXX=o64-clang++ "
+		commandEnv = append(commandEnv, "CC=o64-clang", "CXX=o64-clang++")
 	} else if targetOs == "windows" {
 		command += "CC=x86_64-w64-mingw32-gcc "
+		commandEnv = append(commandEnv, "CC=x86_64-w64-mingw32-gcc")
 	} else {
 		if goarch == "arm64" {
 			command += "CC=aarch64-linux-gnu-gcc "
+			commandEnv = append(commandEnv, "CC=aarch64-linux-gnu-gcc")
 		} else {
 			command += "CC=x86_64-linux-gnu-gcc "
+			commandEnv = append(commandEnv, "CC=x86_64-linux-gnu-gcc")
 		}
 	}
 	command += "GOGARBLE=* "
+	commandEnv = append(commandEnv, "GOGARBLE=*")
+	commandExec := []string{"go", "build"}
 	if garble {
 		command += "garble -tiny -literals -debug -seed random build "
+		commandExec = []string{"garble", "-tiny", "-literals", "-debug", "-seed", "random", "build"}
 	} else {
 		command += "go build "
 	}
 	payloadName := fmt.Sprintf("%s-%s", payloadBuildMsg.PayloadUUID, targetOs)
 	command += fmt.Sprintf("%s -o /build/%s", goCmd, payloadName)
+
 	if targetOs == "darwin" {
 		command += fmt.Sprintf("-%s", macOSVersion)
 		payloadName += fmt.Sprintf("-%s", macOSVersion)
@@ -488,12 +514,16 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		command += ".a"
 		payloadName += ".a"
 	}
-
+	commandExec = append(commandExec,
+		"-tags", strings.Join(tags, ","),
+		"-buildmode", mode,
+		"-ldflags", fmt.Sprintf("%s", strings.Join(buildLdFlags, " ")),
+		"-o", "/build/"+payloadName)
 	mythicrpc.SendMythicRPCPayloadUpdateBuildStep(mythicrpc.MythicRPCPayloadUpdateBuildStepMessage{
 		PayloadUUID: payloadBuildMsg.PayloadUUID,
 		StepName:    "Configuring",
 		StepSuccess: true,
-		StepStdout:  fmt.Sprintf("Successfully configured\n%s", command),
+		StepStdout:  fmt.Sprintf("Successfully configured\n%s\nEnv: %v\nCmd: %v", command, commandEnv, commandExec),
 	})
 	if garble {
 		mythicrpc.SendMythicRPCPayloadUpdateBuildStep(mythicrpc.MythicRPCPayloadUpdateBuildStepMessage{
@@ -510,8 +540,10 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 			StepStdout:  fmt.Sprintf("Skipped Garble\n"),
 		})
 	}
-	cmd := exec.Command("/bin/bash")
-	cmd.Stdin = strings.NewReader(command)
+	//cmd := exec.Command("/bin/bash")
+	cmd := exec.Command(commandExec[0], commandExec[1:]...)
+	cmd.Env = append(os.Environ(), commandEnv...)
+	//cmd.Stdin = strings.NewReader(command)
 	cmd.Dir = "./poseidon/agent_code/"
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
