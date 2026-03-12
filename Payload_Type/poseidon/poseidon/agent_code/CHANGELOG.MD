@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.2.32] - 2026-03-12
+
+### Changed
+
+- Updated the garble build process to use the rust `rcodesign` utility to re-sign the binary after patching out "bad bytes"
+- Updated `ls` browserscript to leverage tabs for multiple tables
+
 ## [2.2.31] - 2026-02-27
 
 ### Changed

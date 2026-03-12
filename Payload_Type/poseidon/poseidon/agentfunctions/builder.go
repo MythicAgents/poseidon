@@ -21,7 +21,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-const version = "2.2.31"
+const version = "2.2.32"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`
@@ -549,7 +549,8 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
+	err = cmd.Run()
+	if err != nil {
 		payloadBuildResponse.Success = false
 		payloadBuildResponse.BuildMessage = "Compilation failed with errors"
 		payloadBuildResponse.BuildStdErr += stderr.String() + "\n" + err.Error()
@@ -561,20 +562,20 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 			StepStdout:  fmt.Sprintf("failed to compile\n%s\n%s\n%s", stderr.String(), stdout.String(), err.Error()),
 		})
 		return payloadBuildResponse
-	} else {
-		outputString := stdout.String()
-		if !garble {
-			// only adding stderr if garble is false, otherwise it's too much data
-			outputString += "\n" + stderr.String()
-		}
-
-		mythicrpc.SendMythicRPCPayloadUpdateBuildStep(mythicrpc.MythicRPCPayloadUpdateBuildStepMessage{
-			PayloadUUID: payloadBuildMsg.PayloadUUID,
-			StepName:    "Compiling",
-			StepSuccess: true,
-			StepStdout:  fmt.Sprintf("Successfully executed\n%s", outputString),
-		})
 	}
+	outputString := stdout.String()
+	if !garble {
+		// only adding stderr if garble is false, otherwise it's too much data
+		outputString += "\n" + stderr.String()
+	}
+
+	mythicrpc.SendMythicRPCPayloadUpdateBuildStep(mythicrpc.MythicRPCPayloadUpdateBuildStepMessage{
+		PayloadUUID: payloadBuildMsg.PayloadUUID,
+		StepName:    "Compiling",
+		StepSuccess: true,
+		StepStdout:  fmt.Sprintf("Successfully executed\n%s", outputString),
+	})
+
 	if !garble {
 		payloadBuildResponse.BuildStdErr = stderr.String()
 	}
@@ -676,6 +677,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		}
 	} else {
 		if garble {
+			fileName := fmt.Sprintf("/build/%s", payloadName)
 			for i, _ := range badSigs {
 				replacement := make([]byte, len(badSigs[i]))
 				for j, _ := range replacement {
@@ -683,7 +685,30 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 				}
 				payloadBytes = bytes.ReplaceAll(payloadBytes, badSigs[i], replacement)
 			}
-
+			err = os.WriteFile(fileName, payloadBytes, 0644)
+			if err != nil {
+				payloadBuildResponse.Success = false
+				payloadBuildResponse.BuildMessage = "Failed to write out modified garble payload!\n" + stderr.String()
+				payloadBuildResponse.BuildStdErr += fmt.Sprintf("\n%v\n", err)
+				return payloadBuildResponse
+			}
+			// now need to run /rcodesign to "fix" the broke sigs
+			cmd = exec.Command("/rcodesign", "sign", fileName)
+			cmd.Stderr = &stderr
+			err = cmd.Run()
+			if err != nil {
+				payloadBuildResponse.Success = false
+				payloadBuildResponse.BuildMessage = "Failed to sign payload!\n" + stderr.String()
+				payloadBuildResponse.BuildStdErr += fmt.Sprintf("\n%v\n", err)
+				return payloadBuildResponse
+			}
+			payloadBytes, err = os.ReadFile(fileName)
+			if err != nil {
+				payloadBuildResponse.Success = false
+				payloadBuildResponse.BuildMessage = "Failed to read signed payload!\n" + stderr.String()
+				payloadBuildResponse.BuildStdErr += fmt.Sprintf("\n%v\n", err)
+				return payloadBuildResponse
+			}
 		}
 		payloadBuildResponse.Payload = &payloadBytes
 		payloadBuildResponse.Success = true

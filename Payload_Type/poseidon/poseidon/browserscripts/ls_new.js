@@ -107,6 +107,10 @@ function(task, response){
 			"title": perms['symlink'] !== "" && perms['symlink'] ? data["name"] + " ➡ " + perms['symlink'] : data["name"]
 		})
 	}
+	if(tables.length > 1){
+		let tabs = tables.map(t => { return {"title": t.title, "content": {"table": [t]}}})
+		return {"tabs": tabs}
+	}
 	return {"table":tables};
 
 }
