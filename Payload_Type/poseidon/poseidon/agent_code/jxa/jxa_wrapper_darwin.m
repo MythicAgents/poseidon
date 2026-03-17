@@ -1,3 +1,5 @@
+//go:build darwin && (jxa || debug)
+
 #import <Foundation/Foundation.h>
 #import <OSAKit/OSAKit.h>
 #include "jxa_wrapper_darwin.h"

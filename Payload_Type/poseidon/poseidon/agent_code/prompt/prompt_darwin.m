@@ -1,3 +1,5 @@
+//go:build darwin && (prompt || debug)
+
 #import <Security/Security.h>
 #import <Foundation/Foundation.h>
 #import <AppKit/AppKit.h>

@@ -1,3 +1,4 @@
+//go:build darwin && (execute_library || debug)
 
 #include <mach-o/dyld.h>
 #include <sys/stat.h> 

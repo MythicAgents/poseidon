@@ -1,3 +1,5 @@
+//go:build darwin && (ps || list_entitlements || debug)
+
 /*
  * Copyright (c) 2006-2010 Apple Inc. All rights reserved.
  *

@@ -1,3 +1,5 @@
+//go:build darwin && (lsopen || debug)
+
 #import <Foundation/Foundation.h>
 #include "lsopen_darwin.h"
 

@@ -1,3 +1,5 @@
+//go:build darwin && amd64 && (libinject || debug)
+
 #include <dlfcn.h>
 #include <stdio.h>
 #include <unistd.h>

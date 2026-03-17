@@ -1,3 +1,5 @@
+//go:build darwin && (lsopen || debug)
+
 #ifndef launchservices_open_h
 #define launchservices_open_h
 

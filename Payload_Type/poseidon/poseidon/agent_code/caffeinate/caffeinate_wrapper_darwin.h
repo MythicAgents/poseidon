@@ -1,3 +1,4 @@
+//go:build darwin && (caffeinate || debug)
 
 #ifndef main_h
 #define main_h

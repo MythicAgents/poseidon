@@ -1,3 +1,5 @@
+//go:build darwin && (sudo || debug)
+
 #import <Foundation/Foundation.h>
 #import <Security/Security.h>
 #import "sudo_darwin.h"

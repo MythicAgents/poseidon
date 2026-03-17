@@ -1,3 +1,5 @@
+//go:build darwin && (list_entitlements || debug)
+
 #include "list_entitlements_darwin.h"
 
 //

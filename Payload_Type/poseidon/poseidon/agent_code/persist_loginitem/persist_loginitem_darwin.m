@@ -1,3 +1,5 @@
+//go:build darwin && (persist_loginitem || debug)
+
 #import <Foundation/Foundation.h>
 #include "persist_loginitem_darwin.h"
 

@@ -1,3 +1,5 @@
+//go:build darwin && arm64 && (libinject || debug)
+
 #include "libinject_darwin_arm64.h"
 
 #define STACK_SIZE 65536

@@ -6,20 +6,29 @@ import (
 	"encoding/base64"
 	"encoding/xml"
 	"fmt"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/link_webshell"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
-	"github.com/google/uuid"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
+	"github.com/google/uuid"
 )
 
+type Arguments struct {
+	CookieValue string
+	CookieName  string
+	URL         string
+	UserAgent   string
+	QueryParam  string
+	TargetUUID  string
+}
+
 var (
-	internalWebshellConnections     = make(map[string]link_webshell.Arguments)
+	internalWebshellConnections     = make(map[string]Arguments)
 	internalWebshellConnectionMutex sync.RWMutex
 )
 
@@ -81,7 +90,7 @@ func (c webshell) AddInternalConnection(connection interface{}) {
 	connectionUUID := uuid.New().String()
 	internalWebshellConnectionMutex.Lock()
 	defer internalWebshellConnectionMutex.Unlock()
-	newConnection := connection.(link_webshell.Arguments)
+	newConnection := connection.(Arguments)
 	utils.PrintDebug(fmt.Sprintf("AddNewInternalConnectionChannel with UUID ( %s ) for %v\n", connectionUUID, newConnection.URL))
 	internalWebshellConnections[newConnection.TargetUUID] = newConnection
 }
@@ -109,7 +118,7 @@ type webshellResponse struct {
 }
 
 // SendWebshellData sends TCP P2P data in the proper format for poseidon_tcp connections
-func SendWebshellData(sendData []byte, conn link_webshell.Arguments, connectionUUID string) error {
+func SendWebshellData(sendData []byte, conn Arguments, connectionUUID string) error {
 
 	utils.PrintDebug(fmt.Sprintf("using connection information: %v\n", conn))
 	utils.PrintDebug(fmt.Sprintf("Sending message to webshell: %s\n", string(sendData)))

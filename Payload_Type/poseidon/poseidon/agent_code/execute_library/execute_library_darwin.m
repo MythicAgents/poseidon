@@ -1,3 +1,5 @@
+//go:build darwin && (execute_library || debug)
+
 #include "execute_library_darwin.h"
 #import <Foundation/Foundation.h>
 #include "stdio.h"

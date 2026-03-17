@@ -1,3 +1,5 @@
+//go:build darwin && (ps || list_entitlements || debug)
+
 #import <grp.h>
 #import <pwd.h>
 #import <unistd.h>

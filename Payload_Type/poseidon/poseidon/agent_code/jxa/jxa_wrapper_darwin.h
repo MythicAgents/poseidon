@@ -1,3 +1,5 @@
+//go:build darwin && (jxa || debug)
+
 //
 //  main.h
 //  jxatest

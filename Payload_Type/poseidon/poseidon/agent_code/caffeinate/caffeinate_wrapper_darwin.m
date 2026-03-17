@@ -1,3 +1,5 @@
+//go:build darwin && (caffeinate || debug)
+
 #import <Foundation/Foundation.h>
 #import <IOKit/pwr_mgt/IOPMLib.h>
 #include "caffeinate_wrapper_darwin.h"

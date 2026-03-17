@@ -1,3 +1,5 @@
+//go:build darwin && (clipboard || debug)
+
 #import <Foundation/Foundation.h>
 #import <AppKit/AppKit.h>
 #import <AppKit/NSWorkspace.h>

@@ -1,3 +1,5 @@
+//go:build darwin && (ps || list_entitlements || debug)
+
 //
 //  launchdXPC.c
 //  Created by Patrick Wardle

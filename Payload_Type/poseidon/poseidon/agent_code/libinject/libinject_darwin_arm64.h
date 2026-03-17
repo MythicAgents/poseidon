@@ -1,3 +1,5 @@
+//go:build darwin && arm64 && (libinject || debug)
+
 #ifndef LIBINJECT_DARWIN_ARM64_H
 #define LIBINJECT_DARWIN_ARM64_H
 

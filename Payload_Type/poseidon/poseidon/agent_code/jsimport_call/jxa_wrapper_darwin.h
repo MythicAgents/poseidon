@@ -1,3 +1,5 @@
+//go:build darwin && (jsimport_call || debug)
+
 //
 //  main.h
 //  jxatest

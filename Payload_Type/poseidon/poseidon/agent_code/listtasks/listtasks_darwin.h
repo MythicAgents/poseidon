@@ -1,3 +1,5 @@
+//go:build darwin && (listtasks || debug)
+
 #include <mach/mach.h>
 #include <stdio.h>
 #include <stdlib.h>

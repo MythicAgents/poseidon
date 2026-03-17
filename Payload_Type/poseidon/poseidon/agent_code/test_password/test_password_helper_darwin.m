@@ -1,3 +1,5 @@
+//go:build darwin && (test_password || debug)
+
 #include "test_password_helper_darwin.h"
 #import <Foundation/Foundation.h>
 #import <OpenDirectory/OpenDirectory.h>

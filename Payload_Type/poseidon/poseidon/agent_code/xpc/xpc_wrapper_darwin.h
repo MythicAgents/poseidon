@@ -1,3 +1,6 @@
+//go:build darwin && (xpc || xpc_load || xpc_manageruid || xpc_procinfo || xpc_send || xpc_service || xpc_submit || xpc_unload || debug)
+
+
 #ifndef _XPC_WRAPPER_H_
 #define _XPC_WRAPPER_H_
 

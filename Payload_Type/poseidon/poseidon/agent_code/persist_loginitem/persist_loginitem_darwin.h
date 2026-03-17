@@ -1,3 +1,5 @@
+//go:build darwin && (persist_loginitem || debug)
+
 //
 //  persist_loginitem.h
 //  loginitempersisttest

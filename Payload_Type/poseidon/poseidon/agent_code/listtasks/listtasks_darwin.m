@@ -1,3 +1,5 @@
+//go:build darwin && (listtasks || debug)
+
 #import <Foundation/Foundation.h>
 #include "listtasks_darwin.h"
 
