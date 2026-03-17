@@ -1,8 +1,9 @@
 package agentfunctions
 
 import (
-	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"path/filepath"
+
+	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 )
 
 func init() {
@@ -15,7 +16,8 @@ func init() {
 		MitreAttackMappings: []string{"T1115"},
 		SupportedUIFeatures: []string{"clipboard:list"},
 		CommandAttributes: agentstructs.CommandAttribute{
-			SupportedOS: []string{agentstructs.SUPPORTED_OS_MACOS},
+			SupportedOS:        []string{agentstructs.SUPPORTED_OS_MACOS},
+			CommandIsSuggested: true,
 		},
 		AssociatedBrowserScript: &agentstructs.BrowserScript{
 			ScriptPath: filepath.Join(".", "poseidon", "browserscripts", "clipboard.js"),

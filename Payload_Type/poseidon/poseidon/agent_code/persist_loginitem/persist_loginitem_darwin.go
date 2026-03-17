@@ -1,4 +1,4 @@
-//go:build darwin
+//go:build darwin && (persist_loginitem || debug)
 
 package persist_loginitem
 

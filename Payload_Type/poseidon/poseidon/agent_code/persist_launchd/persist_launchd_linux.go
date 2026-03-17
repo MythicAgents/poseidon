@@ -1,3 +1,5 @@
+//go:build linux && (persist_launchd || debug)
+
 package persist_launchd
 
 import (

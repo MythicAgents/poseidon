@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux && (persist_loginitem || debug)
 
 package persist_loginitem
 

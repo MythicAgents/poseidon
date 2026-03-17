@@ -1,12 +1,20 @@
+//go:build (linux || darwin) && (tail || debug)
+
 package tail
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 	"io"
 	"os"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("tail", Run)
+}
 
 type Arguments struct {
 	FilePath string

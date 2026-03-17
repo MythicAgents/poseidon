@@ -21,9 +21,20 @@ function(task, responses){
         	let responseData = {};
         	if(errors.length > 0){
         		responseData["plaintext"] = "Errors downloading:\n" + JSON.stringify(errors, null, 2);
-			}else if(screenshots.length > 0){
+			}else if(screenshots.length === 1){
 				responseData["media"] = screenshots.map( s => {
 					return {agent_file_id: s, filename: "monitor.png"}
+				})
+			}else if(screenshots.length > 1){
+				responseData["tabs"] = screenshots.map( (s,i) => {
+					return {
+						title: "monitor-" + i + ".png",
+						content: {
+							media: [
+								{filename: "monitor-" + i + ".png", agent_file_id: s}
+							]
+						}
+					}
 				})
 			}
         	return responseData;
@@ -32,6 +43,6 @@ function(task, responses){
         }
     }else{
         // this means we shouldn't have any output
-        return {"plaintext": "Not response yet from agent..."}
+        return {"plaintext": "No response yet from agent..."}
     }
 }

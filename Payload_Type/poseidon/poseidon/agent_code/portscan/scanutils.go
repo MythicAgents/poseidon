@@ -1,3 +1,5 @@
+//go:build (linux || darwin) && (portscan || debug)
+
 package portscan
 
 import (

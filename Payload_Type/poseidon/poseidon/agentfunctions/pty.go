@@ -2,6 +2,7 @@ package agentfunctions
 
 import (
 	"fmt"
+
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"github.com/MythicMeta/MythicContainer/logging"
 	"github.com/MythicMeta/MythicContainer/mythicrpc"
@@ -16,6 +17,10 @@ var pty = agentstructs.Command{
 	SupportedUIFeatures: []string{
 		agentstructs.SUPPORTED_UI_FEATURE_TASK_RESPONSE_INTERACTIVE,
 		//agentstructs.SUPPORTED_UI_FEATURE_TASK_PROCESS_INTERACTIVE_TASKS,
+	},
+	CommandAttributes: agentstructs.CommandAttribute{
+		SupportedOS:        []string{},
+		CommandIsSuggested: true,
 	},
 	CommandParameters: []agentstructs.CommandParameter{
 		{

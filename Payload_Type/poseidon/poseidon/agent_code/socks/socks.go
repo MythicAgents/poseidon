@@ -1,3 +1,5 @@
+//go:build (linux || darwin) && (socks || debug)
+
 package socks
 
 import (
@@ -8,16 +10,22 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 	"io"
 	"net"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("socks", Run)
+}
 
 // ****** The following is from https://github.com/armon/go-socks5 *****
 const (

@@ -1,3 +1,5 @@
+//go:build list_entitlements || debug
+
 package list_entitlements
 
 import (
@@ -5,9 +7,14 @@ import (
 	"encoding/json"
 	// Poseidon
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/ps"
 )
+
+func init() {
+	taskRegistrar.Register("list_entitlements", Run)
+}
 
 type Arguments struct {
 	PID int

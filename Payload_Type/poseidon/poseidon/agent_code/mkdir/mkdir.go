@@ -1,3 +1,5 @@
+//go:build (linux || darwin) && (mkdir || debug)
+
 package mkdir
 
 import (
@@ -8,8 +10,13 @@ import (
 
 	// Poseidon
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("mkdir", Run)
+}
 
 func Run(task structs.Task) {
 	msg := task.NewResponse()

@@ -1,8 +1,9 @@
 package agentfunctions
 
 import (
-	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"strings"
+
+	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 )
 
 func init() {
@@ -14,6 +15,10 @@ func init() {
 		Author:              "@xorrior, @its_a_feature_",
 		MitreAttackMappings: []string{"T1005"},
 		SupportedUIFeatures: []string{},
+		CommandAttributes: agentstructs.CommandAttribute{
+			SupportedOS:        []string{},
+			CommandIsSuggested: true,
+		},
 		CommandParameters: []agentstructs.CommandParameter{
 			{
 				Name:          "path",

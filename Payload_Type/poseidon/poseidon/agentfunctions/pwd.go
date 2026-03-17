@@ -17,7 +17,8 @@ var pwd = agentstructs.Command{
 	TaskFunctionParseArgDictionary: pwdParseDictArgs,
 	ScriptOnlyCommand:              false,
 	CommandAttributes: agentstructs.CommandAttribute{
-		SupportedOS: []string{},
+		SupportedOS:        []string{},
+		CommandIsSuggested: true,
 	},
 }
 

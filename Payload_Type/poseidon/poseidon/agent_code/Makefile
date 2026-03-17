@@ -50,7 +50,7 @@ build_protobuf_go:
 
 
 build_http:
-	${goCmd} -o ${BINARY_NAME}_${C2_HTTP}.bin -tags="${C2_HTTP}" -ldflags=" \
+	${goCmd} -o ${BINARY_NAME}_${C2_HTTP}.bin -tags="${C2_HTTP},debug" -ldflags=" \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.UUID=${HTTP_UUID}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_order=${EGRESS_ORDER}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_failover=${EGRESS_FAILOVER}' \
@@ -60,7 +60,7 @@ build_http:
 " .
 
 build_tcp:
-	${goCmd} -o ${BINARY_NAME}_${C2_TCP} -tags="${C2_TCP}" -ldflags=" \
+	${goCmd} -o ${BINARY_NAME}_${C2_TCP} -tags="${C2_TCP},debug" -ldflags=" \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.UUID=${TCP_UUID}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_order=${EGRESS_ORDER}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_failover=${EGRESS_FAILOVER}' \
@@ -70,7 +70,7 @@ build_tcp:
 " .
 
 build_tcp2:
-	${goCmd} -o ${BINARY_NAME}_${C2_TCP}2 -tags="${C2_TCP}" -ldflags=" \
+	${goCmd} -o ${BINARY_NAME}_${C2_TCP}2 -tags="${C2_TCP},debug" -ldflags=" \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.UUID=${TCP_UUID2}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_order=${EGRESS_ORDER}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_failover=${EGRESS_FAILOVER}' \
@@ -80,7 +80,7 @@ build_tcp2:
 " .
 
 build_http_tcp:
-	${goCmd} -o ${BINARY_NAME}_${C2_HTTP}_${C2_TCP} -tags="${C2_HTTP},${C2_TCP}" -ldflags=" \
+	${goCmd} -o ${BINARY_NAME}_${C2_HTTP}_${C2_TCP} -tags="${C2_HTTP},${C2_TCP},debug" -ldflags=" \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.UUID=${HTTP_UUID}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_order=${EGRESS_ORDER}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_failover=${EGRESS_FAILOVER}' \
@@ -91,7 +91,7 @@ build_http_tcp:
 " .
 
 build_websocket:
-	${goCmd} -o ${BINARY_NAME}_${C2_WEBSOCKET}.bin -tags="${C2_WEBSOCKET}" -ldflags=" \
+	${goCmd} -o ${BINARY_NAME}_${C2_WEBSOCKET}.bin -tags="${C2_WEBSOCKET},debug" -ldflags=" \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.UUID=${WEBSOCKET_UUID}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_order=${EGRESS_ORDER}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_failover=${EGRESS_FAILOVER}' \
@@ -101,7 +101,7 @@ build_websocket:
 " .
 
 build_websocket_http:
-	${goCmd} -o ${BINARY_NAME}_${C2_WEBSOCKET}_${C2_HTTP}.bin -tags="${C2_WEBSOCKET},${C2_HTTP}" -ldflags=" \
+	${goCmd} -o ${BINARY_NAME}_${C2_WEBSOCKET}_${C2_HTTP}.bin -tags="${C2_WEBSOCKET},${C2_HTTP},debug" -ldflags=" \
     -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.UUID=${WEBSOCKET_UUID}' \
 	-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_order=${EGRESS_ORDER}' \
 	-X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_failover=${EGRESS_FAILOVER}' \
@@ -112,7 +112,7 @@ build_websocket_http:
     " .
 
 build_dynamichttp:
-	${goCmd} -o ${BINARY_NAME}_${C2_DYNAMICHTTP}.bin -tags="${C2_DYNAMICHTTP}" -ldflags=" \
+	${goCmd} -o ${BINARY_NAME}_${C2_DYNAMICHTTP}.bin -tags="${C2_DYNAMICHTTP},debug" -ldflags=" \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.UUID=${DYNAMICHTTP_UUID}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_order=${EGRESS_ORDER}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_failover=${EGRESS_FAILOVER}' \
@@ -122,7 +122,7 @@ build_dynamichttp:
 " .
 
 build_httpx:
-	${goCmd} -o ${BINARY_NAME}_${C2_HTTPX}.bin -tags="${C2_HTTPX}" -ldflags=" \
+	${goCmd} -o ${BINARY_NAME}_${C2_HTTPX}.bin -tags="${C2_HTTPX},debug" -ldflags=" \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.UUID=${HTTPX_UUID}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_order=${EGRESS_ORDER}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_failover=${EGRESS_FAILOVER}' \
@@ -132,7 +132,7 @@ build_httpx:
 " .
 
 build_dns:
-	${goCmd} -o ${BINARY_NAME}_${C2_DNS}.bin -tags="${C2_DNS}" -ldflags=" \
+	${goCmd} -o ${BINARY_NAME}_${C2_DNS}.bin -tags="${C2_DNS},debug" -ldflags=" \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.UUID=${DNS_UUID}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_order=${EGRESS_ORDER}' \
 -X 'github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles.egress_failover=${EGRESS_FAILOVER}' \

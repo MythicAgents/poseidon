@@ -2,6 +2,7 @@ package agentfunctions
 
 import (
 	"errors"
+
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"github.com/MythicMeta/MythicContainer/logging"
 )
@@ -16,7 +17,8 @@ func init() {
 		MitreAttackMappings: []string{},
 		SupportedUIFeatures: []string{},
 		CommandAttributes: agentstructs.CommandAttribute{
-			SupportedOS: []string{},
+			SupportedOS:        []string{},
+			CommandIsSuggested: true,
 		},
 		CommandParameters: []agentstructs.CommandParameter{
 			{

@@ -21,7 +21,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-const version = "2.2.32"
+const version = "2.3.0"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`
@@ -41,7 +41,7 @@ var payloadDefinition = agentstructs.PayloadType{
 	SupportedOS:                            []string{agentstructs.SUPPORTED_OS_LINUX, agentstructs.SUPPORTED_OS_MACOS},
 	Wrapper:                                false,
 	CanBeWrappedByTheFollowingPayloadTypes: []string{},
-	SupportsDynamicLoading:                 false,
+	SupportsDynamicLoading:                 true,
 	Description:                            fmt.Sprintf("A fully featured macOS and Linux Golang agent.\nNeeds Mythic 3.3.0+\nNOTE: P2P not compatible with v2.1 agents!"),
 	SupportedC2Profiles:                    []string{"http", "websocket", "tcp", "dynamichttp", "webshell", "httpx", "dns"},
 	MythicEncryptsData:                     true,
@@ -460,6 +460,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	if mode == "c-shared" {
 		tags = append(tags, "shared")
 	}
+	tags = append(tags, payloadBuildMsg.CommandList...)
 	command := fmt.Sprintf("CGO_ENABLED=1 GOOS=%s GOARCH=%s ", targetOs, goarch)
 	commandEnv := []string{"CGO_ENABLED=1",
 		fmt.Sprintf("GOOS=%s", targetOs),

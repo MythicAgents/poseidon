@@ -10,6 +10,10 @@ var config = agentstructs.Command{
 	MitreAttackMappings:       []string{},
 	TaskFunctionCreateTasking: configCreateTasking,
 	Version:                   1,
+	CommandAttributes: agentstructs.CommandAttribute{
+		SupportedOS:        []string{},
+		CommandIsSuggested: true,
+	},
 }
 
 func init() {

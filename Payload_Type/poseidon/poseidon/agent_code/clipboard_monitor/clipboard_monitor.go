@@ -1,3 +1,5 @@
+//go:build clipboard_monitor || debug
+
 package clipboard_monitor
 
 import (
@@ -6,9 +8,14 @@ import (
 
 	// Poseidon
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("clipboard_monitor", Run)
+}
 
 type Arguments struct {
 	Duration int

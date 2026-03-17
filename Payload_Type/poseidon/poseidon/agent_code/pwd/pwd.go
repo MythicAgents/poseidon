@@ -1,3 +1,5 @@
+//go:build (linux || darwin) && (pwd || debug)
+
 package pwd
 
 import (
@@ -7,8 +9,13 @@ import (
 
 	// Poseidon
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("pwd", Run)
+}
 
 // Run - interface method that retrieves a process list
 func Run(task structs.Task) {

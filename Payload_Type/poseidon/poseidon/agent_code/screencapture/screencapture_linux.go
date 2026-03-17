@@ -1,4 +1,4 @@
-// +build linux
+//go:build linux && (screencapture || debug)
 
 package screencapture
 
@@ -12,18 +12,18 @@ import (
 	s "github.com/kbinani/screenshot"
 )
 
-//LinuxScreenshot - struct for screenshot data
+// LinuxScreenshot - struct for screenshot data
 type LinuxScreenshot struct {
 	MonitorIndex   int
 	ScreenshotData []byte
 }
 
-//Monitor - Darwin subclass method to return the monitor index
+// Monitor - Darwin subclass method to return the monitor index
 func (d *LinuxScreenshot) Monitor() int {
 	return d.MonitorIndex
 }
 
-//Data - Darwin subclass method to return the raw png data
+// Data - Darwin subclass method to return the raw png data
 func (d *LinuxScreenshot) Data() []byte {
 	return d.ScreenshotData
 }

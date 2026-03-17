@@ -1,7 +1,7 @@
-//go:build darwin && arm64
-// +build darwin,arm64
+//go:build darwin && arm64 && (libinject || debug)
 
 package libinject
+
 /*
 #cgo CFLAGS: -Wno-error=implicit-function-declaration
 #cgo LDFLAGS: -framework Foundation -framework Security

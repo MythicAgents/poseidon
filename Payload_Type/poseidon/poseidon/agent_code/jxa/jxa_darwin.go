@@ -1,4 +1,4 @@
-// +build darwin
+//go:build darwin && (jxa || debug)
 
 package jxa
 

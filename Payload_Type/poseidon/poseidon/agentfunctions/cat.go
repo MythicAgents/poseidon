@@ -13,6 +13,10 @@ func init() {
 		Author:              "@xorrior",
 		MitreAttackMappings: []string{"T1005"},
 		SupportedUIFeatures: []string{},
+		CommandAttributes: agentstructs.CommandAttribute{
+			SupportedOS:        []string{},
+			CommandIsSuggested: true,
+		},
 		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,

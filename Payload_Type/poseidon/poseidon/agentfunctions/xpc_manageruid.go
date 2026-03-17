@@ -13,7 +13,8 @@ func init() {
 		MitreAttackMappings: []string{"T1559"},
 		CommandParameters:   []agentstructs.CommandParameter{},
 		CommandAttributes: agentstructs.CommandAttribute{
-			SupportedOS: []string{agentstructs.SUPPORTED_OS_MACOS},
+			SupportedOS:        []string{agentstructs.SUPPORTED_OS_MACOS},
+			CommandIsSuggested: true,
 		},
 		TaskFunctionParseArgString: func(args *agentstructs.PTTaskMessageArgsData, input string) error {
 			args.AddArg(agentstructs.CommandParameter{

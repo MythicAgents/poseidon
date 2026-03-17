@@ -1,3 +1,5 @@
+//go:build darwin && (test_password || debug)
+
 package test_password
 
 /*

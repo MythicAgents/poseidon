@@ -1,13 +1,13 @@
-//go:build linux
-// +build linux
+//go:build linux && (pty || debug)
 
 package pty
 
 import (
-	creakPty "github.com/creack/pty"
 	"os"
 	"os/exec"
 	"syscall"
+
+	creakPty "github.com/creack/pty"
 )
 
 func customPtyStart(command *exec.Cmd) (*os.File, error) {

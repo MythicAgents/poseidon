@@ -3,8 +3,9 @@ package agentfunctions
 import (
 	"errors"
 	"fmt"
-	"github.com/MythicMeta/MythicContainer/logging"
 	"path/filepath"
+
+	"github.com/MythicMeta/MythicContainer/logging"
 
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 )
@@ -19,7 +20,8 @@ func init() {
 		MitreAttackMappings: []string{},
 		SupportedUIFeatures: []string{},
 		CommandAttributes: agentstructs.CommandAttribute{
-			SupportedOS: []string{agentstructs.SUPPORTED_OS_MACOS},
+			SupportedOS:        []string{agentstructs.SUPPORTED_OS_MACOS},
+			CommandIsSuggested: true,
 		},
 		AssociatedBrowserScript: &agentstructs.BrowserScript{
 			ScriptPath: filepath.Join(".", "poseidon", "browserscripts", "list_entitlements_new.js"), // the name of the script in agent_browser_scripts

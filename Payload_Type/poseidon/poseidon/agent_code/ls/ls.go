@@ -1,15 +1,19 @@
+//go:build (linux || darwin) && (ls || debug)
+
 package ls
 
 import (
 	// Standard
 	"encoding/json"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 
 	// 3rd Party
 	"github.com/djherbis/atime"
@@ -18,6 +22,10 @@ import (
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("ls", Run)
+}
 
 func GetPermission(finfo os.FileInfo) structs.FilePermission {
 	perms := structs.FilePermission{}

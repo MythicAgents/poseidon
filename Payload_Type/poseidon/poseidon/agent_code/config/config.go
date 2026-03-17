@@ -1,12 +1,20 @@
+//go:build (linux || darwin) && (config || debug)
+
 package config
 
 import (
 	// Poseidon
 
 	"encoding/json"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("config", Run)
+}
 
 // Run - Function that executes the shell command
 func Run(task structs.Task) {

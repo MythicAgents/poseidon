@@ -1,3 +1,5 @@
+//go:build (linux || darwin) && (shell || shell_config || debug)
+
 package shell
 
 import (
@@ -11,8 +13,14 @@ import (
 
 	// Poseidon
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("shell", Run)
+	taskRegistrar.Register("shell_config", RunConfig)
+}
 
 var shellBin = "/bin/bash"
 

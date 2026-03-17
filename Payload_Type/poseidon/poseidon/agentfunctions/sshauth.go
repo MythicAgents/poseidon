@@ -2,9 +2,10 @@ package agentfunctions
 
 import (
 	"fmt"
-	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"path/filepath"
 	"strings"
+
+	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 )
 
 func init() {
@@ -18,7 +19,8 @@ You can also use this to execute a specific command on the remote hosts via SSH 
 		MitreAttackMappings: []string{"T1110.003"},
 		SupportedUIFeatures: []string{},
 		CommandAttributes: agentstructs.CommandAttribute{
-			SupportedOS: []string{},
+			SupportedOS:        []string{},
+			CommandIsSuggested: true,
 		},
 		AssociatedBrowserScript: &agentstructs.BrowserScript{
 			ScriptPath: filepath.Join(".", "poseidon", "browserscripts", "sshauth_new.js"),

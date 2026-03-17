@@ -28,8 +28,17 @@ function(task, responses) {
                 }
             }
 
-            if (mediaArray.length > 0) {
-                return { "media": mediaArray };
+            if (mediaArray.length === 1) {
+                return {"media": mediaArray};
+            }else if(mediaArray.length > 1){
+                return {"tabs": mediaArray.map(m => {
+                    return {
+                        title: m.filename,
+                        content: {
+                            media: [m]
+                        }
+                    }
+                    })}
             } else {
                 return { "plaintext": "No files found in responses." };
             }

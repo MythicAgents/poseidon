@@ -14,7 +14,8 @@ func init() {
 		SupportedUIFeatures: []string{"callback_table:exit"},
 		Author:              "@xorrior",
 		CommandAttributes: agentstructs.CommandAttribute{
-			SupportedOS: []string{},
+			SupportedOS:      []string{},
+			CommandIsBuiltin: true,
 		},
 		TaskFunctionParseArgString: func(args *agentstructs.PTTaskMessageArgsData, input string) error {
 			return nil

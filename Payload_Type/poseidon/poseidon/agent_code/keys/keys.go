@@ -1,3 +1,5 @@
+//go:build keys || debug
+
 package keys
 
 import (
@@ -6,8 +8,13 @@ import (
 
 	// Poseidon
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("keys", Run)
+}
 
 // KeyInformation - interface for key data
 type KeyInformation interface {

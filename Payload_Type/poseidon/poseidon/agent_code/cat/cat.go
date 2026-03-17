@@ -1,16 +1,24 @@
+//go:build (linux || darwin) && (cat || debug)
+
 package cat
 
 import (
 	// Standard
 
 	"fmt"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/files"
 	"os"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/files"
 
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("cat", Run)
+}
 
 // Run - package function to run cat
 func Run(task structs.Task) {

@@ -2,6 +2,7 @@ package agentfunctions
 
 import (
 	"errors"
+
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 )
 
@@ -14,6 +15,10 @@ func init() {
 		Author:              "@xorrior",
 		MitreAttackMappings: []string{},
 		SupportedUIFeatures: []string{},
+		CommandAttributes: agentstructs.CommandAttribute{
+			SupportedOS:        []string{},
+			CommandIsSuggested: true,
+		},
 		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,

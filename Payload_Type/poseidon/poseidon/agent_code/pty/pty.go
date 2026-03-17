@@ -1,3 +1,5 @@
+//go:build pty || debug
+
 package pty
 
 import (
@@ -6,16 +8,22 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/enums/InteractiveTask"
-	"github.com/creack/pty"
 	"io"
 	"os"
 	"os/exec"
 	"time"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/enums/InteractiveTask"
+	"github.com/creack/pty"
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("pty", Run)
+}
 
 type Arguments struct {
 	ProgramPath string

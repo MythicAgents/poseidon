@@ -1,3 +1,5 @@
+//go:build (linux || darwin) && (curl || curl_env_set || curl_env_get || curl_env_clear || debug)
+
 package curl
 
 import (
@@ -17,8 +19,13 @@ import (
 
 	// Poseidon
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("curl", Run)
+}
 
 type Arguments struct {
 	Url         string

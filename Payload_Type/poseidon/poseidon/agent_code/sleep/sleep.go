@@ -1,14 +1,22 @@
+//go:build (linux || darwin) && (sleep || debug)
+
 package sleep
 
 import (
 	// Standard
 	"encoding/json"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("sleep", Run)
+}
 
 type Arguments struct {
 	Interval       int

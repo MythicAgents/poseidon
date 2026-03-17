@@ -1,3 +1,5 @@
+//go:build darwin && (persist_launchd || debug)
+
 package persist_launchd
 
 import (
@@ -5,10 +7,11 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/xpc"
 	"os"
 	"strings"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/xpc"
 
 	// External
 	"howett.net/plist"

@@ -1,3 +1,5 @@
+//go:build (linux || darwin) && (print_c2 || debug)
+
 package print_c2
 
 import (
@@ -6,8 +8,13 @@ import (
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("print_c2", Run)
+}
 
 // Run - package function to run print_c2
 func Run(task structs.Task) {

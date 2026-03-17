@@ -1,8 +1,9 @@
 package agentfunctions
 
 import (
-	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"path/filepath"
+
+	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 )
 
 func init() {
@@ -15,7 +16,8 @@ func init() {
 		SupportedUIFeatures: []string{},
 		Author:              "@xorrior",
 		CommandAttributes: agentstructs.CommandAttribute{
-			SupportedOS: []string{},
+			SupportedOS:      []string{},
+			CommandIsBuiltin: true,
 		},
 		AssociatedBrowserScript: &agentstructs.BrowserScript{
 			ScriptPath: filepath.Join(".", "poseidon", "browserscripts", "jobs.js"),

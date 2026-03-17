@@ -2,11 +2,12 @@ package agentfunctions
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
+
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"github.com/MythicMeta/MythicContainer/logging"
 	"github.com/mitchellh/mapstructure"
-	"path/filepath"
-	"strings"
 )
 
 func init() {
@@ -21,6 +22,10 @@ func init() {
 		AssociatedBrowserScript: &agentstructs.BrowserScript{
 			ScriptPath: filepath.Join(".", "poseidon", "browserscripts", "ls_new.js"),
 			Author:     "@its_a_feature_",
+		},
+		CommandAttributes: agentstructs.CommandAttribute{
+			SupportedOS:        []string{},
+			CommandIsSuggested: true,
 		},
 		CommandParameters: []agentstructs.CommandParameter{
 			{

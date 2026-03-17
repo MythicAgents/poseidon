@@ -1,3 +1,5 @@
+//go:build (linux || darwin) && (download_bulk || debug)
+
 package download_bulk
 
 import (
@@ -11,9 +13,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	// Poseidon
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("download_bulk", Run)
+}
 
 // zipFilesAndDirectories compresses files/directories into a single zip in memory
 func zipFilesAndDirectories(paths []string) (*bytes.Buffer, error) {

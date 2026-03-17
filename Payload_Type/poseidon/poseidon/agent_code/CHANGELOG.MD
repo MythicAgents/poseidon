@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-03-17
+
+### Changed
+
+- Massive change to restructure all commands as optional to mirror old PR#61 from paul-axe with some tweaks
+  - each command is in its own package and is only included if the name of the command is passed in as a build tag
+    - when included, commands self-register via their init functions into the `taskRegistrar`
+  - each command has a "blank.go" file that is imported if the command is not included
+  - a `modules.go` file is created for package `main` that imports all of these commands (or their blank files)
+  - some commands have dependencies
+    - `list_entitlements` uses `ps.Processes()`
+- Some of the browserscripts have been updated to support the new `tabs` functionality
+- Updated Poseidon's definition to allow "dynamic loading"
+  - this is only at build time - no loading new commands at run time due to Go limitations
+- Updated all the commands to be `Suggested` so that they're included by default
+- `exit`, `jobs`, `jobkill` are "builtin" and can't be removed
+- Updated `Makefile` builds to include `debug` tag which adds all commands
+
 ## [2.2.32] - 2026-03-12
 
 ### Changed

@@ -1,3 +1,5 @@
+//go:build persist_launchd || debug
+
 package persist_launchd
 
 import (
@@ -5,8 +7,14 @@ import (
 	// Poseidon
 
 	"encoding/json"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("persist_launchd", Run)
+}
 
 type Arguments struct {
 	Label       string

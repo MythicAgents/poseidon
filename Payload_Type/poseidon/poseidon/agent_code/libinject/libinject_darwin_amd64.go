@@ -1,4 +1,4 @@
-//go:build darwin && amd64
+//go:build darwin && amd64 && (libinject || debug)
 
 package libinject
 

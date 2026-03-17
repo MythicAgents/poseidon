@@ -1,3 +1,5 @@
+//go:build (linux || darwin) && (jsimport || debug)
+
 package jsimport
 
 import (
@@ -7,11 +9,16 @@ import (
 
 	// Poseidon
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
 // initial .m code pulled from https://github.com/its-a-feature/macos_execute_from_memory
 // and https://github.com/opensource-apple/dyld/tree/master/unit-tests/test-cases/bundle-memory-load
+
+func init() {
+	taskRegistrar.Register("jsimport", Run)
+}
 
 type Arguments struct {
 	FileID string

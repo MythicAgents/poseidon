@@ -1,3 +1,5 @@
+//go:build (linux || darwin) && (chmod || debug)
+
 package chmod
 
 import (
@@ -11,8 +13,13 @@ import (
 
 	// Poseidon
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("chmod", Run)
+}
 
 type Arguments struct {
 	Path string

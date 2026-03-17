@@ -1,3 +1,5 @@
+//go:build (linux || darwin) && (download || debug)
+
 package download
 
 import (
@@ -9,8 +11,13 @@ import (
 
 	// Poseidon
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("download", Run)
+}
 
 // Run - Function that executes the shell command
 func Run(task structs.Task) {

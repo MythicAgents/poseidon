@@ -2,8 +2,9 @@ package agentfunctions
 
 import (
 	"fmt"
-	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"strings"
+
+	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 )
 
 func init() {
@@ -16,7 +17,8 @@ func init() {
 		MitreAttackMappings: []string{},
 		SupportedUIFeatures: []string{"task_response:interactive"},
 		CommandAttributes: agentstructs.CommandAttribute{
-			SupportedOS: []string{},
+			SupportedOS:        []string{},
+			CommandIsSuggested: true,
 		},
 		CommandParameters: []agentstructs.CommandParameter{
 			{

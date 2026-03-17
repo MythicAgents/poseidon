@@ -14,6 +14,10 @@ func init() {
 		MitreAttackMappings: []string{"T1070.004"},
 		SupportedUIFeatures: []string{"file_browser:remove"},
 		Author:              "@xorrior",
+		CommandAttributes: agentstructs.CommandAttribute{
+			SupportedOS:        []string{},
+			CommandIsSuggested: true,
+		},
 		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,

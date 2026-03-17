@@ -1,10 +1,11 @@
 package agentfunctions
 
 import (
+	"path/filepath"
+
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"github.com/MythicMeta/MythicContainer/logging"
 	"github.com/mitchellh/mapstructure"
-	"path/filepath"
 )
 
 var download = agentstructs.Command{
@@ -14,6 +15,10 @@ var download = agentstructs.Command{
 	Version:             1,
 	MitreAttackMappings: []string{"T1020", "T1030", "T1041"},
 	SupportedUIFeatures: []string{"file_browser:download"},
+	CommandAttributes: agentstructs.CommandAttribute{
+		SupportedOS:        []string{},
+		CommandIsSuggested: true,
+	},
 	AssociatedBrowserScript: &agentstructs.BrowserScript{
 		ScriptPath: filepath.Join(".", "poseidon", "browserscripts", "download_new.js"), // the name of the script in agent_browser_scripts
 		Author:     "@its_a_feature_",

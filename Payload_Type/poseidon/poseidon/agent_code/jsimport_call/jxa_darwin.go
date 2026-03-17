@@ -1,4 +1,4 @@
-// +build darwin
+//go:build darwin && (jsimport_call || debug)
 
 package jsimport_call
 

@@ -3,6 +3,8 @@ package tasks
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
@@ -16,6 +18,11 @@ func listenForRemoveRunningTask() {
 			runningTaskMutex.Unlock()
 		}
 	}
+}
+
+func init() {
+	taskRegistrar.Register("jobs", getJobListing)
+	taskRegistrar.Register("jobkill", killJob)
 }
 
 // getJobListing is the 'jobs' command and prints the `ToStub` call on each task

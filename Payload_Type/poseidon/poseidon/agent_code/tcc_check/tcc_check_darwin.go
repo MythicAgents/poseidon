@@ -1,3 +1,5 @@
+//go:build darwin && (tcc_check || debug)
+
 package tcc_check
 
 /*

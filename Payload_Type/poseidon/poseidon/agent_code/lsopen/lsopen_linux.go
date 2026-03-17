@@ -1,4 +1,4 @@
-// +build linux
+//go:build linux && (lsopen || debug)
 
 package lsopen
 

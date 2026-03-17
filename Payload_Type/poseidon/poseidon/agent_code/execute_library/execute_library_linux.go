@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux && (execute_library || debug)
 
 package execute_library
 

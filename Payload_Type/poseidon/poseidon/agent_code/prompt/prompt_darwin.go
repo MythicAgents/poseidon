@@ -1,3 +1,5 @@
+//go:build darwin && (prompt || debug)
+
 package prompt
 
 /*

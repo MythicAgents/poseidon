@@ -1,4 +1,4 @@
-//go:build darwin
+//go:build darwin && (screencapture || debug)
 
 package screencapture
 

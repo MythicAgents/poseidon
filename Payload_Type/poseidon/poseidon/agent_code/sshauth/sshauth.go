@@ -1,3 +1,5 @@
+//go:build (linux || darwin) && (sshauth || debug)
+
 package sshauth
 
 import (
@@ -8,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	// External
 	"golang.org/x/crypto/ssh"
 	// 3rd Party
@@ -18,6 +21,10 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/portscan"
 )
+
+func init() {
+	taskRegistrar.Register("sshauth", Run)
+}
 
 // Credential Manages credential objects for authentication
 type Credential struct {

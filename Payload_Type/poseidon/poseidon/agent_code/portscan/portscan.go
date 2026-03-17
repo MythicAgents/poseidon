@@ -1,3 +1,5 @@
+//go:build (linux || darwin) && (portscan || debug)
+
 package portscan
 
 import (
@@ -10,8 +12,13 @@ import (
 
 	// Poseidon
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("portscan", Run)
+}
 
 type Arguments struct {
 	Hosts []string // Can also be a cidr

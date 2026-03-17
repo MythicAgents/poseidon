@@ -1,4 +1,4 @@
-// +build linux
+//go:build linux && (listtasks || debug)
 
 package listtasks
 

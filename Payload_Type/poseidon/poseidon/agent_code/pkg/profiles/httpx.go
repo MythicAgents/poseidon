@@ -9,9 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
-	"golang.org/x/exp/slices"
 	"io"
 	"math/rand"
 	"net/http"
@@ -19,6 +16,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
+	"golang.org/x/exp/slices"
 
 	// Poseidon
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/crypto"

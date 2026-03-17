@@ -1,4 +1,4 @@
-//go:build darwin
+//go:build darwin && (xpc || xpc_load || xpc_manageruid || xpc_procinfo || xpc_send || xpc_service || xpc_submit || xpc_unload || debug)
 
 package xpc
 
@@ -19,13 +19,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 	"io/ioutil"
 	"log"
 	"os"
 	r "reflect"
 	"unsafe"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 )
 
 type XPC struct {

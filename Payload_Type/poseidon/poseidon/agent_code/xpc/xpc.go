@@ -1,3 +1,5 @@
+//go:build xpc || xpc_load || xpc_manageruid || xpc_procinfo || xpc_send || xpc_service || xpc_submit || xpc_unload || debug
+
 package xpc
 
 import (
@@ -6,8 +8,13 @@ import (
 
 	// Poseidon
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("xpc", Run)
+}
 
 var args Arguments
 

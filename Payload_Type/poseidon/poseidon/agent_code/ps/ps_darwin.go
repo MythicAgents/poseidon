@@ -1,4 +1,4 @@
-//go:build darwin
+//go:build darwin && (ps || list_entitlements || debug)
 
 package ps
 

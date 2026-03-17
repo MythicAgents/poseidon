@@ -1,4 +1,4 @@
-//go:build darwin
+//go:build darwin && (clipboard_monitor || debug)
 
 package clipboard_monitor
 

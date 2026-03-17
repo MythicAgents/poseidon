@@ -1,5 +1,4 @@
-//go:build linux
-// +build linux
+//go:build linux && (clipboard_monitor || debug)
 
 package clipboard_monitor
 

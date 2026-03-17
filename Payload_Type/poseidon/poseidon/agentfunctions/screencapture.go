@@ -1,8 +1,9 @@
 package agentfunctions
 
 import (
-	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"path/filepath"
+
+	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 )
 
 func init() {
@@ -13,7 +14,8 @@ func init() {
 		Version:             1,
 		MitreAttackMappings: []string{"T1113"},
 		CommandAttributes: agentstructs.CommandAttribute{
-			SupportedOS: []string{agentstructs.SUPPORTED_OS_MACOS},
+			SupportedOS:        []string{agentstructs.SUPPORTED_OS_MACOS},
+			CommandIsSuggested: true,
 		},
 		AssociatedBrowserScript: &agentstructs.BrowserScript{
 			ScriptPath: filepath.Join(".", "poseidon", "browserscripts", "screencapture_new.js"),

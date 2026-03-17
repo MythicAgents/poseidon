@@ -1,3 +1,5 @@
+//go:build (linux || darwin) && (run || debug)
+
 package run
 
 import (
@@ -10,8 +12,13 @@ import (
 	"os/exec"
 	// Poseidon
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("run", Run)
+}
 
 type Arguments struct {
 	Path        string

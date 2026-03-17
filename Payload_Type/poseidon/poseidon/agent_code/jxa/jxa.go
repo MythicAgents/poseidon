@@ -1,3 +1,5 @@
+//go:build jxa || debug
+
 package jxa
 
 import (
@@ -6,8 +8,13 @@ import (
 
 	// Poseidon
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("jxa", Run)
+}
 
 type JxaRun interface {
 	Success() bool

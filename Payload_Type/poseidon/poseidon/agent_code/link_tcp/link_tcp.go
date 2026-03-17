@@ -1,3 +1,5 @@
+//go:build (linux || darwin) && (link_tcp || debug)
+
 package link_tcp
 
 import (
@@ -9,8 +11,13 @@ import (
 
 	// Poseidon
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("link_tcp", Run)
+}
 
 type Arguments struct {
 	Port    int

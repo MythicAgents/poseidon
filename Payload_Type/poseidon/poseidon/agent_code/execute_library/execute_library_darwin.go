@@ -1,4 +1,4 @@
-//go:build darwin
+//go:build darwin && (execute_library || debug)
 
 package execute_library
 

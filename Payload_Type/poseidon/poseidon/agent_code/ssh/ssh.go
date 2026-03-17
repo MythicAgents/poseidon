@@ -1,3 +1,5 @@
+//go:build (linux || darwin) && (ssh || debug)
+
 package ssh
 
 import (
@@ -6,19 +8,25 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
-	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/enums/InteractiveTask"
-	goSSH "golang.org/x/crypto/ssh"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/enums/InteractiveTask"
+	goSSH "golang.org/x/crypto/ssh"
+
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("ssh", Run)
+}
 
 // Credential Manages credential objects for authentication
 type Credential struct {

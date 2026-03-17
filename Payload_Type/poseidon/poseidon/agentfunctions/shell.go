@@ -12,6 +12,10 @@ var shell = agentstructs.Command{
 	MitreAttackMappings:       []string{"T1059"},
 	TaskFunctionCreateTasking: shellCreateTasking,
 	Version:                   1,
+	CommandAttributes: agentstructs.CommandAttribute{
+		SupportedOS:        []string{},
+		CommandIsSuggested: true,
+	},
 }
 
 func init() {

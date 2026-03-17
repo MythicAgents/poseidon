@@ -14,7 +14,8 @@ func init() {
 		SupportedUIFeatures: []string{},
 		Author:              "@its_a_feature_",
 		CommandAttributes: agentstructs.CommandAttribute{
-			SupportedOS: []string{},
+			SupportedOS:        []string{},
+			CommandIsSuggested: true,
 		},
 		TaskFunctionParseArgString: func(args *agentstructs.PTTaskMessageArgsData, input string) error {
 			return nil

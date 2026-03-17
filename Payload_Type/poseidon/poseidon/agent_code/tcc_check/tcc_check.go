@@ -1,9 +1,17 @@
+//go:build tcc_check || debug
+
 package tcc_check
 
 import (
 	"encoding/json"
+
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
+
+func init() {
+	taskRegistrar.Register("tcc_check", Run)
+}
 
 var args Arguments
 
