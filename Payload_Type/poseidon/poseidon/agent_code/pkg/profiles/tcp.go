@@ -33,6 +33,7 @@ type TCPInitialConfig struct {
 	Killdate               string
 	EncryptedExchangeCheck bool
 	AESPSK                 string
+	LocalhostOnly          bool
 }
 
 func (e *TCPInitialConfig) UnmarshalJSON(data []byte) error {
@@ -53,6 +54,9 @@ func (e *TCPInitialConfig) UnmarshalJSON(data []byte) error {
 	if v, ok := alias["AESPSK"]; ok {
 		e.AESPSK = v.(string)
 	}
+	if v, ok := alias["localhost_only"]; ok {
+		e.LocalhostOnly = v.(bool)
+	}
 
 	return nil
 }
@@ -71,6 +75,7 @@ type C2PoseidonTCP struct {
 	PushChannel          chan structs.MythicMessage
 	stopListeningChannel chan bool
 	chunkSize            uint32
+	LocalhostOnly        bool
 }
 
 func (e C2PoseidonTCP) MarshalJSON() ([]byte, error) {
@@ -79,6 +84,7 @@ func (e C2PoseidonTCP) MarshalJSON() ([]byte, error) {
 		"RsaPrivateKey": e.RsaPrivateKey,
 		"Port":          e.Port,
 		"Killdate":      e.Killdate,
+		"LocalhostOnly": e.LocalhostOnly,
 	}
 	return json.Marshal(alias)
 }
@@ -112,6 +118,7 @@ func init() {
 		PushChannel:          make(chan structs.MythicMessage, 1000),
 		stopListeningChannel: make(chan bool, 1),
 		chunkSize:            poseidonChunkSize,
+		LocalhostOnly:        initialConfig.LocalhostOnly,
 	}
 	// these two functions only need to happen once, not each time the profile is started
 	go profile.CreateMessagesForEgressConnections()
@@ -141,7 +148,11 @@ func (c *C2PoseidonTCP) Start() {
 		c.stoppedChannel <- true
 	}()
 	for {
-		listen, err = net.Listen("tcp", fmt.Sprintf("0.0.0.0:%s", c.Port))
+		listenAddress := fmt.Sprintf("0.0.0.0:%s", c.Port)
+		if c.LocalhostOnly {
+			listenAddress = fmt.Sprintf("127.0.0.1:%s", c.Port)
+		}
+		listen, err = net.Listen("tcp", listenAddress)
 
 		if err != nil {
 			utils.PrintDebug(fmt.Sprintf("Failed to bind: %v\n", err))

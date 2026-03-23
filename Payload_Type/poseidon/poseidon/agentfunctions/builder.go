@@ -21,7 +21,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-const version = "2.3.0"
+const version = "2.3.1"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`
@@ -359,7 +359,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 				}
 
 				//ldflags += fmt.Sprintf(" -X '%s.%s_%s=%v'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, val)
-			} else if slices.Contains([]string{"encrypted_exchange_check"}, key) {
+			} else if slices.Contains([]string{"encrypted_exchange_check", "localhost_only"}, key) {
 				val, err := payloadBuildMsg.C2Profiles[index].GetBooleanArg(key)
 				if err != nil {
 					stringVal, err := payloadBuildMsg.C2Profiles[index].GetStringArg(key)

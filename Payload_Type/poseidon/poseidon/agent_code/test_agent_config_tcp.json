@@ -2,5 +2,6 @@
   "port": 8085,
   "killdate": "2026-12-31",
   "encrypted_exchange_check": true,
-  "AESPSK": "dNpxaDKHQiOF1v7BpqJHoNWcwZGItdNo99O9KzFr5xc="
+  "AESPSK": "dNpxaDKHQiOF1v7BpqJHoNWcwZGItdNo99O9KzFr5xc=",
+  "localhost_only": false
 }
