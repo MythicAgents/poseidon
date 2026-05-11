@@ -21,7 +21,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-const version = "2.3.1"
+const version = "2.3.2"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`
@@ -686,29 +686,31 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 				}
 				payloadBytes = bytes.ReplaceAll(payloadBytes, badSigs[i], replacement)
 			}
-			err = os.WriteFile(fileName, payloadBytes, 0644)
-			if err != nil {
-				payloadBuildResponse.Success = false
-				payloadBuildResponse.BuildMessage = "Failed to write out modified garble payload!\n" + stderr.String()
-				payloadBuildResponse.BuildStdErr += fmt.Sprintf("\n%v\n", err)
-				return payloadBuildResponse
-			}
-			// now need to run /rcodesign to "fix" the broke sigs
-			cmd = exec.Command("/rcodesign", "sign", fileName)
-			cmd.Stderr = &stderr
-			err = cmd.Run()
-			if err != nil {
-				payloadBuildResponse.Success = false
-				payloadBuildResponse.BuildMessage = "Failed to sign payload!\n" + stderr.String()
-				payloadBuildResponse.BuildStdErr += fmt.Sprintf("\n%v\n", err)
-				return payloadBuildResponse
-			}
-			payloadBytes, err = os.ReadFile(fileName)
-			if err != nil {
-				payloadBuildResponse.Success = false
-				payloadBuildResponse.BuildMessage = "Failed to read signed payload!\n" + stderr.String()
-				payloadBuildResponse.BuildStdErr += fmt.Sprintf("\n%v\n", err)
-				return payloadBuildResponse
+			// now need to run /rcodesign to "fix" the broke sigs for macOS
+			if targetOs == "darwin" {
+				err = os.WriteFile(fileName, payloadBytes, 0644)
+				if err != nil {
+					payloadBuildResponse.Success = false
+					payloadBuildResponse.BuildMessage = "Failed to write out modified garble payload!\n" + stderr.String()
+					payloadBuildResponse.BuildStdErr += fmt.Sprintf("\n%v\n", err)
+					return payloadBuildResponse
+				}
+				cmd = exec.Command("/rcodesign", "sign", fileName)
+				cmd.Stderr = &stderr
+				err = cmd.Run()
+				if err != nil {
+					payloadBuildResponse.Success = false
+					payloadBuildResponse.BuildMessage = "Failed to sign payload!\n" + stderr.String()
+					payloadBuildResponse.BuildStdErr += fmt.Sprintf("\n%v\n", err)
+					return payloadBuildResponse
+				}
+				payloadBytes, err = os.ReadFile(fileName)
+				if err != nil {
+					payloadBuildResponse.Success = false
+					payloadBuildResponse.BuildMessage = "Failed to read signed payload!\n" + stderr.String()
+					payloadBuildResponse.BuildStdErr += fmt.Sprintf("\n%v\n", err)
+					return payloadBuildResponse
+				}
 			}
 		}
 		payloadBuildResponse.Payload = &payloadBytes
