@@ -39,6 +39,9 @@ func executeLibrary(filePath string, functionName string, args []string) (Darwin
 		}
 	}
 	r := C.executeLibrary(C.CString(filePath), C.CString(functionName), c_argc, cArgv)
+	if r != nil {
+		defer C.free(unsafe.Pointer(r))
+	}
 	res.Message = C.GoString(r)
 	return res, nil
 }
