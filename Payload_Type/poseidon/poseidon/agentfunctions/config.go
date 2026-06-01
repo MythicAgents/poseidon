@@ -1,6 +1,7 @@
 package agentfunctions
 
 import (
+	"context"
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 )
 
@@ -20,7 +21,7 @@ func init() {
 	agentstructs.AllPayloadData.Get("poseidon").AddCommand(config)
 }
 
-func configCreateTasking(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+func configCreateTasking(ctx context.Context, taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 	response := agentstructs.PTTaskCreateTaskingMessageResponse{
 		Success: true,
 		TaskID:  taskData.Task.ID,

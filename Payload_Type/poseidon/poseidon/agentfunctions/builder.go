@@ -3,6 +3,7 @@ package agentfunctions
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -152,7 +153,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			Description: "Compiling the golang agent",
 		},
 	},
-	CheckIfCallbacksAliveFunction: func(message agentstructs.PTCheckIfCallbacksAliveMessage) agentstructs.PTCheckIfCallbacksAliveMessageResponse {
+	CheckIfCallbacksAliveFunction: func(ctx context.Context, message agentstructs.PTCheckIfCallbacksAliveMessage) agentstructs.PTCheckIfCallbacksAliveMessageResponse {
 		response := agentstructs.PTCheckIfCallbacksAliveMessageResponse{Success: true, Callbacks: make([]agentstructs.PTCallbacksToCheckResponse, 0)}
 		for _, callback := range message.Callbacks {
 			//logging.LogInfo("callback info", "callback", callback)
@@ -196,7 +197,7 @@ var payloadDefinition = agentstructs.PayloadType{
 	},
 }
 
-func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.PayloadBuildResponse {
+func build(ctx context.Context, payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.PayloadBuildResponse {
 	payloadBuildResponse := agentstructs.PayloadBuildResponse{
 		PayloadUUID:        payloadBuildMsg.PayloadUUID,
 		Success:            true,
@@ -313,7 +314,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
 					return payloadBuildResponse
 				}
-				configData, err := mythicrpc.SendMythicRPCFileGetContent(mythicrpc.MythicRPCFileGetContentMessage{
+				configData, err := mythicrpc.SendMythicRPCFileGetContent(ctx, mythicrpc.MythicRPCFileGetContentMessage{
 					AgentFileID: agentConfigString,
 				})
 				if err != nil {
@@ -520,21 +521,21 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		"-buildmode", mode,
 		"-ldflags", fmt.Sprintf("%s", strings.Join(buildLdFlags, " ")),
 		"-o", "/build/"+payloadName)
-	mythicrpc.SendMythicRPCPayloadUpdateBuildStep(mythicrpc.MythicRPCPayloadUpdateBuildStepMessage{
+	mythicrpc.SendMythicRPCPayloadUpdateBuildStep(ctx, mythicrpc.MythicRPCPayloadUpdateBuildStepMessage{
 		PayloadUUID: payloadBuildMsg.PayloadUUID,
 		StepName:    "Configuring",
 		StepSuccess: true,
 		StepStdout:  fmt.Sprintf("Successfully configured\n%s\nEnv: %v\nCmd: %v", command, commandEnv, commandExec),
 	})
 	if garble {
-		mythicrpc.SendMythicRPCPayloadUpdateBuildStep(mythicrpc.MythicRPCPayloadUpdateBuildStepMessage{
+		mythicrpc.SendMythicRPCPayloadUpdateBuildStep(ctx, mythicrpc.MythicRPCPayloadUpdateBuildStepMessage{
 			PayloadUUID: payloadBuildMsg.PayloadUUID,
 			StepName:    "Garble",
 			StepSuccess: true,
 			StepStdout:  fmt.Sprintf("Successfully added in garble\n"),
 		})
 	} else {
-		mythicrpc.SendMythicRPCPayloadUpdateBuildStep(mythicrpc.MythicRPCPayloadUpdateBuildStepMessage{
+		mythicrpc.SendMythicRPCPayloadUpdateBuildStep(ctx, mythicrpc.MythicRPCPayloadUpdateBuildStepMessage{
 			PayloadUUID: payloadBuildMsg.PayloadUUID,
 			StepName:    "Garble",
 			StepSkip:    true,
@@ -556,7 +557,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		payloadBuildResponse.BuildMessage = "Compilation failed with errors"
 		payloadBuildResponse.BuildStdErr += stderr.String() + "\n" + err.Error()
 		payloadBuildResponse.BuildStdOut += stdout.String()
-		mythicrpc.SendMythicRPCPayloadUpdateBuildStep(mythicrpc.MythicRPCPayloadUpdateBuildStepMessage{
+		mythicrpc.SendMythicRPCPayloadUpdateBuildStep(ctx, mythicrpc.MythicRPCPayloadUpdateBuildStepMessage{
 			PayloadUUID: payloadBuildMsg.PayloadUUID,
 			StepName:    "Compiling",
 			StepSuccess: false,
@@ -570,7 +571,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		outputString += "\n" + stderr.String()
 	}
 
-	mythicrpc.SendMythicRPCPayloadUpdateBuildStep(mythicrpc.MythicRPCPayloadUpdateBuildStepMessage{
+	mythicrpc.SendMythicRPCPayloadUpdateBuildStep(ctx, mythicrpc.MythicRPCPayloadUpdateBuildStepMessage{
 		PayloadUUID: payloadBuildMsg.PayloadUUID,
 		StepName:    "Compiling",
 		StepSuccess: true,
@@ -723,7 +724,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 }
 
 // dummy example function for executing something on a new poseidon callback
-func onNewCallback(data agentstructs.PTOnNewCallbackAllData) agentstructs.PTOnNewCallbackResponse {
+func onNewCallback(ctx context.Context, data agentstructs.PTOnNewCallbackAllData) agentstructs.PTOnNewCallbackResponse {
 	return agentstructs.PTOnNewCallbackResponse{
 		AgentCallbackID: data.Callback.AgentCallbackID,
 		Success:         true,

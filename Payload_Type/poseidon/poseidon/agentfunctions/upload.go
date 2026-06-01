@@ -1,6 +1,7 @@
 package agentfunctions
 
 import (
+	"context"
 	"fmt"
 
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
@@ -91,13 +92,13 @@ func init() {
 			SupportedOS:        []string{},
 			CommandIsSuggested: true,
 		},
-		TaskFunctionParseArgString: func(args *agentstructs.PTTaskMessageArgsData, input string) error {
+		TaskFunctionParseArgString: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input string) error {
 			return args.LoadArgsFromJSONString(input)
 		},
-		TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
+		TaskFunctionParseArgDictionary: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
 			return args.LoadArgsFromDictionary(input)
 		},
-		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+		TaskFunctionCreateTasking: func(ctx context.Context, taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,
 				TaskID:  taskData.Task.ID,
@@ -118,7 +119,7 @@ func init() {
 					response.Error = err.Error()
 					return response
 				}
-				search, err = mythicrpc.SendMythicRPCFileSearch(mythicrpc.MythicRPCFileSearchMessage{
+				search, err = mythicrpc.SendMythicRPCFileSearch(ctx, mythicrpc.MythicRPCFileSearchMessage{
 					AgentFileID: fileID,
 				})
 				taskData.Args.RemoveArg("file_id")
@@ -130,7 +131,7 @@ func init() {
 					response.Error = err.Error()
 					return response
 				}
-				search, err = mythicrpc.SendMythicRPCFileSearch(mythicrpc.MythicRPCFileSearchMessage{
+				search, err = mythicrpc.SendMythicRPCFileSearch(ctx, mythicrpc.MythicRPCFileSearchMessage{
 					Filename:   filename,
 					TaskID:     taskData.Task.ID,
 					MaxResults: 1,
@@ -184,8 +185,8 @@ func init() {
 		},
 	})
 }
-func getUploadFiles(input agentstructs.PTRPCDynamicQueryFunctionMessage) []string {
-	fileResp, err := mythicrpc.SendMythicRPCFileSearch(mythicrpc.MythicRPCFileSearchMessage{
+func getUploadFiles(ctx context.Context, input agentstructs.PTRPCDynamicQueryFunctionMessage) []string {
+	fileResp, err := mythicrpc.SendMythicRPCFileSearch(ctx, mythicrpc.MythicRPCFileSearchMessage{
 		LimitByCallback:     false,
 		CallbackID:          input.Callback,
 		IsPayload:           false,

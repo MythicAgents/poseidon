@@ -1,6 +1,7 @@
 package agentfunctions
 
 import (
+	"context"
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 )
 
@@ -16,7 +17,7 @@ func init() {
 			SupportedOS:        []string{agentstructs.SUPPORTED_OS_MACOS},
 			CommandIsSuggested: true,
 		},
-		TaskFunctionParseArgString: func(args *agentstructs.PTTaskMessageArgsData, input string) error {
+		TaskFunctionParseArgString: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input string) error {
 			args.AddArg(agentstructs.CommandParameter{
 				Name:          "command",
 				ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_STRING,
@@ -29,7 +30,7 @@ func init() {
 			})
 			return nil
 		},
-		TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
+		TaskFunctionParseArgDictionary: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
 			args.AddArg(agentstructs.CommandParameter{
 				Name:          "command",
 				ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_STRING,
@@ -42,7 +43,7 @@ func init() {
 			})
 			return nil
 		},
-		TaskFunctionCreateTasking: func(task *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+		TaskFunctionCreateTasking: func(ctx context.Context, task *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,
 				TaskID:  task.Task.ID,

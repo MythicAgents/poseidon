@@ -2,7 +2,7 @@ module MyContainer
 
 go 1.25.1
 
-//replace github.com/MythicMeta/MythicContainer => ../../../../MythicMeta/MythicContainer
+replace github.com/MythicMeta/MythicContainer => ../../../../MythicMeta/MythicContainer
 
 require (
 	github.com/MythicMeta/MythicContainer v1.6.4

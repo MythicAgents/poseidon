@@ -1,6 +1,7 @@
 package agentfunctions
 
 import (
+	"context"
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 )
 
@@ -26,15 +27,15 @@ func init() {
 	agentstructs.AllPayloadData.Get("poseidon").AddCommand(pwd)
 }
 
-func pwdParseArgs(args *agentstructs.PTTaskMessageArgsData, input string) error {
+func pwdParseArgs(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input string) error {
 	return nil
 }
 
-func pwdParseDictArgs(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
+func pwdParseDictArgs(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
 	return nil
 }
 
-func pwdOpsecPreCheck(task *agentstructs.PTTaskMessageAllData) agentstructs.PTTTaskOPSECPreTaskMessageResponse {
+func pwdOpsecPreCheck(ctx context.Context, task *agentstructs.PTTaskMessageAllData) agentstructs.PTTTaskOPSECPreTaskMessageResponse {
 	response := agentstructs.PTTTaskOPSECPreTaskMessageResponse{
 		Success:         true,
 		OpsecPreBlocked: false,
@@ -45,7 +46,7 @@ func pwdOpsecPreCheck(task *agentstructs.PTTaskMessageAllData) agentstructs.PTTT
 
 }
 
-func pwdCreateTasking(task *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+func pwdCreateTasking(ctx context.Context, task *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 	response := agentstructs.PTTaskCreateTaskingMessageResponse{
 		Success: true,
 		TaskID:  task.Task.ID,
@@ -53,7 +54,7 @@ func pwdCreateTasking(task *agentstructs.PTTaskMessageAllData) agentstructs.PTTa
 	return response
 }
 
-func pwdOpsecPostCheck(task *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskOPSECPostTaskMessageResponse {
+func pwdOpsecPostCheck(ctx context.Context, task *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskOPSECPostTaskMessageResponse {
 	response := agentstructs.PTTaskOPSECPostTaskMessageResponse{
 		Success: true,
 		TaskID:  task.Task.ID,
