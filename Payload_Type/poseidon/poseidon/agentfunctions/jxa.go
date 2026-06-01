@@ -1,6 +1,7 @@
 package agentfunctions
 
 import (
+	"context"
 	"encoding/base64"
 
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
@@ -28,14 +29,14 @@ func init() {
 				ModalDisplayName: "JXA Code",
 			},
 		},
-		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+		TaskFunctionCreateTasking: func(ctx context.Context, taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,
 				TaskID:  taskData.Task.ID,
 			}
 			return response
 		},
-		TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
+		TaskFunctionParseArgDictionary: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
 			if err := args.LoadArgsFromDictionary(input); err != nil {
 				logging.LogError(err, "Failed to load arguments from dictionary")
 				return err
@@ -48,7 +49,7 @@ func init() {
 				return nil
 			}
 		},
-		TaskFunctionParseArgString: func(args *agentstructs.PTTaskMessageArgsData, input string) error {
+		TaskFunctionParseArgString: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input string) error {
 			var code string
 			if err := args.LoadArgsFromJSONString(input); err != nil {
 				code = args.GetCommandLine()

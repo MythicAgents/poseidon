@@ -1,6 +1,7 @@
 package agentfunctions
 
 import (
+	"context"
 	"strings"
 
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
@@ -31,7 +32,7 @@ func init() {
 				},
 			},
 		},
-		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+		TaskFunctionCreateTasking: func(ctx context.Context, taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,
 				TaskID:  taskData.Task.ID,
@@ -46,7 +47,7 @@ func init() {
 			taskData.Args.SetManualArgs(displayParams)
 			return response
 		},
-		TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
+		TaskFunctionParseArgDictionary: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
 			err := args.LoadArgsFromDictionary(input)
 			if err != nil {
 				return err
@@ -58,7 +59,7 @@ func init() {
 			args.SetArgValue("path", strings.Trim(path, "\""))
 			return nil
 		},
-		TaskFunctionParseArgString: func(args *agentstructs.PTTaskMessageArgsData, input string) error {
+		TaskFunctionParseArgString: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input string) error {
 			err := args.LoadArgsFromJSONString(input)
 			if err != nil {
 				args.SetArgValue("path", strings.Trim(input, "\""))

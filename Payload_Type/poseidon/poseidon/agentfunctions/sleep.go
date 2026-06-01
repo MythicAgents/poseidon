@@ -1,6 +1,7 @@
 package agentfunctions
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -78,7 +79,7 @@ func init() {
 				Description: "Number of seconds to sleep between checkins if Backoff Delay is triggered while at sleep 0",
 			},
 		},
-		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+		TaskFunctionCreateTasking: func(ctx context.Context, taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,
 				TaskID:  taskData.Task.ID,
@@ -103,13 +104,13 @@ func init() {
 			response.DisplayParams = &display
 			return response
 		},
-		TaskFunctionProcessResponse: func(processResponse agentstructs.PtTaskProcessResponseMessage) agentstructs.PTTaskProcessResponseMessageResponse {
+		TaskFunctionProcessResponse: func(ctx context.Context, processResponse agentstructs.PtTaskProcessResponseMessage) agentstructs.PTTaskProcessResponseMessageResponse {
 			response := agentstructs.PTTaskProcessResponseMessageResponse{
 				TaskID:  processResponse.TaskData.Task.ID,
 				Success: true,
 			}
 			sleepString := processResponse.Response.(string)
-			if updateResp, err := mythicrpc.SendMythicRPCCallbackUpdate(mythicrpc.MythicRPCCallbackUpdateMessage{
+			if updateResp, err := mythicrpc.SendMythicRPCCallbackUpdate(ctx, mythicrpc.MythicRPCCallbackUpdateMessage{
 				AgentCallbackID: &processResponse.TaskData.Callback.AgentCallbackID,
 				SleepInfo:       &sleepString,
 			}); err != nil {
@@ -121,10 +122,10 @@ func init() {
 			}
 			return response
 		},
-		TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
+		TaskFunctionParseArgDictionary: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
 			return args.LoadArgsFromDictionary(input)
 		},
-		TaskFunctionParseArgString: func(args *agentstructs.PTTaskMessageArgsData, input string) error {
+		TaskFunctionParseArgString: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input string) error {
 			stringPieces := strings.Split(input, "")
 			if len(stringPieces) > 0 {
 				if interval, err := strconv.Atoi(stringPieces[0]); err != nil {

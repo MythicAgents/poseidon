@@ -1,6 +1,7 @@
 package agentfunctions
 
 import (
+	"context"
 	"fmt"
 
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
@@ -43,14 +44,14 @@ func init() {
 				},
 			},
 		},
-		TaskFunctionParseArgString: func(args *agentstructs.PTTaskMessageArgsData, input string) error {
+		TaskFunctionParseArgString: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input string) error {
 			args.SetArgValue("connectionUUID", input)
 			return nil
 		},
-		TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
+		TaskFunctionParseArgDictionary: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
 			return args.LoadArgsFromDictionary(input)
 		},
-		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+		TaskFunctionCreateTasking: func(ctx context.Context, taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,
 				TaskID:  taskData.Task.ID,

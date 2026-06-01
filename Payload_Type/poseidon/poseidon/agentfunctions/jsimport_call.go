@@ -1,6 +1,7 @@
 package agentfunctions
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 
@@ -49,13 +50,13 @@ func init() {
 			SupportedOS:        []string{agentstructs.SUPPORTED_OS_MACOS},
 			CommandIsSuggested: true,
 		},
-		TaskFunctionParseArgString: func(args *agentstructs.PTTaskMessageArgsData, input string) error {
+		TaskFunctionParseArgString: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input string) error {
 			return args.LoadArgsFromJSONString(input)
 		},
-		TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
+		TaskFunctionParseArgDictionary: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
 			return args.LoadArgsFromDictionary(input)
 		},
-		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+		TaskFunctionCreateTasking: func(ctx context.Context, taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,
 				TaskID:  taskData.Task.ID,
@@ -65,7 +66,7 @@ func init() {
 				response.Success = false
 				response.Error = err.Error()
 				return response
-			} else if search, err := mythicrpc.SendMythicRPCFileSearch(mythicrpc.MythicRPCFileSearchMessage{
+			} else if search, err := mythicrpc.SendMythicRPCFileSearch(ctx, mythicrpc.MythicRPCFileSearchMessage{
 				Filename:            filename,
 				LimitByCallback:     true,
 				CallbackID:          taskData.Callback.ID,
@@ -106,8 +107,8 @@ func init() {
 	})
 }
 
-func getCallbackFiles(input agentstructs.PTRPCDynamicQueryFunctionMessage) []string {
-	fileResp, err := mythicrpc.SendMythicRPCFileSearch(mythicrpc.MythicRPCFileSearchMessage{
+func getCallbackFiles(ctx context.Context, input agentstructs.PTRPCDynamicQueryFunctionMessage) []string {
+	fileResp, err := mythicrpc.SendMythicRPCFileSearch(ctx, mythicrpc.MythicRPCFileSearchMessage{
 		LimitByCallback:     true,
 		CallbackID:          input.Callback,
 		IsPayload:           false,

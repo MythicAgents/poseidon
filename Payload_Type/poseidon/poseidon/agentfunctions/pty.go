@@ -1,6 +1,7 @@
 package agentfunctions
 
 import (
+	"context"
 	"fmt"
 
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
@@ -51,12 +52,12 @@ var pty = agentstructs.Command{
 		},
 	},
 	TaskCompletionFunctions: map[string]agentstructs.PTTaskCompletionFunction{
-		"close_ports": func(taskData *agentstructs.PTTaskMessageAllData, subtaskData *agentstructs.PTTaskMessageAllData, subtaskName *agentstructs.SubtaskGroupName) agentstructs.PTTaskCompletionFunctionMessageResponse {
+		"close_ports": func(ctx context.Context, taskData *agentstructs.PTTaskMessageAllData, subtaskData *agentstructs.PTTaskMessageAllData, subtaskName *agentstructs.SubtaskGroupName) agentstructs.PTTaskCompletionFunctionMessageResponse {
 			response := agentstructs.PTTaskCompletionFunctionMessageResponse{
 				Success: true,
 				TaskID:  taskData.Task.ID,
 			}
-			if socksResponse, err := mythicrpc.SendMythicRPCProxyStop(mythicrpc.MythicRPCProxyStopMessage{
+			if socksResponse, err := mythicrpc.SendMythicRPCProxyStop(ctx, mythicrpc.MythicRPCProxyStopMessage{
 				PortType: rabbitmq.CALLBACK_PORT_TYPE_INTERACTIVE,
 				Port:     0,
 				TaskID:   taskData.Task.ID,
@@ -76,7 +77,7 @@ var pty = agentstructs.Command{
 			}
 		},
 	},
-	TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
+	TaskFunctionParseArgDictionary: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
 		return args.LoadArgsFromDictionary(input)
 	},
 	Version: 1,
@@ -86,7 +87,7 @@ func init() {
 	agentstructs.AllPayloadData.Get("poseidon").AddCommand(pty)
 }
 
-func ptyCreateTasking(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+func ptyCreateTasking(ctx context.Context, taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 	response := agentstructs.PTTaskCreateTaskingMessageResponse{
 		Success: true,
 		TaskID:  taskData.Task.ID,
@@ -97,7 +98,7 @@ func ptyCreateTasking(taskData *agentstructs.PTTaskMessageAllData) agentstructs.
 			if taskData.Task.InteractiveTaskType == int(InteractiveTask.Input) {
 				logging.LogInfo("interactive message was type input")
 			}
-			mythicrpc.SendMythicRPCResponseCreate(mythicrpc.MythicRPCResponseCreateMessage{
+			mythicrpc.SendMythicRPCResponseCreate(ctx, mythicrpc.MythicRPCResponseCreateMessage{
 				TaskID:   taskData.Task.ParentTaskID,
 				Response: []byte("hello from the other side\n"),
 			})
@@ -115,7 +116,7 @@ func ptyCreateTasking(taskData *agentstructs.PTTaskMessageAllData) agentstructs.
 		response.Success = false
 		return response
 	}
-	_, err = mythicrpc.SendMythicRPCArtifactCreate(mythicrpc.MythicRPCArtifactCreateMessage{
+	_, err = mythicrpc.SendMythicRPCArtifactCreate(ctx, mythicrpc.MythicRPCArtifactCreateMessage{
 		BaseArtifactType: "ProcessCreate",
 		ArtifactMessage:  programPath,
 		TaskID:           taskData.Task.ID,
@@ -130,7 +131,7 @@ func ptyCreateTasking(taskData *agentstructs.PTTaskMessageAllData) agentstructs.
 		return response
 	}
 	if openPort {
-		socksResponse, err := mythicrpc.SendMythicRPCProxyStart(mythicrpc.MythicRPCProxyStartMessage{
+		socksResponse, err := mythicrpc.SendMythicRPCProxyStart(ctx, mythicrpc.MythicRPCProxyStartMessage{
 			PortType:  rabbitmq.CALLBACK_PORT_TYPE_INTERACTIVE,
 			LocalPort: 0,
 			TaskID:    taskData.Task.ID,

@@ -1,6 +1,7 @@
 package agentfunctions
 
 import (
+	"context"
 	"path/filepath"
 
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
@@ -23,7 +24,7 @@ var download = agentstructs.Command{
 		ScriptPath: filepath.Join(".", "poseidon", "browserscripts", "download_new.js"), // the name of the script in agent_browser_scripts
 		Author:     "@its_a_feature_",
 	},
-	TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+	TaskFunctionCreateTasking: func(ctx context.Context, taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 		response := agentstructs.PTTaskCreateTaskingMessageResponse{
 			Success: true,
 			TaskID:  taskData.Task.ID,
@@ -38,7 +39,7 @@ var download = agentstructs.Command{
 		}
 		return response
 	},
-	TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
+	TaskFunctionParseArgDictionary: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
 		//return args.LoadArgsFromDictionary(input)
 		fileBrowserData := agentstructs.FileBrowserTask{}
 		if err := mapstructure.Decode(input, &fileBrowserData); err != nil {
@@ -50,7 +51,7 @@ var download = agentstructs.Command{
 			return nil
 		}
 	},
-	TaskFunctionParseArgString: func(args *agentstructs.PTTaskMessageArgsData, input string) error {
+	TaskFunctionParseArgString: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input string) error {
 		//return args.LoadArgsFromJSONString(input)
 		return nil
 	},

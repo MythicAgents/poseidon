@@ -1,6 +1,7 @@
 package agentfunctions
 
 import (
+	"context"
 	"fmt"
 
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
@@ -35,7 +36,7 @@ func init() {
 				Description: "Number of seconds to monitor the clipboard, or a negative value to do it indefinitely",
 			},
 		},
-		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+		TaskFunctionCreateTasking: func(ctx context.Context, taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,
 				TaskID:  taskData.Task.ID,
@@ -54,10 +55,10 @@ func init() {
 			}
 			return response
 		},
-		TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
+		TaskFunctionParseArgDictionary: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
 			return args.LoadArgsFromDictionary(input)
 		},
-		TaskFunctionParseArgString: func(args *agentstructs.PTTaskMessageArgsData, input string) error {
+		TaskFunctionParseArgString: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input string) error {
 			if len(input) > 0 {
 				if err := args.LoadArgsFromJSONString(input); err != nil {
 					args.SetArgValue("duration", input)

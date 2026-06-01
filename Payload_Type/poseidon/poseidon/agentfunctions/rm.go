@@ -1,6 +1,7 @@
 package agentfunctions
 
 import (
+	"context"
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"github.com/MythicMeta/MythicContainer/logging"
 	"github.com/mitchellh/mapstructure"
@@ -18,7 +19,7 @@ func init() {
 			SupportedOS:        []string{},
 			CommandIsSuggested: true,
 		},
-		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+		TaskFunctionCreateTasking: func(ctx context.Context, taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,
 				TaskID:  taskData.Task.ID,
@@ -34,7 +35,7 @@ func init() {
 			}
 			return response
 		},
-		TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
+		TaskFunctionParseArgDictionary: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
 			// if we get a dictionary, it'll be from the file browser which will supply agentstructs.FileBrowserTask data
 			fileBrowserData := agentstructs.FileBrowserTask{}
 			//logging.LogDebug("Called TaskFunctionParseArgDictionary in ls")
@@ -50,7 +51,7 @@ func init() {
 				return nil
 			}
 		},
-		TaskFunctionParseArgString: func(args *agentstructs.PTTaskMessageArgsData, input string) error {
+		TaskFunctionParseArgString: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input string) error {
 			//return args.LoadArgsFromJSONString(input)
 			args.AddArg(agentstructs.CommandParameter{
 				Name:          "file",

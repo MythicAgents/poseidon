@@ -1,6 +1,7 @@
 package agentfunctions
 
 import (
+	"context"
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
 	"github.com/MythicMeta/MythicContainer/logging"
 	"github.com/MythicMeta/MythicContainer/mythicrpc"
@@ -22,12 +23,12 @@ func init() {
 	agentstructs.AllPayloadData.Get("poseidon").AddCommand(shell)
 }
 
-func shellCreateTasking(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+func shellCreateTasking(ctx context.Context, taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 	response := agentstructs.PTTaskCreateTaskingMessageResponse{
 		Success: true,
 		TaskID:  taskData.Task.ID,
 	}
-	if _, err := mythicrpc.SendMythicRPCArtifactCreate(mythicrpc.MythicRPCArtifactCreateMessage{
+	if _, err := mythicrpc.SendMythicRPCArtifactCreate(ctx, mythicrpc.MythicRPCArtifactCreateMessage{
 		BaseArtifactType: "ProcessCreate",
 		ArtifactMessage:  "/bin/sh -c " + taskData.Args.GetCommandLine(),
 		TaskID:           taskData.Task.ID,

@@ -1,6 +1,7 @@
 package agentfunctions
 
 import (
+	"context"
 	"fmt"
 
 	agentstructs "github.com/MythicMeta/MythicContainer/agent_structs"
@@ -77,7 +78,7 @@ func init() {
 				Description: "Optionally restrict access to SOCKS port via username/password",
 			},
 		},
-		TaskFunctionCreateTasking: func(taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
+		TaskFunctionCreateTasking: func(ctx context.Context, taskData *agentstructs.PTTaskMessageAllData) agentstructs.PTTaskCreateTaskingMessageResponse {
 			response := agentstructs.PTTaskCreateTaskingMessageResponse{
 				Success: true,
 				TaskID:  taskData.Task.ID,
@@ -109,7 +110,7 @@ func init() {
 			displayString := fmt.Sprintf("%s on port %.0f", action, port)
 			response.DisplayParams = &displayString
 			if action == "start" {
-				if socksResponse, err := mythicrpc.SendMythicRPCProxyStart(mythicrpc.MythicRPCProxyStartMessage{
+				if socksResponse, err := mythicrpc.SendMythicRPCProxyStart(ctx, mythicrpc.MythicRPCProxyStartMessage{
 					PortType:  rabbitmq.CALLBACK_PORT_TYPE_SOCKS,
 					LocalPort: int(port),
 					TaskID:    taskData.Task.ID,
@@ -128,7 +129,7 @@ func init() {
 					return response
 				}
 			} else if action == "stop" {
-				if socksResponse, err := mythicrpc.SendMythicRPCProxyStop(mythicrpc.MythicRPCProxyStopMessage{
+				if socksResponse, err := mythicrpc.SendMythicRPCProxyStop(ctx, mythicrpc.MythicRPCProxyStopMessage{
 					PortType: rabbitmq.CALLBACK_PORT_TYPE_SOCKS,
 					Port:     int(port),
 					TaskID:   taskData.Task.ID,
@@ -153,10 +154,10 @@ func init() {
 				return response
 			}
 		},
-		TaskFunctionParseArgDictionary: func(args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
+		TaskFunctionParseArgDictionary: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
 			return args.LoadArgsFromDictionary(input)
 		},
-		TaskFunctionParseArgString: func(args *agentstructs.PTTaskMessageArgsData, input string) error {
+		TaskFunctionParseArgString: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input string) error {
 			return args.LoadArgsFromJSONString(input)
 		},
 	})
