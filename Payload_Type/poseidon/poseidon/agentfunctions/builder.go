@@ -22,7 +22,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-const version = "2.3.2"
+const version = "2.4.0"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`
@@ -35,17 +35,16 @@ var badSigs = [][]byte{
 	{'g', 'o', '.', 'b', 'u', 'i', 'l', 'd'},
 }
 var payloadDefinition = agentstructs.PayloadType{
-	Name:                                   "poseidon",
-	SemVer:                                 version,
-	FileExtension:                          "bin",
-	Author:                                 "@xorrior, @djhohnstein, @Ne0nd0g, @its_a_feature_",
-	SupportedOS:                            []string{agentstructs.SUPPORTED_OS_LINUX, agentstructs.SUPPORTED_OS_MACOS},
-	Wrapper:                                false,
-	CanBeWrappedByTheFollowingPayloadTypes: []string{},
-	SupportsDynamicLoading:                 true,
-	Description:                            fmt.Sprintf("A fully featured macOS and Linux Golang agent.\nNeeds Mythic 3.3.0+\nNOTE: P2P not compatible with v2.1 agents!"),
-	SupportedC2Profiles:                    []string{"http", "websocket", "tcp", "dynamichttp", "webshell", "httpx", "dns"},
-	MythicEncryptsData:                     true,
+	Name:                   "poseidon",
+	SemVer:                 version,
+	FileExtension:          "bin",
+	Author:                 "@xorrior, @djhohnstein, @Ne0nd0g, @its_a_feature_",
+	SupportedOS:            []string{agentstructs.SUPPORTED_OS_LINUX, agentstructs.SUPPORTED_OS_MACOS},
+	Wrapper:                false,
+	SupportsDynamicLoading: true,
+	Description:            fmt.Sprintf("A fully featured macOS and Linux Golang agent.\nNeeds Mythic 3.3.0+\nNOTE: P2P not compatible with v2.1 agents!"),
+	SupportedC2Profiles:    []string{"http", "websocket", "tcp", "dynamichttp", "webshell", "httpx", "dns"},
+	MythicEncryptsData:     true,
 	BuildParameters: []agentstructs.BuildParameter{
 		{
 			Name:          "mode",
@@ -202,6 +201,10 @@ func build(ctx context.Context, payloadBuildMsg agentstructs.PayloadBuildMessage
 		PayloadUUID:        payloadBuildMsg.PayloadUUID,
 		Success:            true,
 		UpdatedCommandList: &payloadBuildMsg.CommandList,
+		BuildMetadata: &agentstructs.PayloadBuildMetadata{
+			Architecture: agentstructs.PAYLOAD_BUILD_ARCHITECTURE_X64,
+			Format:       agentstructs.PAYLOAD_BUILD_FORMAT_MACHO,
+		},
 	}
 	if len(payloadBuildMsg.C2Profiles) == 0 {
 		payloadBuildResponse.Success = false
@@ -450,6 +453,7 @@ func build(ctx context.Context, payloadBuildMsg agentstructs.PayloadBuildMessage
 	goarch := "amd64"
 	if architecture == "ARM_x64" {
 		goarch = "arm64"
+		payloadBuildResponse.BuildMetadata.Architecture = agentstructs.PAYLOAD_BUILD_ARCHITECTURE_ARM64
 	}
 	tags := []string{}
 	if static {
@@ -498,6 +502,9 @@ func build(ctx context.Context, payloadBuildMsg agentstructs.PayloadBuildMessage
 	if targetOs == "darwin" {
 		command += fmt.Sprintf("-%s", macOSVersion)
 		payloadName += fmt.Sprintf("-%s", macOSVersion)
+		payloadBuildResponse.BuildMetadata.Format = agentstructs.PAYLOAD_BUILD_FORMAT_MACHO
+	} else {
+		payloadBuildResponse.BuildMetadata.Format = agentstructs.PAYLOAD_BUILD_FORMAT_ELF
 	}
 	command += fmt.Sprintf("-%s", goarch)
 	payloadName += fmt.Sprintf("-%s", goarch)
@@ -505,12 +512,15 @@ func build(ctx context.Context, payloadBuildMsg agentstructs.PayloadBuildMessage
 		if targetOs == "windows" {
 			command += ".dll"
 			payloadName += ".dll"
+			payloadBuildResponse.BuildMetadata.Format = agentstructs.PAYLOAD_BUILD_FORMAT_DLL
 		} else if targetOs == "darwin" {
 			command += ".dylib"
 			payloadName += ".dylib"
+			payloadBuildResponse.BuildMetadata.Format = agentstructs.PAYLOAD_BUILD_FORMAT_DYLIB
 		} else {
 			command += ".so"
 			payloadName += ".so"
+			payloadBuildResponse.BuildMetadata.Format = agentstructs.PAYLOAD_BUILD_FORMAT_SO
 		}
 	} else if mode == "c-archive" {
 		command += ".a"

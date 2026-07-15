@@ -27,7 +27,7 @@ func init() {
 		CommandParameters: []agentstructs.CommandParameter{
 			{
 				Name:          "connection",
-				CLIName:       "connectionDictionary",
+				CLIName:       "connection",
 				ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_CONNECTION_INFO,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
@@ -50,6 +50,7 @@ func init() {
 				response.Error = err.Error()
 				return response
 			}
+			displayString := fmt.Sprintf("-connection %s", taskData.Task.RevertKeywords(connectionInfo, "connection"))
 			err = taskData.Args.RemoveArg("connection")
 			if err != nil {
 				logging.LogError(err, "Failed to remove connection data")
@@ -97,44 +98,41 @@ func init() {
 				response.Success = false
 				response.Error = "Must connect to an existing Callback. If one isn't available, use the Payload's page to create a new callback based on the payload you used."
 				return response
-			} else {
-				// we have the callback uuid and need the payload uuid
-				callbackSearchResponse, err := mythicrpc.SendMythicRPCCallbackSearch(ctx, mythicrpc.MythicRPCCallbackSearchMessage{
-					CallbackID:            taskData.Callback.ID,
-					SearchAgentCallbackID: &connectionInfo.CallbackUUID,
-				})
-				if err != nil {
-					logging.LogError(err, "Failed to search callbacks data")
-					response.Success = false
-					response.Error = err.Error()
-					return response
-				}
-				if !callbackSearchResponse.Success {
-					logging.LogError(err, "Failed to search callbacks data")
-					response.Success = false
-					response.Error = callbackSearchResponse.Error
-					return response
-				}
-				if len(callbackSearchResponse.Results) == 0 {
-					logging.LogError(err, "Failed to remove connection data")
-					response.Success = false
-					response.Error = err.Error()
-					return response
-				}
-				taskData.Args.AddArg(agentstructs.CommandParameter{
-					Name:          "cookie_value",
-					ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_STRING,
-					DefaultValue:  callbackSearchResponse.Results[0].RegisteredPayloadUUID,
-				})
-				taskData.Args.AddArg(agentstructs.CommandParameter{
-					Name:          "target_uuid",
-					ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_STRING,
-					DefaultValue:  connectionInfo.CallbackUUID,
-				})
 			}
-			displayString := fmt.Sprintf("%s", connectionInfo.C2ProfileInfo.Parameters["url"].(string))
+			// we have the callback uuid and need the payload uuid
+			callbackSearchResponse, err := mythicrpc.SendMythicRPCCallbackSearch(ctx, mythicrpc.MythicRPCCallbackSearchMessage{
+				CallbackID:            taskData.Callback.ID,
+				SearchAgentCallbackID: &connectionInfo.CallbackUUID,
+			})
+			if err != nil {
+				logging.LogError(err, "Failed to search callbacks data")
+				response.Success = false
+				response.Error = err.Error()
+				return response
+			}
+			if !callbackSearchResponse.Success {
+				logging.LogError(err, "Failed to search callbacks data")
+				response.Success = false
+				response.Error = callbackSearchResponse.Error
+				return response
+			}
+			if len(callbackSearchResponse.Results) == 0 {
+				logging.LogError(err, "Failed to remove connection data")
+				response.Success = false
+				response.Error = err.Error()
+				return response
+			}
+			taskData.Args.AddArg(agentstructs.CommandParameter{
+				Name:          "cookie_value",
+				ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_STRING,
+				DefaultValue:  callbackSearchResponse.Results[0].RegisteredPayloadUUID,
+			})
+			taskData.Args.AddArg(agentstructs.CommandParameter{
+				Name:          "target_uuid",
+				ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_STRING,
+				DefaultValue:  connectionInfo.CallbackUUID,
+			})
 			response.DisplayParams = &displayString
-
 			return response
 		},
 		TaskFunctionParseArgDictionary: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {
