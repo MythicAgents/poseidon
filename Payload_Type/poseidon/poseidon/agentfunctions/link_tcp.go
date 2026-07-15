@@ -51,7 +51,7 @@ func init() {
 			},
 			{
 				Name:          "connection",
-				CLIName:       "connectionDictionary",
+				CLIName:       "connection",
 				ParameterType: agentstructs.COMMAND_PARAMETER_TYPE_CONNECTION_INFO,
 				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
 					{
@@ -99,6 +99,7 @@ func init() {
 					response.Error = err.Error()
 					return response
 				}
+				displayString := fmt.Sprintf("-connection %s", taskData.Task.RevertKeywords(connectionInfo, "connection"))
 				err = taskData.Args.RemoveArg("connection")
 				if err != nil {
 					logging.LogError(err, "Failed to remove connection data")
@@ -127,7 +128,6 @@ func init() {
 					response.Error = err.Error()
 					return response
 				}
-				displayString := fmt.Sprintf("%s on port %d", connectionInfo.Host, port)
 				response.DisplayParams = &displayString
 			}
 
@@ -139,9 +139,8 @@ func init() {
 		TaskFunctionParseArgString: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input string) error {
 			if len(input) > 0 {
 				return args.LoadArgsFromJSONString(input)
-			} else {
-				return errors.New("Must supply arguments")
 			}
+			return errors.New("Must supply arguments")
 		},
 	})
 }
