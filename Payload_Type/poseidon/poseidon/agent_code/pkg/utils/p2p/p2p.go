@@ -54,6 +54,14 @@ func addInternalConnectionUUID(key string, value string) {
 	uuidMappings[key] = value
 }
 
+// requestInternalP2PConnectionRemoval queues a P2P connection for centralized teardown and reporting.
+func requestInternalP2PConnectionRemoval(connectionUUID string, c2ProfileName string) {
+	RemoveInternalConnectionChannel <- structs.RemoveInternalConnectionMessage{
+		ConnectionUUID: connectionUUID,
+		C2ProfileName:  c2ProfileName,
+	}
+}
+
 // listenHandleDelegateMessageForInternalP2PConnections forwards delegate messages to the right TCP connections
 // A delegate message is coming in from some egress section and we need to forward it to the right connected agent
 func listenHandleDelegateMessageForInternalP2PConnections() {
@@ -76,23 +84,30 @@ func listenHandleDelegateMessageForInternalP2PConnections() {
 // listenForRemoveInternalP2PConnections listens for P2P disconnect (RemoveInternalConnectionChannel) messages, removes internal tracking, and sends edge messages
 func listenForRemoveInternalP2PConnections() {
 	for {
-		select {
-		case removeConnection := <-RemoveInternalConnectionChannel:
-			successfullyRemovedConnection := false
-			removalMessage := structs.P2PConnectionMessage{
-				Action:        "remove",
-				C2ProfileName: removeConnection.C2ProfileName,
-				Destination:   removeConnection.ConnectionUUID,
-				Source:        profiles.GetMythicID(),
-			}
-			if _, ok := availableP2P[removeConnection.C2ProfileName]; ok {
-				successfullyRemovedConnection = availableP2P[removeConnection.C2ProfileName].RemoveInternalConnection(removeConnection.ConnectionUUID)
-			}
-			if successfullyRemovedConnection {
-				responses.P2PConnectionMessageChannel <- removalMessage
-			}
-		}
+		removeConnection := <-RemoveInternalConnectionChannel
+		handleRemoveInternalP2PConnection(removeConnection)
 	}
+}
+
+// handleRemoveInternalP2PConnection removes one tracked P2P connection and reports the canonical edge to Mythic.
+func handleRemoveInternalP2PConnection(removeConnection structs.RemoveInternalConnectionMessage) bool {
+	p2pProcessor, ok := availableP2P[removeConnection.C2ProfileName]
+	if !ok {
+		return false
+	}
+
+	connectionUUID := getInternalConnectionUUID(removeConnection.ConnectionUUID)
+	if !p2pProcessor.RemoveInternalConnection(connectionUUID) {
+		return false
+	}
+
+	responses.P2PConnectionMessageChannel <- structs.P2PConnectionMessage{
+		Action:        "remove",
+		C2ProfileName: removeConnection.C2ProfileName,
+		Destination:   connectionUUID,
+		Source:        profiles.GetMythicID(),
+	}
+	return true
 }
 
 // listenForAddInternalP2PConnections handles tracking P2P connections when a task reports a new connection (from a non P2P profile, ex link_tcp)

