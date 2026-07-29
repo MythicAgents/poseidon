@@ -442,10 +442,16 @@ type SendFileToMythicStruct struct {
 	File *os.File
 	// channel to indicate once the file transfer has finished so that the task can act accordingly
 	FinishedTransfer chan int
+	// ResultChannel optionally returns the Mythic file ID or a transfer error.
+	ResultChannel chan FileTransferResult
 	// the following are set and used by Poseidon, Task doesn't use
 	// two components used by Poseidon internally to track and handle chunk responses from Mythic for this specific file transfer
 	TrackingUUID         string
 	FileTransferResponse chan json.RawMessage
+}
+type FileTransferResult struct {
+	FileID string
+	Error  string
 }
 type GetFileFromMythicStruct struct {
 	// the following are set by the calling Task
@@ -455,6 +461,8 @@ type GetFileFromMythicStruct struct {
 	SendUserStatusUpdates bool
 	// set by the calling Task to receive data from Mythic one chunk at a time
 	ReceivedChunkChannel chan ([]byte)
+	// ResultChannel optionally reports whether all chunks were received.
+	ResultChannel chan FileTransferResult
 	// the following are set and used by Poseidon, Task doesn't use
 	TrackingUUID         string
 	FileTransferResponse chan (json.RawMessage)

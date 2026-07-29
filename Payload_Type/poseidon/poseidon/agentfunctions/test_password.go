@@ -33,6 +33,7 @@ func init() {
 					{
 						ParameterIsRequired: true,
 						UIModalPosition:     1,
+						GroupName:           "Default",
 					},
 				},
 			},
@@ -47,6 +48,23 @@ func init() {
 					{
 						ParameterIsRequired: true,
 						UIModalPosition:     2,
+						GroupName:           "Default",
+					},
+				},
+			},
+			{
+				Name:                   "credential",
+				CLIName:                "credential",
+				ModalDisplayName:       "Credential",
+				Description:            "Credential store username/password.",
+				ParameterType:          agentstructs.COMMAND_PARAMETER_TYPE_CREDENTIAL,
+				DefaultValue:           "",
+				LimitCredentialsByType: []string{"plaintext"},
+				ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+					{
+						ParameterIsRequired: true,
+						UIModalPosition:     1,
+						GroupName:           "Stored Credential",
 					},
 				},
 			},
@@ -56,20 +74,64 @@ func init() {
 				Success: true,
 				TaskID:  taskData.Task.ID,
 			}
-			userString, err := taskData.Args.GetStringArg("username")
+			groupName, err := taskData.Args.GetParameterGroupName()
 			if err != nil {
 				response.Error = err.Error()
 				response.Success = false
 				return response
 			}
-			passwordString, err := taskData.Args.GetStringArg("password")
-			if err != nil {
-				response.Error = err.Error()
-				response.Success = false
-				return response
+			if groupName == "Default" {
+				userString, err := taskData.Args.GetStringArg("username")
+				if err != nil {
+					response.Error = err.Error()
+					response.Success = false
+					return response
+				}
+				passwordString, err := taskData.Args.GetStringArg("password")
+				if err != nil {
+					response.Error = err.Error()
+					response.Success = false
+					return response
+				}
+				displayString := fmt.Sprintf("for %s with password \"%s\"",
+					taskData.Task.RevertKeywords(userString, "username"),
+					taskData.Task.RevertKeywords(passwordString, "password"))
+				response.DisplayParams = &displayString
+			} else {
+				credential, err := taskData.Args.GetCredentialArg("credential")
+				if err != nil {
+					response.Error = err.Error()
+					response.Success = false
+					return response
+				}
+				displayString := fmt.Sprintf("-credential %s", taskData.Task.RevertKeywords(credential, "credential"))
+				response.DisplayParams = &displayString
+				taskData.Args.RemoveArg("credential")
+				taskData.Args.RemoveArg("username")
+				taskData.Args.RemoveArg("password")
+				taskData.Args.AddArg(agentstructs.CommandParameter{
+					Name:         "username",
+					DefaultValue: credential.Account,
+					ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+						{
+							ParameterIsRequired: false,
+							UIModalPosition:     1,
+							GroupName:           "Stored Credential",
+						},
+					},
+				})
+				taskData.Args.AddArg(agentstructs.CommandParameter{
+					Name:         "password",
+					DefaultValue: credential.Credential,
+					ParameterGroupInformation: []agentstructs.ParameterGroupInfo{
+						{
+							ParameterIsRequired: false,
+							UIModalPosition:     2,
+							GroupName:           "Stored Credential",
+						},
+					},
+				})
 			}
-			displayString := fmt.Sprintf("for %s with password \"%s\"", userString, passwordString)
-			response.DisplayParams = &displayString
 			return response
 		},
 		TaskFunctionParseArgDictionary: func(ctx context.Context, args *agentstructs.PTTaskMessageArgsData, input map[string]interface{}) error {

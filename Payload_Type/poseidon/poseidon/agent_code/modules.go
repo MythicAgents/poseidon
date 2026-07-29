@@ -11,6 +11,7 @@ import (
 	_ "github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/curl"
 	_ "github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/download"
 	_ "github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/drives"
+	_ "github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/edit"
 	_ "github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/execute_library"
 	_ "github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/getenv"
 	_ "github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/getuser"
