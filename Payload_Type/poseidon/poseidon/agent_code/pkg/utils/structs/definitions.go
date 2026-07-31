@@ -480,7 +480,6 @@ type ProcessDetails struct {
 	ScriptingProperties   map[string]interface{}
 	Name                  string
 	BundleID              string
-	UpdateDeleted         bool
 	AdditionalInformation map[string]interface{}
 }
 
@@ -497,8 +496,24 @@ func (e ProcessDetails) MarshalJSON() ([]byte, error) {
 		"scripting_properties":   e.ScriptingProperties,
 		"name":                   e.Name,
 		"bundleid":               e.BundleID,
-		"update_deleted":         e.UpdateDeleted,
 		"additional_information": e.AdditionalInformation,
+	}
+	return json.Marshal(alias)
+}
+
+type ProcessDetailsMeta struct {
+	UpdateDeleted bool
+	Host          string
+	OS            string
+	Processes     []ProcessDetails
+}
+
+func (e ProcessDetailsMeta) MarshalJSON() ([]byte, error) {
+	alias := map[string]interface{}{
+		"update_deleted": e.UpdateDeleted,
+		"host":           e.Host,
+		"os":             e.OS,
+		"processes":      e.Processes,
 	}
 	return json.Marshal(alias)
 }
@@ -585,7 +600,7 @@ type Response struct {
 	Status            string
 	FileBrowser       *FileBrowser
 	RemovedFiles      *[]RmFiles
-	Processes         *[]ProcessDetails
+	Processes         *ProcessDetailsMeta
 	TrackingUUID      string
 	Upload            *FileUploadMessage
 	Download          *FileDownloadMessage

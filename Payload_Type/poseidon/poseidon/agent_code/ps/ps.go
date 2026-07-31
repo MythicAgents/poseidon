@@ -6,10 +6,12 @@ import (
 	// Standard
 	"encoding/json"
 	"regexp"
+	"runtime"
 
 	// Poseidon
 
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks/taskRegistrar"
+	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/functions"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
@@ -106,7 +108,6 @@ func Run(task structs.Task) {
 				Name:                  procs[i].Name(),
 				BundleID:              procs[i].BundleID(),
 				AdditionalInformation: procs[i].AdditionalInfo(),
-				UpdateDeleted:         true,
 			})
 		}
 	} else {
@@ -125,7 +126,6 @@ func Run(task structs.Task) {
 					Name:                  procs[i].Name(),
 					BundleID:              procs[i].BundleID(),
 					AdditionalInformation: procs[i].AdditionalInfo(),
-					UpdateDeleted:         false,
 				})
 			}
 		}
@@ -139,7 +139,16 @@ func Run(task structs.Task) {
 	}
 	msg.Completed = true
 	msg.UserOutput = string(jsonProcs)
-	msg.Processes = &slice
+	processOS := runtime.GOOS
+	if processOS == "darwin" {
+		processOS = "macOS"
+	}
+	msg.Processes = &structs.ProcessDetailsMeta{
+		UpdateDeleted: params.RegexFilter == "",
+		Host:          functions.GetHostname(),
+		OS:            processOS,
+		Processes:     slice,
+	}
 	task.Job.SendResponses <- msg
 	return
 }
