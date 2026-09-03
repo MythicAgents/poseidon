@@ -17,7 +17,23 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/structs"
 )
 
+const maxUnknownFileSize = 10 * FILE_CHUNK_SIZE // Bound buffered reads from pseudo-files and device streams
+
 var SendToMythicChannel = make(chan structs.SendFileToMythicStruct, 10)
+
+func readUnknownSizeFile(file io.ReadSeeker) ([]byte, error) {
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return nil, err
+	}
+	data, err := io.ReadAll(io.LimitReader(file, int64(maxUnknownFileSize)+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > maxUnknownFileSize {
+		return nil, fmt.Errorf("file exceeds the %d-byte limit for files with an unknown size", maxUnknownFileSize)
+	}
+	return data, nil
+}
 
 // listenForSendFileToMythicMessages reads from SendToMythicChannel to send file transfer messages to Mythic
 func listenForSendFileToMythicMessages() {
@@ -54,6 +70,18 @@ func sendFileMessagesToMythic(sendFileToMythic structs.SendFileToMythicStruct) {
 			return
 		}
 		size = fi.Size()
+		if size == 0 {
+			data, err := readUnknownSizeFile(sendFileToMythic.File)
+			if err != nil {
+				errResponse := sendFileToMythic.Task.NewResponse()
+				errResponse.SetError(fmt.Sprintf("Error reading file with unknown size: %s", err.Error()))
+				sendFileToMythic.Task.Job.SendResponses <- errResponse
+				sendFileToMythic.FinishedTransfer <- 1
+				return
+			}
+			sendFileToMythic.Data = &data
+			size = int64(len(data))
+		}
 	} else {
 		size = int64(len(*sendFileToMythic.Data))
 	}
