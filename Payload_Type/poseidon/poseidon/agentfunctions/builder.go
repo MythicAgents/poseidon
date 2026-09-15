@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -18,10 +19,9 @@ import (
 	"github.com/MythicMeta/MythicContainer/mythicrpc"
 	"github.com/google/uuid"
 	"github.com/pelletier/go-toml"
-	"golang.org/x/exp/slices"
 )
 
-const version = "2.3.2"
+const version = "2.3.3"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`
@@ -42,7 +42,7 @@ var payloadDefinition = agentstructs.PayloadType{
 	Wrapper:                                false,
 	CanBeWrappedByTheFollowingPayloadTypes: []string{},
 	SupportsDynamicLoading:                 true,
-	Description:                            fmt.Sprintf("A fully featured macOS and Linux Golang agent.\nNeeds Mythic 3.3.0+\nNOTE: P2P not compatible with v2.1 agents!"),
+	Description:                            "A fully featured macOS and Linux Golang agent.\nNeeds Mythic 3.3.0+\nNOTE: P2P not compatible with v2.1 agents!",
 	SupportedC2Profiles:                    []string{"http", "websocket", "tcp", "dynamichttp", "webshell", "httpx", "dns"},
 	MythicEncryptsData:                     true,
 	BuildParameters: []agentstructs.BuildParameter{
@@ -53,16 +53,40 @@ var payloadDefinition = agentstructs.PayloadType{
 			DefaultValue:  "default",
 			Choices:       []string{"default", "c-archive", "c-shared"},
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_CHOOSE_ONE,
-			UiPosition:    1,
+			HideConditions: []agentstructs.BuildParameterHideCondition{
+				{
+					Name:    "architecture",
+					Operand: agentstructs.HideConditionOperandIN,
+					Choices: []string{"MIPS", "MIPSLE", "MIPS64", "MIPS64LE"},
+				},
+			},
+			UiPosition: 2,
 		},
 		{
-			Name:          "architecture",
-			Description:   "Choose the agent's architecture",
+			Name:                 "architecture",
+			Description:          "Choose the agent's architecture",
+			Required:             false,
+			DefaultValue:         "AMD_x64",
+			Choices:              []string{"AMD_x64", "ARM_x64", "MIPS", "MIPSLE", "MIPS64", "MIPS64LE"},
+			ParameterType:        agentstructs.BUILD_PARAMETER_TYPE_CHOOSE_ONE,
+			DynamicQueryFunction: getArchitectureChoices,
+			UiPosition:           1,
+		},
+		{
+			Name:          "float",
+			Description:   "Chose hard float or soft float. Soft float runs on all mips chips, but performs math operations more slowly.",
 			Required:      false,
-			DefaultValue:  "AMD_x64",
-			Choices:       []string{"AMD_x64", "ARM_x64"},
+			Choices:       []string{"softfloat", "hardfloat"},
+			DefaultValue:  "softfloat",
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_CHOOSE_ONE,
-			UiPosition:    2,
+			HideConditions: []agentstructs.BuildParameterHideCondition{
+				{
+					Name:    "architecture",
+					Operand: agentstructs.HideConditionOperandNotIN,
+					Choices: []string{"MIPS", "MIPSLE", "MIPS64", "MIPS64LE"},
+				},
+			},
+			UiPosition: 3,
 		},
 		{
 			Name:          "proxy_bypass",
@@ -71,7 +95,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			DefaultValue:  false,
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_BOOLEAN,
 			GroupName:     "egress",
-			UiPosition:    9,
+			UiPosition:    10,
 		},
 		{
 			Name:          "garble",
@@ -79,7 +103,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			Required:      false,
 			DefaultValue:  false,
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_BOOLEAN,
-			UiPosition:    4,
+			UiPosition:    5,
 		},
 		{
 			Name:          "debug",
@@ -87,7 +111,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			Required:      false,
 			DefaultValue:  false,
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_BOOLEAN,
-			UiPosition:    3,
+			UiPosition:    4,
 		},
 		{
 			Name:          "egress_order",
@@ -96,7 +120,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_ARRAY,
 			DefaultValue:  []string{"http", "websocket", "dynamichttp", "httpx"},
 			GroupName:     "egress",
-			UiPosition:    6,
+			UiPosition:    7,
 		},
 		{
 			Name:          "egress_failover",
@@ -106,7 +130,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			Choices:       []string{"failover"},
 			DefaultValue:  "failover",
 			GroupName:     "egress",
-			UiPosition:    7,
+			UiPosition:    8,
 		},
 		{
 			Name:          "failover_threshold",
@@ -115,7 +139,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_NUMBER,
 			DefaultValue:  10,
 			GroupName:     "egress",
-			UiPosition:    8,
+			UiPosition:    9,
 		},
 		{
 			Name:          "static",
@@ -123,8 +147,15 @@ var payloadDefinition = agentstructs.PayloadType{
 			Required:      false,
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_BOOLEAN,
 			DefaultValue:  false,
-			SupportedOS:   []string{agentstructs.SUPPORTED_OS_LINUX},
-			UiPosition:    5,
+			HideConditions: []agentstructs.BuildParameterHideCondition{
+				{
+					Name:    "architecture",
+					Operand: agentstructs.HideConditionOperandIN,
+					Choices: []string{"MIPS", "MIPSLE", "MIPS64", "MIPS64LE"},
+				},
+			},
+			SupportedOS: []string{agentstructs.SUPPORTED_OS_LINUX},
+			UiPosition:  6,
 		},
 	},
 	SupportsMultipleC2InBuild: true,
@@ -196,6 +227,26 @@ var payloadDefinition = agentstructs.PayloadType{
 	},
 }
 
+func getArchitectureChoices(message agentstructs.PTRPCDynamicQueryBuildParameterFunctionMessage) agentstructs.PTRPCDynamicQueryBuildParameterFunctionMessageResponse {
+	switch message.SelectedOS {
+	case agentstructs.SUPPORTED_OS_LINUX:
+		return agentstructs.PTRPCDynamicQueryBuildParameterFunctionMessageResponse{
+			Success: true,
+			Choices: []string{"AMD_x64", "ARM_x64", "MIPS", "MIPSLE", "MIPS64", "MIPS64LE"},
+		}
+	case agentstructs.SUPPORTED_OS_MACOS:
+		return agentstructs.PTRPCDynamicQueryBuildParameterFunctionMessageResponse{
+			Success: true,
+			Choices: []string{"AMD_x64", "ARM_x64"},
+		}
+	default:
+		return agentstructs.PTRPCDynamicQueryBuildParameterFunctionMessageResponse{
+			Success: false,
+			Error:   fmt.Sprintf("unsupported operating system %q", message.SelectedOS),
+		}
+	}
+}
+
 func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.PayloadBuildResponse {
 	payloadBuildResponse := agentstructs.PayloadBuildResponse{
 		PayloadUUID:        payloadBuildMsg.PayloadUUID,
@@ -207,13 +258,20 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		payloadBuildResponse.BuildStdErr = "Failed to build - must select at least one C2 Profile"
 		return payloadBuildResponse
 	}
+
 	macOSVersion := "10.12"
-	targetOs := "linux"
-	if payloadBuildMsg.SelectedOS == "macOS" {
+	var targetOs string
+	switch payloadBuildMsg.SelectedOS {
+	case agentstructs.SUPPORTED_OS_LINUX:
+		targetOs = "linux"
+	case agentstructs.SUPPORTED_OS_MACOS:
 		targetOs = "darwin"
-	} else if payloadBuildMsg.SelectedOS == "Windows" {
-		targetOs = "windows"
+	default:
+		payloadBuildResponse.Success = false
+		payloadBuildResponse.BuildStdErr = fmt.Sprintf("Poseidon does not support operating system %q", payloadBuildMsg.SelectedOS)
+		return payloadBuildResponse
 	}
+
 	egress_order, err := payloadBuildMsg.BuildParameters.GetArrayArg("egress_order")
 	if err != nil {
 		payloadBuildResponse.Success = false
@@ -232,11 +290,20 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		payloadBuildResponse.BuildStdErr = err.Error()
 		return payloadBuildResponse
 	}
+	architecture, err := payloadBuildMsg.BuildParameters.GetStringArg("architecture")
+	if err != nil {
+		payloadBuildResponse.Success = false
+		payloadBuildResponse.BuildStdErr = err.Error()
+		return payloadBuildResponse
+	}
 	static, err := payloadBuildMsg.BuildParameters.GetBooleanArg("static")
 	if err != nil {
 		payloadBuildResponse.Success = false
 		payloadBuildResponse.BuildStdErr = err.Error()
 		return payloadBuildResponse
+	}
+	if strings.HasPrefix(architecture, "MIPS") && targetOs == "linux" {
+		static = true
 	}
 	if static && targetOs == "darwin" {
 		payloadBuildResponse.Success = false
@@ -285,7 +352,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	ldflags += fmt.Sprintf(" -X '%s.egress_order=%s'", poseidon_repo_profile, stringBytes)
 	buildLdFlags = append(buildLdFlags, "-X", fmt.Sprintf("'%s.egress_order=%s'", poseidon_repo_profile, stringBytes))
 	// Iterate over the C2 profile parameters and associated variable through Go's "-X" link flag
-	for index, _ := range payloadBuildMsg.C2Profiles {
+	for index := range payloadBuildMsg.C2Profiles {
 		initialConfig := make(map[string]interface{})
 		for _, key := range payloadBuildMsg.C2Profiles[index].GetArgNames() {
 			if key == "AESPSK" {
@@ -424,12 +491,6 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		payloadBuildResponse.BuildStdErr = err.Error()
 		return payloadBuildResponse
 	}
-	architecture, err := payloadBuildMsg.BuildParameters.GetStringArg("architecture")
-	if err != nil {
-		payloadBuildResponse.Success = false
-		payloadBuildResponse.BuildStdErr = err.Error()
-		return payloadBuildResponse
-	}
 	mode, err := payloadBuildMsg.BuildParameters.GetStringArg("mode")
 	if err != nil {
 		payloadBuildResponse.Success = false
@@ -446,38 +507,101 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	buildLdFlags = append(buildLdFlags, "-X", fmt.Sprintf("'%s.proxy_bypass=%v'", poseidon_repo_profile, proxyBypass))
 	ldflags += " -buildid="
 	buildLdFlags = append(buildLdFlags, "-buildid=")
-	goarch := "amd64"
-	if architecture == "ARM_x64" {
+
+	var goarch string
+	switch architecture {
+	case "AMD_x64":
+		goarch = "amd64"
+	case "ARM_x64":
 		goarch = "arm64"
+	case "MIPS":
+		goarch = "mips"
+	case "MIPSLE":
+		goarch = "mipsle"
+	case "MIPS64":
+		goarch = "mips64"
+	case "MIPS64LE":
+		goarch = "mips64le"
+	default:
+		payloadBuildResponse.Success = false
+		payloadBuildResponse.BuildStdErr = "Unsupported Architecture Error"
+		return payloadBuildResponse
 	}
+
 	tags := []string{}
 	if static {
 		tags = []string{"osusergo", "netgo"}
 	}
-	for index, _ := range payloadBuildMsg.C2Profiles {
+	for index := range payloadBuildMsg.C2Profiles {
 		tags = append(tags, payloadBuildMsg.C2Profiles[index].Name)
 	}
 	if mode == "c-shared" {
 		tags = append(tags, "shared")
 	}
 	tags = append(tags, payloadBuildMsg.CommandList...)
-	command := fmt.Sprintf("CGO_ENABLED=1 GOOS=%s GOARCH=%s ", targetOs, goarch)
-	commandEnv := []string{"CGO_ENABLED=1",
-		fmt.Sprintf("GOOS=%s", targetOs),
-		fmt.Sprintf("GOARCH=%s", goarch),
+
+	isMIPS := strings.HasPrefix(goarch, "mips")
+	isMIPS64 := strings.HasPrefix(goarch, "mips64")
+
+	floatABI := ""
+	if isMIPS {
+		floatABI, err = payloadBuildMsg.BuildParameters.GetStringArg("float")
+		if err != nil {
+			payloadBuildResponse.Success = false
+			payloadBuildResponse.BuildStdErr = err.Error()
+			return payloadBuildResponse
+		}
+
+		if floatABI != "softfloat" && floatABI != "hardfloat" {
+			payloadBuildResponse.Success = false
+			payloadBuildResponse.BuildStdErr = fmt.Sprintf("unsupported MIPS float ABI: %q", floatABI)
+			return payloadBuildResponse
+		}
 	}
+
+	var command string
+	var commandEnv []string
+	if isMIPS && targetOs != "linux" {
+		payloadBuildResponse.Success = false
+		payloadBuildResponse.BuildStdErr = "MIPS architectures are only supported for linux"
+		return payloadBuildResponse
+	}
+	if isMIPS && mode != "default" {
+		payloadBuildResponse.Success = false
+		payloadBuildResponse.BuildStdErr = "MIPS currently supports only default executable builds"
+		return payloadBuildResponse
+	}
+	if isMIPS {
+		command = fmt.Sprintf("CGO_ENABLED=0 GOOS=%s GOARCH=%s ", targetOs, goarch)
+		commandEnv = []string{"CGO_ENABLED=0",
+			fmt.Sprintf("GOOS=%s", targetOs),
+			fmt.Sprintf("GOARCH=%s", goarch),
+		}
+		if isMIPS64 {
+			command += fmt.Sprintf("GOMIPS64=%s ", floatABI)
+			commandEnv = append(commandEnv, "GOMIPS64="+floatABI)
+		} else {
+			command += fmt.Sprintf("GOMIPS=%s ", floatABI)
+			commandEnv = append(commandEnv, "GOMIPS="+floatABI)
+		}
+	} else {
+		command = fmt.Sprintf("CGO_ENABLED=1 GOOS=%s GOARCH=%s ", targetOs, goarch)
+		commandEnv = []string{"CGO_ENABLED=1",
+			fmt.Sprintf("GOOS=%s", targetOs),
+			fmt.Sprintf("GOARCH=%s", goarch),
+		}
+	}
+
 	goCmd := fmt.Sprintf("-tags %s -buildmode %s -ldflags \"%s\"", strings.Join(tags, ","), mode, ldflags)
 	if targetOs == "darwin" {
 		command += "CC=o64-clang CXX=o64-clang++ "
 		commandEnv = append(commandEnv, "CC=o64-clang", "CXX=o64-clang++")
-	} else if targetOs == "windows" {
-		command += "CC=x86_64-w64-mingw32-gcc "
-		commandEnv = append(commandEnv, "CC=x86_64-w64-mingw32-gcc")
-	} else {
-		if goarch == "arm64" {
+	} else { // linux
+		switch goarch {
+		case "arm64":
 			command += "CC=aarch64-linux-gnu-gcc "
 			commandEnv = append(commandEnv, "CC=aarch64-linux-gnu-gcc")
-		} else {
+		case "amd64":
 			command += "CC=x86_64-linux-gnu-gcc "
 			commandEnv = append(commandEnv, "CC=x86_64-linux-gnu-gcc")
 		}
@@ -500,18 +624,16 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	}
 	command += fmt.Sprintf("-%s", goarch)
 	payloadName += fmt.Sprintf("-%s", goarch)
-	if mode == "c-shared" {
-		if targetOs == "windows" {
-			command += ".dll"
-			payloadName += ".dll"
-		} else if targetOs == "darwin" {
+	switch mode {
+	case "c-shared":
+		if targetOs == "darwin" {
 			command += ".dylib"
 			payloadName += ".dylib"
 		} else {
 			command += ".so"
 			payloadName += ".so"
 		}
-	} else if mode == "c-archive" {
+	case "c-archive":
 		command += ".a"
 		payloadName += ".a"
 	}
@@ -531,14 +653,14 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 			PayloadUUID: payloadBuildMsg.PayloadUUID,
 			StepName:    "Garble",
 			StepSuccess: true,
-			StepStdout:  fmt.Sprintf("Successfully added in garble\n"),
+			StepStdout:  "Successfully added in garble\n",
 		})
 	} else {
 		mythicrpc.SendMythicRPCPayloadUpdateBuildStep(mythicrpc.MythicRPCPayloadUpdateBuildStepMessage{
 			PayloadUUID: payloadBuildMsg.PayloadUUID,
 			StepName:    "Garble",
 			StepSkip:    true,
-			StepStdout:  fmt.Sprintf("Skipped Garble\n"),
+			StepStdout:  "Skipped Garble\n",
 		})
 	}
 	//cmd := exec.Command("/bin/bash")
