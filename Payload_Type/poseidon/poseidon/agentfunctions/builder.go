@@ -313,21 +313,15 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	// https://golang.org/cmd/link/
 	buildLdFlags := []string{}
 	// leaving in old fmt.Sprintf format now as sanity checking, but will remove at some point since it's unused
-	ldflags := ""
 	if static {
-		ldflags += fmt.Sprintf("-extldflags=-static -s -w -X '%s.UUID=%s'", poseidon_repo_profile, payloadBuildMsg.PayloadUUID)
 		buildLdFlags = append(buildLdFlags, "-extldflags=-static", "-s", "-w", "-X",
 			fmt.Sprintf("'%s.UUID=%s'", poseidon_repo_profile, payloadBuildMsg.PayloadUUID))
 	} else {
-		ldflags += fmt.Sprintf("-s -w -X '%s.UUID=%s'", poseidon_repo_profile, payloadBuildMsg.PayloadUUID)
 		buildLdFlags = append(buildLdFlags, "-s", "-w", "-X",
 			fmt.Sprintf("'%s.UUID=%s'", poseidon_repo_profile, payloadBuildMsg.PayloadUUID))
 	}
-	ldflags += fmt.Sprintf(" -X '%s.debugString=%v'", poseidon_repo_utils, debug)
 	buildLdFlags = append(buildLdFlags, "-X", fmt.Sprintf("'%s.debugString=%v'", poseidon_repo_utils, debug))
-	ldflags += fmt.Sprintf(" -X '%s.egress_failover=%s'", poseidon_repo_profile, egress_failover)
 	buildLdFlags = append(buildLdFlags, "-X", fmt.Sprintf("'%s.egress_failover=%s'", poseidon_repo_profile, egress_failover))
-	ldflags += fmt.Sprintf(" -X '%s.failedConnectionCountThresholdString=%v'", poseidon_repo_profile, failedConnectionCountThresholdString)
 	buildLdFlags = append(buildLdFlags, "-X", fmt.Sprintf("'%s.failedConnectionCountThresholdString=%v'", poseidon_repo_profile, failedConnectionCountThresholdString))
 	egressBytes, err := json.Marshal(egress_order)
 	if err != nil {
@@ -335,7 +329,6 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	}
 	stringBytes := base64.StdEncoding.EncodeToString(egressBytes)
 	//stringBytes = strings.ReplaceAll(stringBytes, "\"", "\\\"")
-	ldflags += fmt.Sprintf(" -X '%s.egress_order=%s'", poseidon_repo_profile, stringBytes)
 	buildLdFlags = append(buildLdFlags, "-X", fmt.Sprintf("'%s.egress_order=%s'", poseidon_repo_profile, stringBytes))
 	// Iterate over the C2 profile parameters and associated variable through Go's "-X" link flag
 	for index := range payloadBuildMsg.C2Profiles {
@@ -440,7 +433,6 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		}
 		initialConfigBase64 := base64.StdEncoding.EncodeToString(initialConfigBytes)
 		payloadBuildResponse.BuildStdOut += fmt.Sprintf("%s's config: \n%v\n", payloadBuildMsg.C2Profiles[index].Name, string(initialConfigBytes))
-		ldflags += fmt.Sprintf(" -X '%s.%s_%s=%v'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, "initial_config", initialConfigBase64)
 		buildLdFlags = append(buildLdFlags, "-X",
 			fmt.Sprintf("'%s.%s_%s=%v'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, "initial_config", initialConfigBase64))
 	}
@@ -457,9 +449,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	if err != nil {
 		return buildError(err.Error())
 	}
-	ldflags += fmt.Sprintf(" -X '%s.proxy_bypass=%v'", poseidon_repo_profile, proxyBypass)
 	buildLdFlags = append(buildLdFlags, "-X", fmt.Sprintf("'%s.proxy_bypass=%v'", poseidon_repo_profile, proxyBypass))
-	ldflags += " -buildid="
 	buildLdFlags = append(buildLdFlags, "-buildid=")
 
 	var goarch string
@@ -507,7 +497,6 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		}
 	}
 
-	var command string
 	var commandEnv []string
 	if isMIPS && targetOs != "linux" {
 		return buildError("MIPS architectures are only supported for linux")
@@ -516,81 +505,69 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 		return buildError("MIPS currently supports only default executable builds")
 	}
 	if isMIPS {
-		command = fmt.Sprintf("CGO_ENABLED=0 GOOS=%s GOARCH=%s ", targetOs, goarch)
 		commandEnv = []string{"CGO_ENABLED=0",
 			fmt.Sprintf("GOOS=%s", targetOs),
 			fmt.Sprintf("GOARCH=%s", goarch),
 		}
 		if isMIPS64 {
-			command += fmt.Sprintf("GOMIPS64=%s ", floatABI)
 			commandEnv = append(commandEnv, "GOMIPS64="+floatABI)
 		} else {
-			command += fmt.Sprintf("GOMIPS=%s ", floatABI)
 			commandEnv = append(commandEnv, "GOMIPS="+floatABI)
 		}
 	} else {
-		command = fmt.Sprintf("CGO_ENABLED=1 GOOS=%s GOARCH=%s ", targetOs, goarch)
 		commandEnv = []string{"CGO_ENABLED=1",
 			fmt.Sprintf("GOOS=%s", targetOs),
 			fmt.Sprintf("GOARCH=%s", goarch),
 		}
 	}
 
-	goCmd := fmt.Sprintf("-tags %s -buildmode %s -ldflags \"%s\"", strings.Join(tags, ","), mode, ldflags)
 	if targetOs == "darwin" {
-		command += "CC=o64-clang CXX=o64-clang++ "
 		commandEnv = append(commandEnv, "CC=o64-clang", "CXX=o64-clang++")
 	} else { // linux
 		switch goarch {
 		case "arm64":
-			command += "CC=aarch64-linux-gnu-gcc "
 			commandEnv = append(commandEnv, "CC=aarch64-linux-gnu-gcc")
 		case "amd64":
-			command += "CC=x86_64-linux-gnu-gcc "
 			commandEnv = append(commandEnv, "CC=x86_64-linux-gnu-gcc")
 		}
 	}
-	command += "GOGARBLE=* "
 	commandEnv = append(commandEnv, "GOGARBLE=*")
 	commandExec := []string{"go", "build"}
 	if garble {
-		command += "garble -tiny -literals -debug -seed random build "
 		commandExec = []string{"garble", "-tiny", "-literals", "-debug", "-seed", "random", "build"}
-	} else {
-		command += "go build "
 	}
 	payloadName := fmt.Sprintf("%s-%s", payloadBuildMsg.PayloadUUID, targetOs)
-	command += fmt.Sprintf("%s -o /build/%s", goCmd, payloadName)
 
 	if targetOs == "darwin" {
-		command += fmt.Sprintf("-%s", macOSVersion)
 		payloadName += fmt.Sprintf("-%s", macOSVersion)
 	}
-	command += fmt.Sprintf("-%s", goarch)
 	payloadName += fmt.Sprintf("-%s", goarch)
 	switch mode {
 	case "c-shared":
 		if targetOs == "darwin" {
-			command += ".dylib"
 			payloadName += ".dylib"
 		} else {
-			command += ".so"
 			payloadName += ".so"
 		}
 	case "c-archive":
-		command += ".a"
 		payloadName += ".a"
 	}
+
 	commandExec = append(commandExec,
 		"-tags", strings.Join(tags, ","),
 		"-buildmode", mode,
 		"-ldflags", fmt.Sprintf("%s", strings.Join(buildLdFlags, " ")),
 		"-o", "/build/"+payloadName)
+
+	cmd := exec.Command(commandExec[0], commandExec[1:]...)
+	cmd.Env = append(os.Environ(), commandEnv...)
+	cmd.Dir = "./poseidon/agent_code/"
+
 	mythicrpc.SendMythicRPCPayloadUpdateBuildStep(mythicrpc.MythicRPCPayloadUpdateBuildStepMessage{
 		PayloadUUID: payloadBuildMsg.PayloadUUID,
 		StepName:    "Configuring",
 		StepSuccess: true,
-		StepStdout:  fmt.Sprintf("Successfully configured\n%s\nEnv: %v\nCmd: %v", command, commandEnv, commandExec),
+		StepStdout:  fmt.Sprintf("Successfully configured\nEnv additions: %q\nCommand arguments: %q", commandEnv, cmd.Args),
 	})
 	if garble {
 		mythicrpc.SendMythicRPCPayloadUpdateBuildStep(mythicrpc.MythicRPCPayloadUpdateBuildStepMessage{
@@ -607,11 +584,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 			StepStdout:  "Skipped Garble\n",
 		})
 	}
-	//cmd := exec.Command("/bin/bash")
-	cmd := exec.Command(commandExec[0], commandExec[1:]...)
-	cmd.Env = append(os.Environ(), commandEnv...)
-	//cmd.Stdin = strings.NewReader(command)
-	cmd.Dir = "./poseidon/agent_code/"
+
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
