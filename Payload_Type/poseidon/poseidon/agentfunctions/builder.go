@@ -227,19 +227,6 @@ var payloadDefinition = agentstructs.PayloadType{
 	},
 }
 
-var payloadBuildResponse = agentstructs.PayloadBuildResponse{
-		PayloadUUID:        payloadBuildMsg.PayloadUUID,
-		Success:            true,
-		UpdatedCommandList: &payloadBuildMsg.CommandList,
-	}
-
-func buildError(stdError string) agentstructs.PayloadBuildResponse {
-	payloadBuildResponse.Success = false
-	payloadBuildResponse.BuildStdErr = stdError
-	return payloadBuildResponse
-
-}
-
 func getArchitectureChoices(message agentstructs.PTRPCDynamicQueryBuildParameterFunctionMessage) agentstructs.PTRPCDynamicQueryBuildParameterFunctionMessageResponse {
 	switch message.SelectedOS {
 	case agentstructs.SUPPORTED_OS_LINUX:
@@ -261,11 +248,19 @@ func getArchitectureChoices(message agentstructs.PTRPCDynamicQueryBuildParameter
 }
 
 func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.PayloadBuildResponse {
-	
-	if len(payloadBuildMsg.C2Profiles) == 0 {
+	payloadBuildResponse := agentstructs.PayloadBuildResponse{
+		PayloadUUID:        payloadBuildMsg.PayloadUUID,
+		Success:            true,
+		UpdatedCommandList: &payloadBuildMsg.CommandList,
+	}
+	buildError := func(stdError string) agentstructs.PayloadBuildResponse {
 		payloadBuildResponse.Success = false
-		payloadBuildResponse.BuildStdErr = "Failed to build - must select at least one C2 Profile"
+		payloadBuildResponse.BuildStdErr = stdError
 		return payloadBuildResponse
+	}
+
+	if len(payloadBuildMsg.C2Profiles) == 0 {
+		return buildError("Failed to build - must select at least one C2 Profile")
 	}
 
 	macOSVersion := "10.12"
@@ -276,9 +271,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	case agentstructs.SUPPORTED_OS_MACOS:
 		targetOs = "darwin"
 	default:
-		payloadBuildResponse.Success = false
-		payloadBuildResponse.BuildStdErr = fmt.Sprintf("Poseidon does not support operating system %q", payloadBuildMsg.SelectedOS)
-		return payloadBuildResponse
+		return buildError(fmt.Sprintf("Poseidon does not support operating system %q", payloadBuildMsg.SelectedOS))
 	}
 
 	egress_order, err := payloadBuildMsg.BuildParameters.GetArrayArg("egress_order")
@@ -352,48 +345,36 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 				//cryptoVal := val.(map[string]interface{})
 				cryptoVal, err := payloadBuildMsg.C2Profiles[index].GetCryptoArg(key)
 				if err != nil {
-					payloadBuildResponse.Success = false
-					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
-					return payloadBuildResponse
+					return buildError("Key error: " + key + "\n" + err.Error())
 				}
 				initialConfig[key] = cryptoVal.EncKey
 				//ldflags += fmt.Sprintf(" -X '%s.%s_%s=%s'", poseidon_repo_profile, payloadBuildMsg.C2Profiles[index].Name, key, cryptoVal.EncKey)
 			} else if key == "headers" {
 				headers, err := payloadBuildMsg.C2Profiles[index].GetDictionaryArg(key)
 				if err != nil {
-					payloadBuildResponse.Success = false
-					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
-					return payloadBuildResponse
+					return buildError("Key error: " + key + "\n" + err.Error())
 				}
 				initialConfig[key] = headers
 			} else if key == "raw_c2_config" {
 				agentConfigString, err := payloadBuildMsg.C2Profiles[index].GetStringArg(key)
 				if err != nil {
-					payloadBuildResponse.Success = false
-					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
-					return payloadBuildResponse
+					return buildError("Key error: " + key + "\n" + err.Error())
 				}
 				configData, err := mythicrpc.SendMythicRPCFileGetContent(mythicrpc.MythicRPCFileGetContentMessage{
 					AgentFileID: agentConfigString,
 				})
 				if err != nil {
-					payloadBuildResponse.Success = false
-					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
-					return payloadBuildResponse
+					return buildError("Key error: " + key + "\n" + err.Error())
 				}
 				if !configData.Success {
-					payloadBuildResponse.Success = false
-					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + configData.Error
-					return payloadBuildResponse
+					return buildError("Key error: " + key + "\n" + configData.Error)
 				}
 				tomlConfig := make(map[string]interface{})
 				err = json.Unmarshal(configData.Content, &tomlConfig)
 				if err != nil {
 					err = toml.Unmarshal(configData.Content, &tomlConfig)
 					if err != nil {
-						payloadBuildResponse.Success = false
-						payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
-						return payloadBuildResponse
+						return buildError("Key error: " + key + "\n" + err.Error())
 					}
 				}
 				initialConfig[key] = tomlConfig
@@ -403,15 +384,11 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 				if err != nil {
 					stringVal, err := payloadBuildMsg.C2Profiles[index].GetStringArg(key)
 					if err != nil {
-						payloadBuildResponse.Success = false
-						payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
-						return payloadBuildResponse
+						return buildError("Key error: " + key + "\n" + err.Error())
 					}
 					realVal, err := strconv.Atoi(stringVal)
 					if err != nil {
-						payloadBuildResponse.Success = false
-						payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
-						return payloadBuildResponse
+						return buildError("Key error: " + key + "\n" + err.Error())
 					}
 					initialConfig[key] = realVal
 				} else {
@@ -424,9 +401,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 				if err != nil {
 					stringVal, err := payloadBuildMsg.C2Profiles[index].GetStringArg(key)
 					if err != nil {
-						payloadBuildResponse.Success = false
-						payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
-						return payloadBuildResponse
+						return buildError("Key error: " + key + "\n" + err.Error())
 					}
 					initialConfig[key] = stringVal == "T"
 				} else {
@@ -435,17 +410,13 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 			} else if slices.Contains([]string{"callback_domains", "domains"}, key) {
 				val, err := payloadBuildMsg.C2Profiles[index].GetArrayArg(key)
 				if err != nil {
-					payloadBuildResponse.Success = false
-					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
-					return payloadBuildResponse
+					return buildError("Key error: " + key + "\n" + err.Error())
 				}
 				initialConfig[key] = val
 			} else {
 				val, err := payloadBuildMsg.C2Profiles[index].GetStringArg(key)
 				if err != nil {
-					payloadBuildResponse.Success = false
-					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
-					return payloadBuildResponse
+					return buildError("Key error: " + key + "\n" + err.Error())
 				}
 				if key == "proxy_port" {
 					if val == "" {
@@ -453,9 +424,7 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 					} else {
 						intval, err := strconv.Atoi(val)
 						if err != nil {
-							payloadBuildResponse.Success = false
-							payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
-							return payloadBuildResponse
+							return buildError("Key error: " + key + "\n" + err.Error())
 						}
 						initialConfig[key] = intval
 					}
@@ -541,14 +510,10 @@ func build(payloadBuildMsg agentstructs.PayloadBuildMessage) agentstructs.Payloa
 	var command string
 	var commandEnv []string
 	if isMIPS && targetOs != "linux" {
-		payloadBuildResponse.Success = false
-		payloadBuildResponse.BuildStdErr = "MIPS architectures are only supported for linux"
-		return payloadBuildResponse
+		return buildError("MIPS architectures are only supported for linux")
 	}
 	if isMIPS && mode != "default" {
-		payloadBuildResponse.Success = false
-		payloadBuildResponse.BuildStdErr = "MIPS currently supports only default executable builds"
-		return payloadBuildResponse
+		return buildError("MIPS currently supports only default executable builds")
 	}
 	if isMIPS {
 		command = fmt.Sprintf("CGO_ENABLED=0 GOOS=%s GOARCH=%s ", targetOs, goarch)
