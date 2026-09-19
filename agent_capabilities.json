@@ -7,7 +7,7 @@
     "custom": ["key exchange", "multiple egress", "killdate"]
   },
   "payload_output": ["macho", "elf", "dylib", "so"],
-  "architectures": ["x86_64", "arm_64"],
+  "architectures": ["x86_64", "arm_64", "mips", "mipsle", "mips64", "mips64le"],
   "c2": ["http", "websocket", "dynamichttp", "tcp"],
   "mythic_version": "3.3.1-rc71",
   "agent_version": "2.2.8",

@@ -2,33 +2,6 @@
 
 package functions
 
-/*
-#include <unistd.h>
-int UpdateEUID();
-int UpdateEUID(){
-    uid_t euid = geteuid();
-    uid_t uid = getuid();
-    if(euid != uid){
-        setuid(euid);
-    }
-    gid_t egid = getegid();
-    gid_t gid = getgid();
-    if(egid != gid){
-        setgid(egid);
-    }
-	uid_t finalUID = getuid();
-    return finalUID;
-}
-int GetUID();
-int GetUID(){
-	return getuid();
-}
-int GetEUID();
-int GetEUID(){
-	return geteuid();
-}
-*/
-import "C"
 import (
 	"fmt"
 	"os"
@@ -40,8 +13,26 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+func updateEUID() int {
+	egid := os.Getegid()
+	gid := os.Getgid()
+
+	if egid != gid {
+		_ = unix.Setgid(egid)
+	}
+
+	euid := os.Geteuid()
+	uid := os.Getuid()
+
+	if euid != uid {
+		_ = unix.Setuid(euid)
+	}
+
+	return os.Getuid()
+}
+
 func isElevated() bool {
-	uid := C.UpdateEUID()
+	uid := updateEUID()
 	return uid == 0
 }
 func getArchitecture() string {
@@ -78,7 +69,7 @@ func getOS() string {
 	return getStringFromBytes(u.Sysname) + "\n" + getStringFromBytes(u.Nodename) + "\n" + getStringFromBytes(u.Release) + "\n" + getStringFromBytes(u.Version) + "\n" + getStringFromBytes(u.Machine)
 }
 func getUser() string {
-	uid := C.UpdateEUID()
+	uid := updateEUID()
 	currentUser, err := user.LookupId(strconv.Itoa(int(uid)))
 	//currentUser, err := user.Current()
 	if err != nil {
@@ -88,7 +79,7 @@ func getUser() string {
 	}
 }
 func getEffectiveUser() string {
-	uid := C.GetEUID()
+	uid := os.Geteuid()
 	currentUser, err := user.LookupId(strconv.Itoa(int(uid)))
 	if err != nil {
 		return ""

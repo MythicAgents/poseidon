@@ -4,9 +4,17 @@
   <img alt="Poseidon Logo" src="documentation-payload/poseidon/poseidon.svg" height="30%" width="30%">
 </p>
 
-Poseidon is a Golang agent that compiles into Linux and macOS x64 executables.
+Poseidon is a Golang agent that compiles into Linux and macOS executables.
 This Poseidon instance supports Mythic 3.0.0 and will be updated as necessary.
 It does not support Mythic 2.3 and lower.
+
+### Architecture Support
+
+<strong>Linux</strong>:
+  - Arm64, x64, mips, mipsle, mips64, mips64le
+
+<strong>macOS</strong>:
+  - Arm64, x64
 
 ## Poseidon's Icon
 
