@@ -25,6 +25,27 @@ RUN if [ "$TARGETARCH" = "arm64" ]; then \
     chmod +x /rcodesign; \
     fi
 
+ARG UPX_VERSION=4.2.4
+
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) UPX_SHA256="75cab4e57ab72fb4585ee45ff36388d280c7afd72aa03e8d4b9c3cbddb474193" ;;\ 
+        arm64) UPX_SHA256="6bfeae6714e34a82e63245289888719c41fd6af29f749a44ae3d3d166ba6a1c9" ;; \
+        *) echo "Unsupported container architecture: ${TARGETARCH}"; exit 1 ;; \
+    esac; \
+    UPX_ARCHIVE="upx-${UPX_VERSION}-${TARGETARCH}_linux.tar.xz"; \
+    wget -O "/tmp/${UPX_ARCHIVE}" \
+        "https://github.com/upx/upx/releases/download/v${UPX_VERSION}/${UPX_ARCHIVE}"; \
+    echo "${UPX_SHA256}  /tmp/${UPX_ARCHIVE}" | sha256sum -c -; \
+    tar -xJf "/tmp/${UPX_ARCHIVE}" -C /tmp; \
+    install -m 0755 \
+        "/tmp/upx-${UPX_VERSION}-${TARGETARCH}_linux/upx" \
+        /usr/local/bin/upx; \
+    rm -rf "/tmp/${UPX_ARCHIVE}" \
+        "/tmp/upx-${UPX_VERSION}-${TARGETARCH}_linux"
+
+RUN upx --version
+
 WORKDIR /Mythic/
 
 COPY [".", "."]

@@ -52,7 +52,8 @@ func init() {
 			},
 		},
 		CommandAttributes: agentstructs.CommandAttribute{
-			SupportedOS:        []string{agentstructs.SUPPORTED_OS_LINUX},
+			SupportedOS: []string{agentstructs.SUPPORTED_OS_LINUX},
+			FilterCommandAvailabilityByAgentBuildParameters: map[string]string{"architecture": "AMD_x64"},
 			CommandIsSuggested: true,
 		},
 		TaskFunctionParseArgString: func(args *agentstructs.PTTaskMessageArgsData, input string) error {

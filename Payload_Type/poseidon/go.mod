@@ -9,7 +9,6 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/pelletier/go-toml v1.9.5
-	golang.org/x/exp v0.0.0-20260312153236-7ab1446f8b90
 )
 
 require (

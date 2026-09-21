@@ -1,7 +1,6 @@
 package main
 
 import (
-	"C"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/profiles"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/responses"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/tasks"
@@ -9,11 +8,6 @@ import (
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/p2p"
 	"github.com/MythicAgents/poseidon/Payload_Type/poseidon/agent_code/pkg/utils/runtimeMainThread"
 )
-
-//export RunMain
-func RunMain() {
-	main()
-}
 
 func main() {
 	// initialize egress and bind profiles - needs to send edges messages and alerts outside direct tasking
