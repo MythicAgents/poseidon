@@ -22,7 +22,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-const version = "2.4.1"
+const version = "2.4.2"
 
 type sleepInfoStruct struct {
 	Interval int       `json:"interval"`
@@ -317,23 +317,10 @@ func build(ctx context.Context, payloadBuildMsg agentstructs.PayloadBuildMessage
 					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
 					return payloadBuildResponse
 				}
-				configData, err := mythicrpc.SendMythicRPCFileGetContent(ctx, mythicrpc.MythicRPCFileGetContentMessage{
-					AgentFileID: agentConfigString,
-				})
-				if err != nil {
-					payloadBuildResponse.Success = false
-					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
-					return payloadBuildResponse
-				}
-				if !configData.Success {
-					payloadBuildResponse.Success = false
-					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + configData.Error
-					return payloadBuildResponse
-				}
 				tomlConfig := make(map[string]interface{})
-				err = json.Unmarshal(configData.Content, &tomlConfig)
+				err = json.Unmarshal([]byte(agentConfigString), &tomlConfig)
 				if err != nil {
-					err = toml.Unmarshal(configData.Content, &tomlConfig)
+					err = toml.Unmarshal([]byte(agentConfigString), &tomlConfig)
 					if err != nil {
 						payloadBuildResponse.Success = false
 						payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
