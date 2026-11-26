@@ -317,6 +317,11 @@ func build(ctx context.Context, payloadBuildMsg agentstructs.PayloadBuildMessage
 					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\n" + err.Error()
 					return payloadBuildResponse
 				}
+				if agentConfigString == "" {
+					payloadBuildResponse.Success = false
+					payloadBuildResponse.BuildStdErr = "Key error: " + key + "\nhttpx agent config is empty"
+					return payloadBuildResponse
+				}
 				tomlConfig := make(map[string]interface{})
 				err = json.Unmarshal([]byte(agentConfigString), &tomlConfig)
 				if err != nil {
