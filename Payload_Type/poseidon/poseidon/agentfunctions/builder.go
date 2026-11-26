@@ -43,7 +43,7 @@ var payloadDefinition = agentstructs.PayloadType{
 	Wrapper:                false,
 	SupportsDynamicLoading: true,
 	Description:            fmt.Sprintf("A fully featured macOS and Linux Golang agent.\nNeeds Mythic 3.3.0+\nNOTE: P2P not compatible with v2.1 agents!"),
-	SupportedC2Profiles:    []string{"http", "websocket", "tcp", "dynamichttp", "webshell", "httpx", "dns"},
+	SupportedC2Profiles:    []string{"http", "websocket", "tcp", "webshell", "httpx", "dns"},
 	MythicEncryptsData:     true,
 	BuildParameters: []agentstructs.BuildParameter{
 		{
@@ -94,7 +94,7 @@ var payloadDefinition = agentstructs.PayloadType{
 			Description:   "Prioritize the order in which egress connections are made (if including multiple egress c2 profiles)",
 			Required:      false,
 			ParameterType: agentstructs.BUILD_PARAMETER_TYPE_ARRAY,
-			DefaultValue:  []string{"http", "websocket", "dynamichttp", "httpx"},
+			DefaultValue:  []string{"http", "websocket", "httpx"},
 			GroupName:     "egress",
 			UiPosition:    6,
 		},
